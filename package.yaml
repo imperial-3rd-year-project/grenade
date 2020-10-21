@@ -71,6 +71,7 @@ dependencies:
   - binary                          >= 0.8
   - mtl
   - parallel
+  - template-haskell                >= 2.15.0.0
 when:
   condition: flag(use-float)
   then:
