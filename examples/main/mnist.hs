@@ -6,6 +6,9 @@
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 import           Control.Applicative
 import           Control.DeepSeq
@@ -13,23 +16,36 @@ import           Control.Monad
 import           Control.Monad.Random
 import           Control.Monad.Trans.Except
 
+import           Data.Serialize
+
+import qualified Data.ByteString              as B
 import qualified Data.Attoparsec.Text         as A
 import           Data.List                    (foldl')
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T
 import qualified Data.Vector.Storable         as V
+import           Data.Singletons.Prelude
 
-import           Numeric.LinearAlgebra        (maxIndex)
+
+import           Numeric.LinearAlgebra        (maxIndex, (<.>))
 import qualified Numeric.LinearAlgebra.Static as SA
+import           Numeric.LinearAlgebra.Data   (konst, size)
 
 import           Options.Applicative
 
+import           System.ProgressBar
+
 import           Grenade
+import           Grenade.Core.TrainingTypes
+import           Grenade.Core.Training
 import           Grenade.Utils.OneHot
 
+import GHC.TypeLits
 --
 -- Note: Input files can be downloaded at https://www.kaggle.com/scolianni/mnistasjpg
 --
+
+--class Vec (n :: Shape) (m :: Type) where 
 
 
 -- It's logistic regression!
@@ -54,49 +70,41 @@ type FL i o =
 -- /NOTE:/ This model is actually too complex for MNIST, and one should use the type given in the readme instead.
 --         This one is just here to demonstrate Inception layers in use.
 --
-type MNIST =
-  Network
-    '[ Reshape,
-       Concat ('D3 28 28 1) Trivial ('D3 28 28 14) (InceptionMini 28 28 1 5 9),
-       Pooling 2 2 2 2, Relu,
-       Concat ('D3 14 14 3) (Convolution 15 3 1 1 1 1) ('D3 14 14 15) (InceptionMini 14 14 15 5 10), Crop 1 1 1 1, Pooling 3 3 3 3, Relu,
-       Reshape, FL 288 80, FL 80 10 ]
-    '[ 'D2 28 28, 'D3 28 28 1,
-       'D3 28 28 15, 'D3 14 14 15, 'D3 14 14 15, 'D3 14 14 18,
-       'D3 12 12 18, 'D3 4 4 18, 'D3 4 4 18,
-       'D1 288, 'D1 80, 'D1 10 ]
+type MNIST
+  = Network
+    '[ Convolution 1 10 5 5 1 1
+     , Pooling 2 2 2 2
+     , Relu
+     , Convolution 10 16 5 5 1 1
+     , Pooling 2 2 2 2
+     , Reshape
+     , Relu
+     , FullyConnected 256 80
+     , Logit
+     , FullyConnected 80 10
+     , Logit]
+    '[ 'D2 28 28
+     , 'D3 24 24 10
+     , 'D3 12 12 10
+     , 'D3 12 12 10
+     , 'D3 8 8 16
+     , 'D3 4 4 16
+     , 'D1 256
+     , 'D1 256
+     , 'D1 80
+     , 'D1 80
+     , 'D1 10
+     , 'D1 10]
 
-randomMnist :: IO MNIST
-randomMnist = randomNetwork
-
-convTest :: Int -> FilePath -> FilePath -> Optimizer opt -> ExceptT String IO ()
-convTest iterations trainFile validateFile opt = do
-  net0         <- lift randomMnist
-  trainData    <- readMNIST trainFile
-  validateData <- readMNIST validateFile
-  lift $ foldM_ (runIteration trainData validateData) net0 [1..iterations]
-
-    where
-  trainEach !opt' !network (!i, !o) = force (train opt' network i o)
-
-  runIteration !trainRows !validateRows !net !i = do
-    putStrLn $ "Number of training rows: " ++ show (length trainRows)
-    let !trained' = foldl' (trainEach (sgdUpdateLearningParamters opt)) net trainRows
-    let !res      = fmap (\(rowP,rowL) -> (rowL,) $ runNet trained' rowP) validateRows
-    let !res'     = fmap (\(S1D label, S1D prediction) -> (maxIndex (SA.extract label), maxIndex (SA.extract prediction))) res
-    print trained'
-    putStrLn $ "Iteration " ++ show i ++ ": " ++ show (length (filter ((==) <$> fst <*> snd) res')) ++ " of " ++ show (length res')
-    return trained'
-  sgdUpdateLearningParamters :: Optimizer opt -> Optimizer opt
-  sgdUpdateLearningParamters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
-  sgdUpdateLearningParamters o                     = o
-
-
-data MnistOpts = MnistOpts FilePath FilePath Int Bool (Optimizer 'SGD) (Optimizer 'Adam)
+data MnistOpts = MnistOpts FilePath          -- Training/Test data
+                           Int               -- Iterations
+                           Bool              -- Use Adam
+                           (Optimizer 'SGD)  -- SGD settings
+                           (Optimizer 'Adam) -- Adam settings
+                           (Maybe FilePath)  -- Save path
 
 mnist' :: Parser MnistOpts
 mnist' = MnistOpts <$> argument str (metavar "TRAIN")
-                   <*> argument str (metavar "VALIDATE")
                    <*> option auto (long "iterations" <> short 'i' <> value 15)
                  <*> flag False True (long "use-adam" <> short 'a')
                  <*> (OptSGD
@@ -111,17 +119,35 @@ mnist' = MnistOpts <$> argument str (metavar "TRAIN")
                        <*> option auto (long "epsilon" <> value 1e-4)
                        <*> option auto (long "lambda" <> value 1e-3)
                       )
+                 <*> optional (strOption (long "save"))
+
+runFit :: FilePath -> Int -> Bool -> Optimizer opt1 -> Optimizer opt2 -> ExceptT String IO MNIST
+runFit mnistPath iter useAdam sgd adam = do 
+    lift $ putStrLn "Reading data..."
+    allData <- readMNIST mnistPath
+    let (trainData, validateData) = splitAt 33000 allData
+
+    lift $ putStrLn "Training convolutional neural network..."
+    lift $ fit trainData validateData options iter
+  where 
+    options = if useAdam 
+      then TrainingOptions 
+        { optimizer = adam
+        , verbose   = Full 
+        , metrics   = []
+        }
+      else TrainingOptions 
+        { optimizer = sgd
+        , verbose   = Full 
+        , metrics   = []
+        }
 
 main :: IO ()
 main = do
-    MnistOpts mnist vali iter useAdam sgd adam <- execParser (info (mnist' <**> helper) idm)
-    putStrLn "Training convolutional neural network..."
-    res <- if useAdam
-      then runExceptT $ convTest iter mnist vali adam
-      else runExceptT $ convTest iter mnist vali sgd
-
+    MnistOpts mnistPath iter useAdam sgd adam savePathM <- execParser (info (mnist' <**> helper) idm)
+    res <- (runExceptT $ runFit mnistPath iter useAdam sgd adam) :: IO (Either String MNIST)
     case res of
-      Right () -> pure ()
+      Right _  -> putStrLn "Success"
       Left err -> putStrLn err
 
 readMNIST :: FilePath -> ExceptT String IO [(S ('D2 28 28), S ('D1 10))]
@@ -133,5 +159,8 @@ parseMNIST :: A.Parser (S ('D2 28 28), S ('D1 10))
 parseMNIST = do
   Just lab <- oneHot <$> A.decimal
   pixels   <- many (A.char ',' >> A.double)
-  image    <- maybe (fail "Parsed row was of an incorrect size") pure (fromStorable . V.fromList $ map realToFrac pixels)
+  image    <- maybe (fail "Parsed row was of an incorrect size") pure (fromStorable . V.fromList $ map realToFrac ((\x -> x / 255) <$> pixels))
   return (image, lab)
+
+saveNet :: MNIST -> FilePath -> IO ()
+saveNet net path = B.writeFile path $ runPut (put net)

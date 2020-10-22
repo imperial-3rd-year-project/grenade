@@ -14,4 +14,6 @@ import           Grenade.Core.NetworkSettings
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Runner
 import           Grenade.Core.Shape
+import           Grenade.Core.Training
+import           Grenade.Core.TrainingTypes
 import           Grenade.Core.WeightInitialization

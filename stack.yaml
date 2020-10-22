@@ -22,7 +22,7 @@
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 
 # resolver: lts-15.8
-resolver: lts-15.5
+resolver: lts-16.18
 # resolver: lts-14.27
 
 # User packages to be built.
@@ -37,6 +37,7 @@ resolver: lts-15.5
 packages:
   - .
   - examples
+  - ../blank-canvas/
 
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
@@ -54,6 +55,11 @@ extra-deps:
  - some-1.0.1@sha256:26e5bab7276f48b25ea8660d3fd1166c0f20fd497dac879a40f408e23211f93e,2055
  - git: https://github.com/schnecki/hmatrix-float
    commit: 20ad30db8edb97ce735d8218937f9ded878e3217
+ - gloss-1.13.1.2
+ - convertible-1.1.1.0
+ - javascript-bridge-0.2.0
+ - constraints-0.11.2
+ - terminal-progress-bar-0.4.1
 
 drop-packages:
  - constraints-extras

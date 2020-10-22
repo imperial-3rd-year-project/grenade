@@ -71,6 +71,7 @@ dependencies:
   - binary                          >= 0.8
   - mtl
   - parallel
+  - terminal-progress-bar
 when:
   condition: flag(use-float)
   then:
