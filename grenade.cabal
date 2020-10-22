@@ -4,7 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
+<<<<<<< HEAD
 -- hash: d35130120f872db42131c8a0c5112bf8b33c56a96474a9f5b393cf6e42de304b
+=======
+-- hash: 73e8060229070fc651e0afdc2dcf0154519cb6d1129b53e4e032f4ca6f5e1f00
+>>>>>>> 561621a... Adds grenade.cabal
 
 name:           grenade
 version:        0.1.0
@@ -56,14 +60,20 @@ library
       Grenade
       Grenade.Core
       Grenade.Core.Layer
+<<<<<<< HEAD
       Grenade.Core.Loss
+=======
+>>>>>>> 561621a... Adds grenade.cabal
       Grenade.Core.Network
       Grenade.Core.NetworkSettings
       Grenade.Core.Optimizer
       Grenade.Core.Runner
       Grenade.Core.Shape
+<<<<<<< HEAD
       Grenade.Core.Training
       Grenade.Core.TrainingTypes
+=======
+>>>>>>> 561621a... Adds grenade.cabal
       Grenade.Core.WeightInitialization
       Grenade.Dynamic
       Grenade.Dynamic.Build
@@ -108,7 +118,10 @@ library
       Grenade.Utils.LinearAlgebra
       Grenade.Utils.ListStore
       Grenade.Utils.OneHot
+<<<<<<< HEAD
       Grenade.Utils.Parallel
+=======
+>>>>>>> 561621a... Adds grenade.cabal
   other-modules:
       Paths_grenade
   hs-source-dirs:
@@ -130,16 +143,23 @@ library
     , data-default
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
+<<<<<<< HEAD
     , ghc-typelits-knownnat
+=======
+>>>>>>> 561621a... Adds grenade.cabal
     , mtl
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
     , reflection >=0.11.2
+<<<<<<< HEAD
     , repa
     , singletons
     , split
     , terminal-progress-bar
+=======
+    , singletons
+>>>>>>> 561621a... Adds grenade.cabal
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -168,7 +188,10 @@ test-suite test
   type: exitcode-stdio-1.0
   main-is: test.hs
   other-modules:
+<<<<<<< HEAD
       Test.Grenade.Batch
+=======
+>>>>>>> 561621a... Adds grenade.cabal
       Test.Grenade.Layers.Convolution
       Test.Grenade.Layers.FullyConnected
       Test.Grenade.Layers.Internal.Convolution
@@ -177,7 +200,10 @@ test-suite test
       Test.Grenade.Layers.Nonlinear
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling
+<<<<<<< HEAD
       Test.Grenade.Loss
+=======
+>>>>>>> 561621a... Adds grenade.cabal
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM
       Test.Grenade.Recurrent.Layers.LSTM.Reference
@@ -201,7 +227,10 @@ test-suite test
     , data-default
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
+<<<<<<< HEAD
     , ghc-typelits-knownnat
+=======
+>>>>>>> 561621a... Adds grenade.cabal
     , grenade
     , hedgehog
     , mtl
@@ -209,10 +238,14 @@ test-suite test
     , parallel
     , primitive >=0.6 && <0.8
     , reflection
+<<<<<<< HEAD
     , repa
     , singletons
     , split
     , terminal-progress-bar
+=======
+    , singletons
+>>>>>>> 561621a... Adds grenade.cabal
     , typelits-witnesses
     , vector >=0.11 && <0.13
   if flag(use-float)
@@ -252,17 +285,24 @@ benchmark bench
     , data-default
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
+<<<<<<< HEAD
     , ghc-typelits-knownnat
+=======
+>>>>>>> 561621a... Adds grenade.cabal
     , grenade
     , mtl
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
     , reflection >=0.11.2
+<<<<<<< HEAD
     , repa
     , singletons
     , split
     , terminal-progress-bar
+=======
+    , singletons
+>>>>>>> 561621a... Adds grenade.cabal
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -296,17 +336,24 @@ benchmark bench-lstm
     , data-default
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
+<<<<<<< HEAD
     , ghc-typelits-knownnat
+=======
+>>>>>>> 561621a... Adds grenade.cabal
     , grenade
     , mtl
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
     , reflection >=0.11.2
+<<<<<<< HEAD
     , repa
     , singletons
     , split
     , terminal-progress-bar
+=======
+    , singletons
+>>>>>>> 561621a... Adds grenade.cabal
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
