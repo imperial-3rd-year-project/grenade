@@ -5,8 +5,16 @@ stages:
 default:
 # image: thchar/grenade_ci:latest
   before_script:
-    - cabal update
+    - apt-get update >/dev/null
+    - apt-get install -y locales >/dev/null
+    - echo "en_US UTF-8" > /etc/locale.gen
+    - locale-gen en_GB.UTF-8
     - export LANG=en_GB.UTF-8
+    - export LANGUAGE=en_GB:en
+    - export LC_ALL=en_GB.UTF-8
+    - bundle install --jobs $(nproc) --path=/cache/bundler
+
+    - cabal update
 
 # lint:
 #   stage: lint
