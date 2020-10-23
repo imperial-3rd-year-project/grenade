@@ -6,6 +6,7 @@ default:
 # image: thchar/grenade_ci:latest
   before_script:
     - cabal update
+    - echo $LANG
 
 # lint:
 #   stage: lint
