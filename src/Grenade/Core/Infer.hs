@@ -7,14 +7,20 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE TemplateHaskell       #-}
 
 module Grenade.Core.Infer where
 
-import Language.Haskell.TH
 import Grenade.Core.Shape
+import Data.Kind
+import GHC.TypeLits
+import Data.Singletons
+import Data.Singletons.Prelude (Head, Last)
+
+import Grenade.Core.Network
+import Grenade.Layers
 
 --type MNIST
 --  = Network
@@ -25,19 +31,34 @@ import Grenade.Core.Shape
 --     , 'D3 8 8 16, 'D3 4 4 16, 'D1 256, 'D1 256
 --     , 'D1 80, 'D1 80, 'D1 10, 'D1 10]
 
-class Shapeish tuple where
-  toShape :: tuple -> Type
+data Test a = Yes a | No Int
 
-instance Integral a => Shapeish a where
-  toShape x = AppT (PromotedT 'D1) (LitT $ NumTyLit $ toInteger x)
-instance (Integral a, Integral b) => Shapeish (a, b) where
-  toShape (x,y) = AppT (AppT (PromotedT 'D2) (LitT $ NumTyLit $ toInteger x))
-                                             (LitT $ NumTyLit $ toInteger y)
-instance (Integral a, Integral b, Integral c) => Shapeish (a, b, c) where
-  toShape (x,y,z) = AppT (AppT (AppT (PromotedT 'D3) (LitT $ NumTyLit $ toInteger x))
-                                                     (LitT $ NumTyLit $ toInteger y))
-                                                     (LitT $ NumTyLit $ toInteger z)
+type family Create (i :: Shape) (xs :: [Type]) :: [Shape] where
+  Create s '[]       = s ': '[]
+  Create s (y ': ys) = s ': (Create (Transformable s y) ys)
 
-layersToShapes :: Shapeish tuple => tuple -> [Name] -> Type
-layersToShapes _ []     = PromotedNilT
-layersToShapes t (n:ns) = AppT (AppT PromotedConsT $ toShape t) (listToDec undefined ns)
+type family Transformable (s :: Shape) (l :: Type) :: Shape
+
+type instance Transformable ('D1 x) (Test Int) = 'D1 (x + 1)
+type instance Transformable ('D1 x) (Test Char) = 'D1 (2 * x)
+
+type instance Transformable s Tanh  = s
+type instance Transformable s Relu  = s
+type instance Transformable s Logit = s
+type instance Transformable ('D1 i) (FullyConnected i o) = ('D1 o)
+type instance Transformable ('D1 i) (Network _ (('D1 i) ': shapes)) = Last shapes
+
+type IntTest = Test Int
+
+type MyShapes = Create ('D1 2) '[IntTest, Test Char]
+
+type MyLayers = '[ FullyConnected 2 40, Tanh, FullyConnected 40 10, Relu, FullyConnected 10 1, Logit ]
+
+type BrunosLayers = '[ FFNet, Tanh ]
+
+type FFNet = Network MyLayers (Create ('D1 2) MyLayers)  
+type NewNet = Network BrunosLayers (Create ('D1 2) BrunosLayers)
+
+--'[ 'D1 2, 'D1 40, 'D1 40, 'D1 10, 'D1 10, 'D1 1, 'D1 1]
+
+
