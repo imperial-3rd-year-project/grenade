@@ -34,7 +34,7 @@ fit :: (CreatableNetwork layers shapes
        -> TrainingOptions
        -> Int
        -> IO (Network layers shapes)
-fit trainRows validateRows (TrainingOptions{ optimizer = opt, loss = l}) epochs = do
+fit trainRows validateRows TrainingOptions{ optimizer = opt, loss = l} epochs = do
     -- initialise the network with random weights
     net0 <- randomNetwork
     -- then training it over the epochs
@@ -49,12 +49,12 @@ runEpoch :: SingI (Last shapes)
          -> Network layers shapes
          -> Int
          -> IO (Network layers shapes)
-runEpoch opt !(TrainingData t ts) !(TrainingData v vs) net epoch = do 
+runEpoch opt (TrainingData t ts) (TrainingData v vs) net epoch = do 
   putStrLn $ "Training epoch " ++ show epoch
   pb <- newProgressBar defStyle 10 (Progress 0 t ())
 
   -- actual training
-  (!trained, loss) <- foldM (combine_training_log pb (sgdUpdateLearningParamters opt)) (net, 0) ts
+  (!trained, loss) <- foldM (combineTraining pb (sgdUpdateLearningParamters opt)) (net, 0) ts
   
   -- validate trained model
   -- vs :: [(S (Head shapes), S (Last shapes))]
@@ -63,23 +63,19 @@ runEpoch opt !(TrainingData t ts) !(TrainingData v vs) net epoch = do
   putStrLn $ "Loss:     " ++ show (loss / fromIntegral t)
   --putStrLn $ "Val Loss: " ++ show ((sumV $ val_loss) / fromIntegral v)
   putStrLn ""
-  return $ trained
+  return trained
 
 sgdUpdateLearningParamters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParamters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParamters o                     = o
 
-combine_training_no_log pb !opt (!net, loss) (!x, !y) 
-  = let (net', loss') = force (train' opt net x y (LossFunction (-)))
-    in return (net', loss + loss')
-
-combine_training_log :: SingI (Last shapes)
+combineTraining :: SingI (Last shapes)
                      => ProgressBar ()
                      -> Optimizer opt 
                      -> (Network layers shapes, RealNum) 
                      -> (S (Head shapes), S (Last shapes))
                      -> IO (Network layers shapes, RealNum)
-combine_training_log pb !opt (!net, loss) (!x, !y) 
+combineTraining pb !opt (!net, loss) (!x, !y) 
   = let (!net', loss') = train' opt net x y (LossFunction (-))
     in incProgress pb 1 >> return (net', loss + loss')
 

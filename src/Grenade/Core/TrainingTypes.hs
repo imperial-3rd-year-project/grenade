@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns              #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE GADTs                     #-}
@@ -25,20 +24,8 @@ data TrainingOptions
                                 , validationFreq :: Int
                                 , loss           :: Metric
                                 , verbose        :: VerboseOptions
-                                , metrics        :: [Metric] 
+                                , metrics        :: [Metric]
                                 }
-
--- data TrainingNetwork layers shapes
---   = TrainingNetwork { network   :: Network layers shapes 
---                     , epoch     :: Int 
---                     , maxExpoch :: Int 
---                     , loss      :: Metric
---                     }
--- 
--- data TrainedNetwork layers shapes
---   = TrainedNetwork { network   :: Network layers shapes 
---                    , loss      :: Loss (S (Last shapes))
---                    }
 
 data LossFunction shape = LossFunction (shape -> shape -> shape) 
 

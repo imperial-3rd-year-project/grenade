@@ -37,7 +37,6 @@ resolver: lts-16.18
 packages:
   - .
   - examples
-  - ../blank-canvas/
 
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
