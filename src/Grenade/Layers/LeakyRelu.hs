@@ -85,6 +85,7 @@ instance (KnownNat i, KnownNat j, KnownNat k) => Layer LeakyRelu ('D3 i j k) ('D
     where
       relu' = LAS.dmmap (\a -> if a < 0 then 0.01 else 1)
 
+type instance ShapeTransformer LeakyRelu a = a
 
 -------------------- DynamicNetwork instance --------------------
 

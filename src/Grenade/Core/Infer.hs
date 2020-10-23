@@ -30,14 +30,8 @@ import Grenade.Layers
 --    '[ 'D2 28 28, 'D3 24 24 10, 'D3 12 12 10, 'D3 12 12 10
 --     , 'D3 8 8 16, 'D3 4 4 16, 'D1 256, 'D1 256
 --     , 'D1 80, 'D1 80, 'D1 10, 'D1 10]
-
+{--
 data Test a = Yes a | No Int
-
-type family Create (i :: Shape) (xs :: [Type]) :: [Shape] where
-  Create s '[]       = s ': '[]
-  Create s (y ': ys) = s ': (Create (Transformable s y) ys)
-
-type family Transformable (s :: Shape) (l :: Type) :: Shape
 
 type instance Transformable ('D1 x) (Test Int) = 'D1 (x + 1)
 type instance Transformable ('D1 x) (Test Char) = 'D1 (2 * x)
@@ -61,4 +55,4 @@ type NewNet = Network BrunosLayers (Create ('D1 2) BrunosLayers)
 
 --'[ 'D1 2, 'D1 40, 'D1 40, 'D1 10, 'D1 10, 'D1 1, 'D1 1]
 
-
+--}

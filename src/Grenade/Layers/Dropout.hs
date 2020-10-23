@@ -73,6 +73,8 @@ instance (KnownNat pct, KnownNat i) => Layer (Dropout pct) ('D1 i) ('D1 i) where
         | otherwise = 0
   runBackwards (Dropout _ _) v (S1D x) = ((), S1D $ x * v)
 
+type instance ShapeTransformer (Dropout _) a = a
+
 -------------------- DynamicNetwork instance --------------------
 
 instance (KnownNat pct) => FromDynamicLayer (Dropout pct) where

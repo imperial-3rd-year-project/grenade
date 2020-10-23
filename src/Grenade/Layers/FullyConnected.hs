@@ -116,6 +116,8 @@ instance (KnownNat i, KnownNat o, KnownNat (i * o)) => Layer (FullyConnected i o
               dWs  = tr wN #> dEdy
           in  (FullyConnected' wB' mm', S1D dWs)
 
+type instance ShapeTransformer (FullyConnected x y) ('D1 x) = 'D1 y
+
 
 instance (KnownNat i, KnownNat o) => Serialize (FullyConnected i o) where
   put (FullyConnected w ms) = put w >> put ms

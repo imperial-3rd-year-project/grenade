@@ -89,6 +89,14 @@ instance NFData (Network '[] '[ i]) where
 instance (NFData x, NFData (Network xs rs)) => NFData (Network (x ': xs) (i ': rs)) where
   rnf ((!x) :~> (!xs)) = rnf x `seq` rnf xs
 
+-- | Shape inference for a network
+
+type family GenShapes (i :: Shape) (xs :: [Type]) :: [Shape] where
+  GenShapes s '[]       = s ': '[]
+  GenShapes s (y ': ys) = s ': (GenShapes (ShapeTransformer y s) ys)
+
+type family NeuralNetwork (i :: Shape) (xs :: [Type]) :: Type where
+  NeuralNetwork i xs = Network xs (GenShapes i xs)
 
 -- | Gradient of a network.
 --

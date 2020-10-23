@@ -60,6 +60,8 @@ instance (a ~ b) => Layer Trivial a b where
   runForwards _ a = ((), a)
   runBackwards _ _ y = ((), y)
 
+type instance ShapeTransformer Trivial a = a
+
 -------------------- DynamicNetwork instance --------------------
 
 instance FromDynamicLayer Trivial where

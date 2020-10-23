@@ -285,6 +285,11 @@ instance ( KnownNat kernelRows
     case runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1)) of
       (c', S3D back :: S ('D3 inputRows inputCols 1)) ->  (c', S2D back)
 
+type instance ShapeTransformer 
+  (Deconvolution channels 1 kernelRows kernelCols strideRows strideCols) 
+  ('D3 inputRows inputCols channels) = 
+    ('D2 (((inputRows - 1) * strideRows) + kernelRows) (((inputCols - 1) * strideCols) + kernelCols))
+
 -- | A two dimentional image may have a Deconvolution filter applied to it
 instance ( KnownNat kernelRows
          , KnownNat kernelCols
@@ -306,6 +311,11 @@ instance ( KnownNat kernelRows
 
   runBackwards c tape (S2D grads) =
     runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1))
+
+type instance ShapeTransformer 
+  (Deconvolution channels filters kernelRows kernelCols strideRows strideCols) 
+  ('D3 inputRows inputCols channels) = 
+    ('D3 (((inputRows - 1) * strideRows) + kernelRows) (((inputCols - 1) * strideCols) + kernelCols)  filters)
 
 -- | A three dimensional image (or 2d with many channels) can have
 --   an appropriately sized Deconvolution filter run across it.

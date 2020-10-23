@@ -99,6 +99,9 @@ instance ( KnownNat kernelRows
     in  ((), S2D . fromJust . create $ vs)
 
 
+type instance ShapeTransformer (Pooling kernelRows kernelColumns strideRows strideColumns) ('D2 inputRows inputColumns)
+  = 'D2 ((Div (inputRows - kernelRows) strideRows) + 1) ((Div (inputColumns - kernelColumns) strideColumns) + 1)
+
 -- | A three dimensional image can be pooled on each layer.
 instance ( KnownNat kernelRows
          , KnownNat kernelColumns
@@ -138,6 +141,13 @@ instance ( KnownNat kernelRows
         eo = extract dEdy
         vs = poolBackward ch ix iy kx ky sx sy ex eo
     in  ((), S3D . fromJust . create $ vs)
+
+type instance ShapeTransformer (Pooling kernelRows kernelColumns strideRows strideColumns) ('D3 inputRows inputColumns channels)
+  = 'D3 
+      ((Div (inputRows - kernelRows) strideRows) + 1) 
+      ((Div (inputColumns - kernelColumns) strideColumns) + 1)
+      channels
+
 
 -------------------- GNum instance --------------------
 

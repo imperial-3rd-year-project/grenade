@@ -57,6 +57,7 @@ instance (a ~ b, SingI a) => Layer Sinusoid a b where
   runForwards _ a = (a, sin a)
   runBackwards _ a g = ((), cos a * g)
 
+type instance ShapeTransformer Sinusoid a = a
 
 -------------------- DynamicNetwork instance --------------------
 

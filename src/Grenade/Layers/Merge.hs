@@ -69,6 +69,8 @@ instance (SingI i, SingI o, Layer x i o, Layer y i o) => Layer (Merge x y) i o w
         (y', yB) = runBackwards y yTape o
     in  ((x', y'), xB + yB)
 
+type instance ShapeTransformer (Merge x _) i = ShapeTransformer x i
+
 instance (Serialize a, Serialize b) => Serialize (Merge a b) where
   put (Merge a b) = put a *> put b
   get = Merge <$> get <*> get

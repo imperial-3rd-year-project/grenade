@@ -45,6 +45,7 @@ module Grenade.Core.Layer (
   , LayerOptimizerData (..)
   , RandomLayer (..)
   , createRandom
+  , ShapeTransformer
   ) where
 
 import           Control.Monad.Primitive           (PrimBase, PrimState)
@@ -136,6 +137,8 @@ class (UpdateLayer x) => LayerOptimizerData x optimizer where
   -- | Create empty data instance with all values set to 0.
   newData :: optimizer -> x -> MomentumDataType x optimizer
 
+
+type family ShapeTransformer (l :: Type) (s :: Shape) :: Shape
 
 -- | Class for a layer. All layers implement this, however, they don't
 --   need to implement it for all shapes, only ones which are

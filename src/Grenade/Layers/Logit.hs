@@ -68,6 +68,8 @@ instance (a ~ b, SingI a) => Layer Logit a b where
     let sigmoid' = l * (1 - l)
     in  ((), sigmoid' * g)
 
+type instance ShapeTransformer Logit a = a
+
 instance Serialize Logit where
   put _ = return ()
   get = return Logit

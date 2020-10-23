@@ -88,6 +88,9 @@ instance ( KnownNat padLeft
         vs    = subMatrix (padt, padl) (nrows, ncols) m
     in  ((), S2D . fromJust . create $ vs)
 
+type instance ShapeTransformer (Pad padLeft padTop padRight padBottom) ('D2 inputRows inputColumns)
+  = 'D2 (inputRows + padTop + padBottom) (inputColumns + padLeft + padRight)
+
 -- | A two dimentional image can be padded.
 instance ( KnownNat padLeft
          , KnownNat padTop
@@ -132,6 +135,8 @@ instance ( KnownNat padLeft
         cropped = crop ch padl padt padr padb inr inc outr outc m
     in  ((), S3D . fromJust . create $ cropped)
 
+type instance ShapeTransformer (Pad padLeft padTop padRight padBottom) ('D3 inputRows inputColumns channels)
+  = 'D3 (inputRows + padTop + padBottom) (inputColumns + padLeft + padRight) channels
 
 -------------------- GNum instance --------------------
 

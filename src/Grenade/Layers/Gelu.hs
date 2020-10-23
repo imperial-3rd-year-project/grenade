@@ -106,6 +106,7 @@ instance (KnownNat i, KnownNat j, KnownNat k) => Layer Gelu ('D3 i j k) ('D3 i j
     where
       gelu' = LAS.dmmap geluBackwardFast
 
+type instance ShapeTransformer Gelu a = a
 
 -------------------- DynamicNetwork instance --------------------
 

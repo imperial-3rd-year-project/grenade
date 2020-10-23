@@ -59,6 +59,8 @@ instance ( KnownNat i ) => Layer Softmax ('D1 i) ('D1 i) where
   runForwards _ (S1D y) = (S1D y, S1D (softmax y))
   runBackwards _ (S1D y) (S1D dEdy) = ((), S1D (softmax' y dEdy))
 
+type instance ShapeTransformer Softmax ('D1 i) = 'D1 i
+
 instance Serialize Softmax where
   put _ = return ()
   get = return Softmax
