@@ -62,6 +62,12 @@ data Shape
   -- ^ Two dimensional matrix. Row, Column.
   | D3 Nat Nat Nat
   -- ^ Three dimensional matrix. Row, Column, Channels.
+  | B1 Nat Nat 
+  -- ^ Batch of one dimensional vectors. Depth, Row
+  | B2 Nat Nat Nat
+  -- ^ Batch of two dimensional vectors. Depth, Row, Column
+  | B3 Nat Nat Nat Nat 
+  -- ^ Batch of three dimensional vectors. Depth, Row, Column, Channels
 
 -- | Concrete data structures for a Shape.
 --
@@ -82,6 +88,25 @@ data S (n :: Shape) where
          , KnownNat (rows * depth))
       => L (rows * depth) columns
       -> S ('D3 rows columns depth)
+  
+  S1B :: ( KnownNat depth, KnownNat rows )
+      => L depth rows 
+      -> S ('B1 depth rows)
+  
+  S2B :: ( KnownNat depth
+         , KnownNat rows
+         , KnownNat columns
+         , KnownNat (rows * columns) )
+      => L depth (rows * columns)
+      -> S ('B2 depth rows columns)
+  
+  S3B :: ( KnownNat depth
+         , KnownNat rows
+         , KnownNat columns
+         , KnownNat channels
+         , KnownNat (rows * columns * channels) )
+      => L depth (rows * columns * channels)
+      -> S ('B3 depth rows columns channels)
 
 deriving instance Show (S n)
 
@@ -98,11 +123,17 @@ data SShape :: Shape -> Type where
   D1Sing :: Sing a -> SShape ('D1 a)
   D2Sing :: Sing a -> Sing b -> SShape ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> SShape ('D3 a b c)
+  B1Sing :: Sing d -> Sing a -> SShape ('B1 d a)
+  B2Sing :: KnownNat (a * b) => Sing d -> Sing a -> Sing b -> SShape ('B2 d a b) 
+  B3Sing :: KnownNat (a * b * c) => Sing d -> Sing a -> Sing b -> Sing c -> SShape ('B3 d a b c)
 #else
 data instance Sing (n :: Shape) where
   D1Sing :: Sing a -> Sing ('D1 a)
   D2Sing :: Sing a -> Sing b -> Sing ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> Sing ('D3 a b c)
+  B1Sing :: Sing d -> Sing a -> Sing ('B1 d a)
+  B2Sing :: KnownNat (a * b) => Sing d -> Sing a -> Sing b -> Sing ('B2 d a b) 
+  B3Sing :: KnownNat (a * b * c) => Sing d -> Sing a -> Sing b -> Sing c -> Sing ('B3 d a b c)
 #endif
 
 instance KnownNat a => SingI ('D1 a) where
@@ -111,6 +142,12 @@ instance (KnownNat a, KnownNat b) => SingI ('D2 a b) where
   sing = D2Sing sing sing
 instance (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => SingI ('D3 a b c) where
   sing = D3Sing sing sing sing
+instance (KnownNat d, KnownNat a) => SingI ('B1 d a) where
+  sing = B1Sing sing sing 
+instance (KnownNat d, KnownNat a, KnownNat b, KnownNat (a * b)) => SingI ('B2 d a b) where
+  sing = B2Sing sing sing sing 
+instance (KnownNat d, KnownNat a, KnownNat b, KnownNat c, KnownNat (a * b * c)) => SingI ('B3 d a b c) where
+  sing = B3Sing sing sing sing sing
 
 instance SingI x => Num (S x) where
   (+) = n2 (+)
@@ -153,6 +190,9 @@ instance NFData (S x) where
   rnf (S1D x) = rnf x
   rnf (S2D x) = rnf x
   rnf (S3D x) = rnf x
+  rnf (S1B x) = rnf x
+  rnf (S2B x) = rnf x
+  rnf (S3B x) = rnf x
 
 -- | Generate random data of the desired shape
 randomOfShape :: forall x . (SingI x) => IO (S x)
@@ -167,6 +207,15 @@ randomOfShape = do
 
     D3Sing SNat SNat SNat ->
         S3D (uniformSample seed (-1) 1)
+      
+    B1Sing SNat SNat ->
+        S1B (uniformSample seed (-1) 1)
+
+    B2Sing SNat SNat SNat ->
+        S2B (uniformSample seed (-1) 1)
+
+    B3Sing SNat SNat SNat SNat ->
+        S3B (uniformSample seed (-1) 1)
 
 -- | Generate a shape from a Storable Vector.
 --
@@ -181,6 +230,15 @@ fromStorable xs = case sing :: Sing x of
 
     D3Sing SNat SNat SNat ->
       S3D <$> mkL xs
+
+    B1Sing SNat SNat ->
+      S1B <$> mkL xs 
+
+    B2Sing SNat SNat SNat ->
+      S2B <$> mkL xs 
+
+    B3Sing SNat SNat SNat SNat ->
+      S3B <$> mkL xs 
   where
     mkL :: forall rows columns. (KnownNat rows, KnownNat columns)
         => Vector RealNum -> Maybe (L rows columns)
@@ -197,6 +255,9 @@ instance SingI x => Serialize (S x) where
             (S1D x) -> putListOf put . NLA.toList . H.extract $ x
             (S2D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
             (S3D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
+            (S1B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
+            (S2B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
+            (S3B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
           ) :: PutM ()
 
   get = do
@@ -208,12 +269,18 @@ n1 :: ( forall a. Floating a => a -> a ) -> S x -> S x
 n1 f (S1D x) = S1D (f x)
 n1 f (S2D x) = S2D (f x)
 n1 f (S3D x) = S3D (f x)
+n1 f (S1B x) = S1B (f x)
+n1 f (S2B x) = S2B (f x)
+n1 f (S3B x) = S3B (f x)
 
 -- Helper function for creating the number instances
 n2 :: ( forall a. Floating a => a -> a -> a ) -> S x -> S x -> S x
 n2 f (S1D x) (S1D y) = S1D (f x y)
 n2 f (S2D x) (S2D y) = S2D (f x y)
 n2 f (S3D x) (S3D y) = S3D (f x y)
+n2 f (S1B x) (S1B y) = S1B (f x y)
+n2 f (S2B x) (S2B y) = S2B (f x y)
+n2 f (S3B x) (S3B y) = S3B (f x y)
 
 -- Helper function for creating the number instances
 nk :: forall x. SingI x => RealNum -> S x
@@ -226,3 +293,12 @@ nk x = case (sing :: Sing x) of
 
   D3Sing SNat SNat SNat ->
     S3D (konst x)
+  
+  B1Sing SNat SNat -> 
+    S1B (konst x)
+  
+  B2Sing SNat SNat SNat ->
+    S2B (konst x)
+  
+  B3Sing SNat SNat SNat SNat ->
+    S3B (konst x)
