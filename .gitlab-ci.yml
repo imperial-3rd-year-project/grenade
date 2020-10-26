@@ -1,0 +1,20 @@
+stages:
+  - build
+  - test
+
+default:
+  image: thchar/grenade_ci:latest
+  before_script:
+    - cabal update
+
+# lint:
+#   stage: lint
+#   script: hlint .
+
+build:
+  stage: build
+  script: cabal build
+
+test: 
+  stage: test
+  script: cabal test --enable-tests --test-show-details=streaming --test-option=--color
