@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-|
 Module      : Grenade.Core.Shape
 Description : Dependently typed shapes of data which are passed between layers of a network
@@ -19,6 +20,7 @@ Stability   : experimental
 -}
 module Grenade.Core.Shape (
     S (..)
+  , T (..)
   , Shape (..)
 #if MIN_VERSION_singletons(2,6,0)
   , SShape (..)
@@ -36,6 +38,7 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Control.DeepSeq              (NFData (..))
+import           Data.Maybe                   (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -44,9 +47,14 @@ import           Data.Vector.Storable         (Vector)
 import qualified Data.Vector.Storable         as V
 import           GHC.TypeLits                 hiding (natVal)
 import qualified Numeric.LinearAlgebra        as NLA
+import qualified Numeric.LinearAlgebra        as D
 import           Numeric.LinearAlgebra.Static
 import qualified Numeric.LinearAlgebra.Static as H
+import qualified Numeric.LinearAlgebra.Devel  as U
+
 import           System.Random.MWC
+
+import Debug.Trace
 
 import           Grenade.Types
 
@@ -62,12 +70,58 @@ data Shape
   -- ^ Two dimensional matrix. Row, Column.
   | D3 Nat Nat Nat
   -- ^ Three dimensional matrix. Row, Column, Channels.
-  | B1 Nat Nat 
-  -- ^ Batch of one dimensional vectors. Depth, Row
-  | B2 Nat Nat Nat
-  -- ^ Batch of two dimensional vectors. Depth, Row, Column
-  | B3 Nat Nat Nat Nat 
-  -- ^ Batch of three dimensional vectors. Depth, Row, Column, Channels
+
+data Tensor 
+  = T1 Nat Shape 
+  | T2 Nat Shape 
+  | T3 Nat Shape
+
+-- | Tensors represent batches of shapes
+--data Tensor (n :: Nat) (s :: Shape) where
+--  T1 :: ( KnownNat batches
+--        , KnownNat rows )
+--     => batches 
+--     -> 'D1 rows 
+--     -> Tensor batches ('D1 rows)
+--  
+--  T2 :: ( KnownNat batches
+--        , KnownNat rows
+--        , KnownNat columns )
+--     => batches 
+--     -> 'D2 rows columns 
+--     -> Tensor batches ('D2 rows columns)
+--  
+--  T3 :: ( KnownNat batches
+--        , KnownNat rows
+--        , KnownNat columns
+--        , KnownNat channels )
+--     => batches 
+--     -> 'D3 rows columns channels
+--     -> Tensor batches ('D3 rows columns channels)
+
+data T (n :: Nat) (s :: Shape) where
+  -- | Batch of one dimensional vectors. Depth, Row
+  T1D :: ( KnownNat batches 
+         , KnownNat rows)
+      => L batches rows 
+      -> T batches ('D1 rows)
+  
+  -- | Batch of two dimensional vectors. Depth, Row, Column
+  T2D :: ( KnownNat batches 
+         , KnownNat rows
+         , KnownNat columns 
+         , KnownNat (rows * columns))
+      => L batches (rows * columns) 
+      -> T batches ('D2 rows columns)
+  
+  -- | Batch of three dimensional vectors. Depth, Row, Column, Channels
+  T3D :: ( KnownNat batches 
+         , KnownNat rows
+         , KnownNat columns 
+         , KnownNat channels
+         , KnownNat (rows * columns * channels))
+      => L batches (rows * columns * channels)
+      -> T batches ('D3 rows columns channels)
 
 -- | Concrete data structures for a Shape.
 --
@@ -88,25 +142,6 @@ data S (n :: Shape) where
          , KnownNat (rows * depth))
       => L (rows * depth) columns
       -> S ('D3 rows columns depth)
-  
-  S1B :: ( KnownNat depth, KnownNat rows )
-      => L depth rows 
-      -> S ('B1 depth rows)
-  
-  S2B :: ( KnownNat depth
-         , KnownNat rows
-         , KnownNat columns
-         , KnownNat (rows * columns) )
-      => L depth (rows * columns)
-      -> S ('B2 depth rows columns)
-  
-  S3B :: ( KnownNat depth
-         , KnownNat rows
-         , KnownNat columns
-         , KnownNat channels
-         , KnownNat (rows * columns * channels) )
-      => L depth (rows * columns * channels)
-      -> S ('B3 depth rows columns channels)
 
 deriving instance Show (S n)
 
@@ -123,17 +158,11 @@ data SShape :: Shape -> Type where
   D1Sing :: Sing a -> SShape ('D1 a)
   D2Sing :: Sing a -> Sing b -> SShape ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> SShape ('D3 a b c)
-  B1Sing :: Sing d -> Sing a -> SShape ('B1 d a)
-  B2Sing :: KnownNat (a * b) => Sing d -> Sing a -> Sing b -> SShape ('B2 d a b) 
-  B3Sing :: KnownNat (a * b * c) => Sing d -> Sing a -> Sing b -> Sing c -> SShape ('B3 d a b c)
 #else
 data instance Sing (n :: Shape) where
   D1Sing :: Sing a -> Sing ('D1 a)
   D2Sing :: Sing a -> Sing b -> Sing ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> Sing ('D3 a b c)
-  B1Sing :: Sing d -> Sing a -> Sing ('B1 d a)
-  B2Sing :: KnownNat (a * b) => Sing d -> Sing a -> Sing b -> Sing ('B2 d a b) 
-  B3Sing :: KnownNat (a * b * c) => Sing d -> Sing a -> Sing b -> Sing c -> Sing ('B3 d a b c)
 #endif
 
 instance KnownNat a => SingI ('D1 a) where
@@ -142,12 +171,6 @@ instance (KnownNat a, KnownNat b) => SingI ('D2 a b) where
   sing = D2Sing sing sing
 instance (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => SingI ('D3 a b c) where
   sing = D3Sing sing sing sing
-instance (KnownNat d, KnownNat a) => SingI ('B1 d a) where
-  sing = B1Sing sing sing 
-instance (KnownNat d, KnownNat a, KnownNat b, KnownNat (a * b)) => SingI ('B2 d a b) where
-  sing = B2Sing sing sing sing 
-instance (KnownNat d, KnownNat a, KnownNat b, KnownNat c, KnownNat (a * b * c)) => SingI ('B3 d a b c) where
-  sing = B3Sing sing sing sing sing
 
 instance SingI x => Num (S x) where
   (+) = n2 (+)
@@ -190,9 +213,6 @@ instance NFData (S x) where
   rnf (S1D x) = rnf x
   rnf (S2D x) = rnf x
   rnf (S3D x) = rnf x
-  rnf (S1B x) = rnf x
-  rnf (S2B x) = rnf x
-  rnf (S3B x) = rnf x
 
 -- | Generate random data of the desired shape
 randomOfShape :: forall x . (SingI x) => IO (S x)
@@ -207,15 +227,6 @@ randomOfShape = do
 
     D3Sing SNat SNat SNat ->
         S3D (uniformSample seed (-1) 1)
-      
-    B1Sing SNat SNat ->
-        S1B (uniformSample seed (-1) 1)
-
-    B2Sing SNat SNat SNat ->
-        S2B (uniformSample seed (-1) 1)
-
-    B3Sing SNat SNat SNat SNat ->
-        S3B (uniformSample seed (-1) 1)
 
 -- | Generate a shape from a Storable Vector.
 --
@@ -230,15 +241,6 @@ fromStorable xs = case sing :: Sing x of
 
     D3Sing SNat SNat SNat ->
       S3D <$> mkL xs
-
-    B1Sing SNat SNat ->
-      S1B <$> mkL xs 
-
-    B2Sing SNat SNat SNat ->
-      S2B <$> mkL xs 
-
-    B3Sing SNat SNat SNat SNat ->
-      S3B <$> mkL xs 
   where
     mkL :: forall rows columns. (KnownNat rows, KnownNat columns)
         => Vector RealNum -> Maybe (L rows columns)
@@ -255,9 +257,6 @@ instance SingI x => Serialize (S x) where
             (S1D x) -> putListOf put . NLA.toList . H.extract $ x
             (S2D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
             (S3D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
-            (S1B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
-            (S2B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
-            (S3B x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
           ) :: PutM ()
 
   get = do
@@ -269,18 +268,12 @@ n1 :: ( forall a. Floating a => a -> a ) -> S x -> S x
 n1 f (S1D x) = S1D (f x)
 n1 f (S2D x) = S2D (f x)
 n1 f (S3D x) = S3D (f x)
-n1 f (S1B x) = S1B (f x)
-n1 f (S2B x) = S2B (f x)
-n1 f (S3B x) = S3B (f x)
 
 -- Helper function for creating the number instances
 n2 :: ( forall a. Floating a => a -> a -> a ) -> S x -> S x -> S x
 n2 f (S1D x) (S1D y) = S1D (f x y)
 n2 f (S2D x) (S2D y) = S2D (f x y)
 n2 f (S3D x) (S3D y) = S3D (f x y)
-n2 f (S1B x) (S1B y) = S1B (f x y)
-n2 f (S2B x) (S2B y) = S2B (f x y)
-n2 f (S3B x) (S3B y) = S3B (f x y)
 
 -- Helper function for creating the number instances
 nk :: forall x. SingI x => RealNum -> S x
@@ -293,12 +286,68 @@ nk x = case (sing :: Sing x) of
 
   D3Sing SNat SNat SNat ->
     S3D (konst x)
-  
-  B1Sing SNat SNat -> 
-    S1B (konst x)
-  
-  B2Sing SNat SNat SNat ->
-    S2B (konst x)
-  
-  B3Sing SNat SNat SNat SNat ->
-    S3B (konst x)
+
+batchMap :: forall x y batches. ( SingI x, SingI y, KnownNat batches ) => (S x -> S y) -> T batches x -> T batches y
+batchMap f t 
+  = case (sing :: Sing x, sing :: Sing y) of 
+    (D1Sing SNat, D1Sing SNat) -> 
+      batchMap1D f t
+    
+    (D2Sing SNat SNat, D2Sing SNat SNat) ->
+      batchMap2D f t
+    
+    (D3Sing SNat SNat SNat, D3Sing SNat SNat SNat) ->
+      batchMap3D f t
+
+
+batchMap1D :: forall a x batches. ( KnownNat batches, KnownNat x ) 
+           => (S ('D1 a) -> S ('D1 x)) -> T batches ('D1 a) ->  T batches ('D1 x)
+batchMap1D f (T1D m) 
+  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+        r  = fromIntegral $ natVal (Proxy :: Proxy x)
+        m' = H.extract m
+    in T1D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b r $ V.concat $ map (\i -> batchMap1D' f $ m' D.! i) [0..b - 1]
+
+batchMap1D' :: KnownNat a => (S ('D1 a) -> S ('D1 x)) -> Vector RealNum -> Vector RealNum
+batchMap1D' f v = (\(S1D v) -> H.extract v) $ f (S1D $ fromJust $ H.create v)
+
+batchMap2D :: forall a b x y batches. ( KnownNat batches, KnownNat x, KnownNat y , KnownNat (x * y)) 
+           => (S ('D2 a b) -> S ('D2 x y)) -> T batches ('D2 a b) ->  T batches ('D2 x y)
+batchMap2D f (T2D m)
+  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+        r  = fromIntegral $ natVal (Proxy :: Proxy x)
+        c  = fromIntegral $ natVal (Proxy :: Proxy y)
+        m' = H.extract m
+    in T2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c) $ V.concat $ map (\i -> batchMap2D' f $ m' D.! i) [0..b - 1]
+
+batchMap2D' :: forall a b x y. (KnownNat a, KnownNat b) => (S ('D2 a b) -> S ('D2 x y)) -> Vector RealNum -> Vector RealNum
+batchMap2D' f v = 
+  let r      = fromIntegral $ natVal (Proxy :: Proxy a)
+      c      = fromIntegral $ natVal (Proxy :: Proxy b)
+  in (\(S2D m') -> D.flatten $ H.extract m') $ f (S2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor r c v)
+
+batchMap3D :: forall a b c x y z batches. 
+              ( KnownNat batches
+              , KnownNat a
+              , KnownNat b
+              , KnownNat c
+              , KnownNat (a * c)
+              , KnownNat x
+              , KnownNat y
+              , KnownNat z
+              , KnownNat (x * y * z)) 
+           => (S ('D3 a b c) -> S ('D3 x y z)) -> T batches ('D3 a b c) ->  T batches ('D3 x y z)
+batchMap3D f (T3D m)
+  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+        r  = fromIntegral $ natVal (Proxy :: Proxy x)
+        c  = fromIntegral $ natVal (Proxy :: Proxy y)
+        d  = fromIntegral $ natVal (Proxy :: Proxy z)
+        m' = H.extract m
+    in T3D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c * d) $ V.concat $ map (\i -> batchMap3D' f $ m' D.! i) [0..b - 1]
+
+batchMap3D' :: forall a b c x y z. (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => (S ('D3 a b c) -> S ('D3 x y z)) -> Vector RealNum -> Vector RealNum
+batchMap3D' f v = 
+  let r = fromIntegral $ natVal (Proxy :: Proxy a)
+      c = fromIntegral $ natVal (Proxy :: Proxy b)
+      d = fromIntegral $ natVal (Proxy :: Proxy c)
+  in (\(S3D m) -> D.flatten $ H.extract m) $ f (S3D $ fromJust $ H.create $ U.matrixFromVector U.RowMajor (r * d) c v)

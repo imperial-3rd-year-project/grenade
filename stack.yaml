@@ -59,6 +59,7 @@ extra-deps:
  - javascript-bridge-0.2.0
  - constraints-0.11.2
  - terminal-progress-bar-0.4.1
+ - ghc-typelits-knownnat-0.7.3
 
 drop-packages:
  - constraints-extras

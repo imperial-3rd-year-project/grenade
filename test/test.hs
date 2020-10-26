@@ -14,14 +14,21 @@ import qualified Test.Grenade.Layers.Internal.Pooling
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM
 
+import Hedgehog.Internal.Runner
+import Hedgehog
+import Hedgehog.Range
+
 import           System.Exit
 import           System.IO
 
 main :: IO ()
-main =
-  disorderMain [
+main = disorderMain [
       Test.Grenade.Network.tests
+<<<<<<< HEAD
     , Test.Grenade.Loss.tests
+=======
+    , Test.Grenade.Shape.tests
+>>>>>>> 9eb656f... Add batch mapping function
 
     , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
