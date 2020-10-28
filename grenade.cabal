@@ -30,6 +30,8 @@ extra-source-files:
     cbits/pad.h
     cbits/pad.c
     cbits/type.h
+    cbits/shrink.h
+    cbits/shrink.c
 
 source-repository head
   type: git
