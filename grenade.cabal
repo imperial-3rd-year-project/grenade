@@ -53,6 +53,7 @@ flag use-float
 
 library
   exposed-modules:
+      Canvas.Helpers
       Grenade
       Grenade.Core
       Grenade.Core.Layer
