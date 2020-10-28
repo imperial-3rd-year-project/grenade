@@ -48,6 +48,7 @@ import           Unsafe.Coerce
 import           Grenade
 import           Grenade.Utils.OneHot
 import           Grenade.Layers.Internal.Shrink (shrink_2d_rgba)
+import           Grenade.Canvas.Helpers
 
 import           Graphics.Blank
 import           Data.Text
@@ -91,54 +92,10 @@ handleEvent context state@(CanvasState mouseState) net = do
 
     _ -> return $ state
 
-runNet'' :: MNIST -> UB.Vector Word8 -> String
-runNet'' net vec = runNet' net (DV.convert vec) 
-
-runNet' :: MNIST -> V.Vector Word8 -> String
-runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
-                              in "This number is " ++ show i ++ " with probability " ++ show (p * 100) ++ "%") $ runNet net (conv m)
-  where
-    getProb :: (Show a, Ord a) => [a] -> (a, Int)
-    getProb xs = maximumBy (comparing fst) (Prelude.zip xs [0..])
-
-    conv :: V.Vector Word8 -> S ('D2 28 28)
-    conv m = S2D $ fromMaybe (error "") $ SA.create $ shrink_2d_rgba 280 280 28 28 m 
-
-type MNIST
-  = Network
-    '[ Convolution 1 10 5 5 1 1
-     , Pooling 2 2 2 2
-     , Relu
-     , Convolution 10 16 5 5 1 1
-     , Pooling 2 2 2 2
-     , Reshape
-     , Relu
-     , FullyConnected 256 80
-     , Logit
-     , FullyConnected 80 10
-     , Logit]
-    '[ 'D2 28 28
-     , 'D3 24 24 10
-     , 'D3 12 12 10
-     , 'D3 12 12 10
-     , 'D3 8 8 16
-     , 'D3 4 4 16
-     , 'D1 256
-     , 'D1 256
-     , 'D1 80
-     , 'D1 80
-     , 'D1 10
-     , 'D1 10]
-
 data MNistLoadOpts = MNistLoadOpts FilePath -- Model path
 
 mnist' :: Parser MNistLoadOpts
 mnist' = MNistLoadOpts <$> argument str  (metavar "MODEL")
-
-netLoad :: FilePath -> IO MNIST
-netLoad modelPath = do
-  modelData <- B.readFile modelPath
-  either fail return $ runGet (get :: Get MNIST) modelData
 
 showShape' :: S ('D2 a b) -> String
 showShape' (S2D mm) = 
