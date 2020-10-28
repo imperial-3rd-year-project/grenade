@@ -12,6 +12,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
+
 {-|
 Module      : Grenade.Core.Layer
 Description : Defines the Layer Classes
@@ -41,6 +43,8 @@ runtime errors.
 module Grenade.Core.Layer (
     Layer (..)
   , UpdateLayer (..)
+  , BatchLayer (..)
+  , UpdateBatchLayer (..)
   , FoldableGradient (..)
   , LayerOptimizerData (..)
   , RandomLayer (..)
@@ -89,6 +93,9 @@ class UpdateLayer x where
 
   {-# MINIMAL runUpdate #-}
 
+-- | Class to take the average of the gradients 
+class UpdateLayer x => UpdateBatchLayer x where 
+  reduceGradient :: [Gradient x] -> Gradient x
 
 -- | Class to map and reduce gradients, e.g. to scale the gradients by the global norm.
 class FoldableGradient x where
@@ -175,3 +182,21 @@ createRandom :: (RandomLayer x)  => IO x
 createRandom = withSystemRandom . asGenST $ \gen -> createRandomWith UniformInit gen
 
 
+class (UpdateBatchLayer x) => BatchLayer x (i :: Shape) (o :: Shape) where 
+
+  -- | Used in batch training. Take the input from the previous
+  --   layer, and give the output from this layer.
+  runBatchForwards :: x -> [S i] -> ([Tape x i o], [S o])
+
+  -- | Back propagate a step. Takes the current layer, the inputs that
+  --   the layer gave from the inputs and the back propagated derivatives
+  --   from the layer above.
+  --
+  --   Returns the gradient layers and the derivatives to push back
+  --   further.
+  runBatchBackwards   :: x -> [Tape x i o] -> [S o] -> ([Gradient x], [S i])
+
+instance (UpdateBatchLayer x, Layer x i o) => BatchLayer x i o where 
+  runBatchForwards layer inputs = unzip $ map (runForwards layer) inputs
+
+  runBatchBackwards layer tapes losses = unzip $ zipWith (runBackwards layer) tapes losses

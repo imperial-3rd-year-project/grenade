@@ -60,6 +60,7 @@ extra-deps:
  - constraints-0.11.2
  - terminal-progress-bar-0.4.1
  - ghc-typelits-knownnat-0.7.3
+ - repa-3.4.1.4
 
 drop-packages:
  - constraints-extras

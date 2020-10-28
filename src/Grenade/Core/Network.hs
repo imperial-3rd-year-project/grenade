@@ -11,6 +11,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeApplications      #-}
 {-|
 Module      : Grenade.Core.Network
 Description : Core definition of a Neural Network
@@ -49,7 +51,7 @@ import           Data.Singletons.Prelude
 import           GHC.TypeLits                      (KnownNat)
 import           Numeric.LinearAlgebra.Static
 import           System.Random.MWC
-
+import           Unsafe.Coerce
 #if MIN_VERSION_base(4,9,0)
 import           Data.Kind                         (Type)
 #endif
@@ -89,6 +91,25 @@ instance NFData (Network '[] '[ i]) where
 instance (NFData x, NFData (Network xs rs)) => NFData (Network (x ': xs) (i ': rs)) where
   rnf ((!x) :~> (!xs)) = rnf x `seq` rnf xs
 
+data BatchNetwork :: [Type] -> [Shape] -> Type where
+    BNNil :: SingI i 
+          => BatchNetwork '[] '[i]
+    
+    (:~~>) :: (SingI i, SingI h, BatchLayer x i h)
+          => !x
+          -> !(BatchNetwork xs (h ': hs))
+          -> BatchNetwork (x ': xs) (i ': h ': hs)
+infixr 5 :~~>
+
+instance Show (BatchNetwork '[] '[i]) where
+  show BNNil = "BNNil"
+instance (Show x, Show (BatchNetwork xs rs)) => Show (BatchNetwork (x ': xs) (i ': rs)) where
+  show (x :~~> xs) = show x ++ " ~~> " ++ show xs
+
+instance NFData (BatchNetwork '[] '[ i]) where
+  rnf BNNil = ()
+instance (NFData x, NFData (BatchNetwork xs rs)) => NFData (BatchNetwork (x ': xs) (i ': rs)) where
+  rnf ((!x) :~~> (!xs)) = rnf x `seq` rnf xs
 
 -- | Gradient of a network.
 --
@@ -133,6 +154,25 @@ instance NFData (Tapes '[] '[i]) where
 instance (NFData (Tape x i h), NFData (Tapes xs (h ': hs))) => NFData (Tapes (x ': xs) (i ': h ': hs)) where
   rnf (t :\> ts) = rnf t `seq` rnf ts
 
+-- | Wegnert Tape of a network.
+--
+--   Parameterised on the layers and shapes of the network.
+data BatchTapes :: [Type] -> [Shape] -> Type where
+   BTNil  :: SingI i
+         => BatchTapes '[] '[i]
+
+   (:\\>) :: (SingI i, SingI h, BatchLayer x i h)
+         => !([Tape x i h])
+         -> !(BatchTapes xs (h ': hs))
+         -> BatchTapes (x ': xs) (i ': h ': hs)
+
+instance NFData (BatchTapes '[] '[i]) where
+  rnf BTNil       = ()
+
+instance (NFData ([Tape x i h]), NFData (BatchTapes xs (h ': hs))) => NFData (BatchTapes (x ': xs) (i ': h ': hs)) where
+  rnf (t :\\> ts) = rnf t `seq` rnf ts
+
+
 -- | Running a network forwards with some input data.
 --
 --   This gives the output, and the Wengert tape required for back
@@ -157,6 +197,27 @@ runNetwork = go
   go NNil !x
       = (TNil, x)
 
+-- | Running a network forwards with a batch input data.
+--
+--   This gives the batch of outputs, and the batch of Wengert 
+--   tapes required for back propagation.
+runBatchNetwork :: forall layers shapes.
+                   BatchNetwork layers shapes
+                   -> [S (Head shapes)]
+                   -> (BatchTapes layers shapes, [S (Last shapes)])
+runBatchNetwork = go
+  where
+    go  :: forall js ss. (Last js ~ Last shapes)
+        => BatchNetwork ss js
+        -> [S (Head js)]
+        -> (BatchTapes ss js, [S (Last js)])
+    go (layer :~~> n) !x =
+      let (batchTape, forwards) = runBatchForwards layer x 
+          (batchTapes, answers) = go n forwards 
+      in  (batchTape :\\> batchTapes, answers)
+
+    go BNNil !xs
+        = (BTNil, xs)
 
 -- | Running a loss gradient back through the network.
 --
@@ -185,6 +246,34 @@ runGradient net tapes o =
   go NNil TNil
       = (GNil, o)
 
+-- | Running a batch of loss gradients back through the network.
+--
+--   This requires a batch of Wengert tape, generated with the appropriate input
+--   for the loss.
+--
+--   It reduces the batch of gradients across the layers to produces the gradient across
+--   the layers, and the gradient across the input (which may not be required).
+runBatchGradient :: forall layers shapes.
+               BatchNetwork layers shapes
+            -> BatchTapes layers shapes
+            -> [S (Last shapes)]
+            -> (Gradients layers, [S (Head shapes)])
+runBatchGradient net tapes os =
+  go net tapes
+    where
+      go  :: forall js ss. 
+             ( Last js ~ Last shapes)
+          => BatchNetwork ss js
+          -> BatchTapes ss js
+          -> (Gradients ss, [S (Head js)])
+      go (layer :~~> n) (tapes :\\> nt) =
+        let (gradients, feeds)    = go n nt
+            (grads , backGrads)   = runBatchBackwards layer tapes feeds 
+            grad                  = reduceGradient @(Head ss) grads 
+        in  (grad :/> gradients, backGrads)
+
+      go BNNil BTNil
+          = (GNil, os)
 
 -- | Apply one step of stochastic gradient descent across the network.
 applyUpdate :: Optimizer opt

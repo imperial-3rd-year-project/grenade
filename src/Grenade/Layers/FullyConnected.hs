@@ -146,6 +146,7 @@ randomFullyConnected m gen = do
   where i = natVal (Proxy :: Proxy i)
         o = natVal (Proxy :: Proxy o)
 
+
 -------------------- DynamicNetwork instance --------------------
 
 instance (KnownNat i, KnownNat o) => FromDynamicLayer (FullyConnected i o) where

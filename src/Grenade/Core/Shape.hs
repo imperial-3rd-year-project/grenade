@@ -20,7 +20,7 @@ Stability   : experimental
 -}
 module Grenade.Core.Shape (
     S (..)
-  , T (..)
+  -- , T (..)
   , Shape (..)
 #if MIN_VERSION_singletons(2,6,0)
   , SShape (..)
@@ -51,6 +51,9 @@ import qualified Numeric.LinearAlgebra        as D
 import           Numeric.LinearAlgebra.Static
 import qualified Numeric.LinearAlgebra.Static as H
 import qualified Numeric.LinearAlgebra.Devel  as U
+import qualified Data.Array.Repa              as A 
+import           Data.Array.Repa              hiding (map, Shape(..))
+
 
 import           System.Random.MWC
 
@@ -99,29 +102,29 @@ data Tensor
 --     -> 'D3 rows columns channels
 --     -> Tensor batches ('D3 rows columns channels)
 
-data T (n :: Nat) (s :: Shape) where
-  -- | Batch of one dimensional vectors. Depth, Row
-  T1D :: ( KnownNat batches 
-         , KnownNat rows)
-      => L batches rows 
-      -> T batches ('D1 rows)
+-- data T (n :: Nat) (s :: Shape) where
+--   -- | Batch of one dimensional vectors. Depth, Row
+--   T1D :: ( KnownNat batches 
+--          , KnownNat rows)
+--       => Array V DIM2 RealNum
+--       -> T batches ('D1 rows)
   
-  -- | Batch of two dimensional vectors. Depth, Row, Column
-  T2D :: ( KnownNat batches 
-         , KnownNat rows
-         , KnownNat columns 
-         , KnownNat (rows * columns))
-      => L batches (rows * columns) 
-      -> T batches ('D2 rows columns)
+--   -- | Batch of two dimensional vectors. Depth, Row, Column
+--   T2D :: ( KnownNat batches 
+--          , KnownNat rows
+--          , KnownNat columns 
+--          , KnownNat (rows * columns))
+--       => Array V DIM3 RealNum
+--       -> T batches ('D2 rows columns)
   
-  -- | Batch of three dimensional vectors. Depth, Row, Column, Channels
-  T3D :: ( KnownNat batches 
-         , KnownNat rows
-         , KnownNat columns 
-         , KnownNat channels
-         , KnownNat (rows * columns * channels))
-      => L batches (rows * columns * channels)
-      -> T batches ('D3 rows columns channels)
+--   -- | Batch of three dimensional vectors. Depth, Row, Column, Channels
+--   T3D :: ( KnownNat batches 
+--          , KnownNat rows
+--          , KnownNat columns 
+--          , KnownNat channels
+--          , KnownNat (rows * columns * channels))
+--       => Array V DIM4 RealNum
+--       -> T batches ('D3 rows columns channels)
 
 -- | Concrete data structures for a Shape.
 --
@@ -287,67 +290,68 @@ nk x = case (sing :: Sing x) of
   D3Sing SNat SNat SNat ->
     S3D (konst x)
 
-batchMap :: forall x y batches. ( SingI x, SingI y, KnownNat batches ) => (S x -> S y) -> T batches x -> T batches y
-batchMap f t 
-  = case (sing :: Sing x, sing :: Sing y) of 
-    (D1Sing SNat, D1Sing SNat) -> 
-      batchMap1D f t
+
+-- batchMap :: forall x y batches. ( SingI x, SingI y, KnownNat batches ) => (S x -> S y) -> T batches x -> T batches y
+-- batchMap f t 
+--   = case (sing :: Sing x, sing :: Sing y) of 
+--     (D1Sing SNat, D1Sing SNat) -> 
+--       batchMap1D f t
     
-    (D2Sing SNat SNat, D2Sing SNat SNat) ->
-      batchMap2D f t
+--     (D2Sing SNat SNat, D2Sing SNat SNat) ->
+--       batchMap2D f t
     
-    (D3Sing SNat SNat SNat, D3Sing SNat SNat SNat) ->
-      batchMap3D f t
+--     (D3Sing SNat SNat SNat, D3Sing SNat SNat SNat) ->
+--       batchMap3D f t
 
 
-batchMap1D :: forall a x batches. ( KnownNat batches, KnownNat x ) 
-           => (S ('D1 a) -> S ('D1 x)) -> T batches ('D1 a) ->  T batches ('D1 x)
-batchMap1D f (T1D m) 
-  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
-        r  = fromIntegral $ natVal (Proxy :: Proxy x)
-        m' = H.extract m
-    in T1D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b r $ V.concat $ map (\i -> batchMap1D' f $ m' D.! i) [0..b - 1]
+-- batchMap1D :: forall a x batches. ( KnownNat batches, KnownNat x ) 
+--            => (S ('D1 a) -> S ('D1 x)) -> T batches ('D1 a) ->  T batches ('D1 x)
+-- batchMap1D f (T1D m) 
+--   = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+--         r  = fromIntegral $ natVal (Proxy :: Proxy x)
+--         m' = H.extract m
+--     in T1D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b r $ V.concat $ map (\i -> batchMap1D' f $ m' D.! i) [0..b - 1]
 
-batchMap1D' :: KnownNat a => (S ('D1 a) -> S ('D1 x)) -> Vector RealNum -> Vector RealNum
-batchMap1D' f v = (\(S1D v) -> H.extract v) $ f (S1D $ fromJust $ H.create v)
+-- batchMap1D' :: KnownNat a => (S ('D1 a) -> S ('D1 x)) -> Vector RealNum -> Vector RealNum
+-- batchMap1D' f v = (\(S1D v) -> H.extract v) $ f (S1D $ fromJust $ H.create v)
 
-batchMap2D :: forall a b x y batches. ( KnownNat batches, KnownNat x, KnownNat y , KnownNat (x * y)) 
-           => (S ('D2 a b) -> S ('D2 x y)) -> T batches ('D2 a b) ->  T batches ('D2 x y)
-batchMap2D f (T2D m)
-  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
-        r  = fromIntegral $ natVal (Proxy :: Proxy x)
-        c  = fromIntegral $ natVal (Proxy :: Proxy y)
-        m' = H.extract m
-    in T2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c) $ V.concat $ map (\i -> batchMap2D' f $ m' D.! i) [0..b - 1]
+-- batchMap2D :: forall a b x y batches. ( KnownNat batches, KnownNat x, KnownNat y , KnownNat (x * y)) 
+--            => (S ('D2 a b) -> S ('D2 x y)) -> T batches ('D2 a b) ->  T batches ('D2 x y)
+-- batchMap2D f (T2D m)
+--   = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+--         r  = fromIntegral $ natVal (Proxy :: Proxy x)
+--         c  = fromIntegral $ natVal (Proxy :: Proxy y)
+--         m' = H.extract m
+--     in T2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c) $ V.concat $ map (\i -> batchMap2D' f $ m' D.! i) [0..b - 1]
 
-batchMap2D' :: forall a b x y. (KnownNat a, KnownNat b) => (S ('D2 a b) -> S ('D2 x y)) -> Vector RealNum -> Vector RealNum
-batchMap2D' f v = 
-  let r      = fromIntegral $ natVal (Proxy :: Proxy a)
-      c      = fromIntegral $ natVal (Proxy :: Proxy b)
-  in (\(S2D m') -> D.flatten $ H.extract m') $ f (S2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor r c v)
+-- batchMap2D' :: forall a b x y. (KnownNat a, KnownNat b) => (S ('D2 a b) -> S ('D2 x y)) -> Vector RealNum -> Vector RealNum
+-- batchMap2D' f v = 
+--   let r      = fromIntegral $ natVal (Proxy :: Proxy a)
+--       c      = fromIntegral $ natVal (Proxy :: Proxy b)
+--   in (\(S2D m') -> D.flatten $ H.extract m') $ f (S2D $ fromJust . H.create $ U.matrixFromVector U.RowMajor r c v)
 
-batchMap3D :: forall a b c x y z batches. 
-              ( KnownNat batches
-              , KnownNat a
-              , KnownNat b
-              , KnownNat c
-              , KnownNat (a * c)
-              , KnownNat x
-              , KnownNat y
-              , KnownNat z
-              , KnownNat (x * y * z)) 
-           => (S ('D3 a b c) -> S ('D3 x y z)) -> T batches ('D3 a b c) ->  T batches ('D3 x y z)
-batchMap3D f (T3D m)
-  = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
-        r  = fromIntegral $ natVal (Proxy :: Proxy x)
-        c  = fromIntegral $ natVal (Proxy :: Proxy y)
-        d  = fromIntegral $ natVal (Proxy :: Proxy z)
-        m' = H.extract m
-    in T3D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c * d) $ V.concat $ map (\i -> batchMap3D' f $ m' D.! i) [0..b - 1]
+-- batchMap3D :: forall a b c x y z batches. 
+--               ( KnownNat batches
+--               , KnownNat a
+--               , KnownNat b
+--               , KnownNat c
+--               , KnownNat (a * c)
+--               , KnownNat x
+--               , KnownNat y
+--               , KnownNat z
+--               , KnownNat (x * y * z)) 
+--            => (S ('D3 a b c) -> S ('D3 x y z)) -> T batches ('D3 a b c) ->  T batches ('D3 x y z)
+-- batchMap3D f (T3D m)
+--   = let b  = fromIntegral $ natVal (Proxy :: Proxy batches)
+--         r  = fromIntegral $ natVal (Proxy :: Proxy x)
+--         c  = fromIntegral $ natVal (Proxy :: Proxy y)
+--         d  = fromIntegral $ natVal (Proxy :: Proxy z)
+--         m' = H.extract m
+--     in T3D $ fromJust . H.create $ U.matrixFromVector U.RowMajor b (r * c * d) $ V.concat $ map (\i -> batchMap3D' f $ m' D.! i) [0..b - 1]
 
-batchMap3D' :: forall a b c x y z. (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => (S ('D3 a b c) -> S ('D3 x y z)) -> Vector RealNum -> Vector RealNum
-batchMap3D' f v = 
-  let r = fromIntegral $ natVal (Proxy :: Proxy a)
-      c = fromIntegral $ natVal (Proxy :: Proxy b)
-      d = fromIntegral $ natVal (Proxy :: Proxy c)
-  in (\(S3D m) -> D.flatten $ H.extract m) $ f (S3D $ fromJust $ H.create $ U.matrixFromVector U.RowMajor (r * d) c v)
+-- batchMap3D' :: forall a b c x y z. (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => (S ('D3 a b c) -> S ('D3 x y z)) -> Vector RealNum -> Vector RealNum
+-- batchMap3D' f v = 
+--   let r = fromIntegral $ natVal (Proxy :: Proxy a)
+--       c = fromIntegral $ natVal (Proxy :: Proxy b)
+--       d = fromIntegral $ natVal (Proxy :: Proxy c)
+--   in (\(S3D m) -> D.flatten $ H.extract m) $ f (S3D $ fromJust $ H.create $ U.matrixFromVector U.RowMajor (r * d) c v)

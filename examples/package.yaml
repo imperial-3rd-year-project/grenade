@@ -49,6 +49,7 @@ dependencies:
   - terminal-progress-bar
   - containers
   - deepseq
+  - terminal-progress-bar
 when:
   condition: flag(use-float)
   then:

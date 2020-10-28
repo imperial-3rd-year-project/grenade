@@ -138,6 +138,7 @@ library
     , vector >=0.11 && <0.13
     , terminal-progress-bar
     , ghc-typelits-knownnat
+    , repa
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
     cc-options: -DUSE_FLOAT

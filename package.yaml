@@ -73,6 +73,7 @@ dependencies:
   - parallel
   - terminal-progress-bar
   - ghc-typelits-knownnat
+  - repa
 when:
   condition: flag(use-float)
   then:

@@ -25,10 +25,14 @@ main :: IO ()
 main = disorderMain [
       Test.Grenade.Network.tests
 <<<<<<< HEAD
+<<<<<<< HEAD
     , Test.Grenade.Loss.tests
 =======
     , Test.Grenade.Shape.tests
 >>>>>>> 9eb656f... Add batch mapping function
+=======
+    -- , Test.Grenade.Shape.tests
+>>>>>>> 363f02c... Add batch normalization
 
     , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
