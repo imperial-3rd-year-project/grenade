@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE OverloadedStrings   #-}
 
-module Canvas.Helpers where
+module Grenade.Canvas.Helpers where
 
 import qualified Data.ByteString              as B
 import           Data.List                    (maximumBy)
