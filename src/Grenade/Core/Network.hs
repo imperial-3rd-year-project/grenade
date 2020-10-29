@@ -26,6 +26,7 @@ for non-recurrent neural networks.
 
 module Grenade.Core.Network (
     Network (..)
+  , BatchNetwork (..)
   , CreatableNetwork (..)
   , Gradients (..)
   , Tapes (..)
@@ -35,8 +36,11 @@ module Grenade.Core.Network (
   , l2Norm
   , clipByGlobalNorm
   , runNetwork
+  , runBatchNetwork
   , runGradient
+  , runBatchGradient
   , applyUpdate
+  , applyBatchUpdate
   , randomNetwork
   , randomNetworkInitWith
   ) where
@@ -95,21 +99,21 @@ data BatchNetwork :: [Type] -> [Shape] -> Type where
     BNNil :: SingI i 
           => BatchNetwork '[] '[i]
     
-    (:~~>) :: (SingI i, SingI h, BatchLayer x i h)
+    (:~>>) :: (SingI i, SingI h, BatchLayer x i h)
           => !x
           -> !(BatchNetwork xs (h ': hs))
           -> BatchNetwork (x ': xs) (i ': h ': hs)
-infixr 5 :~~>
+infixr 5 :~>>
 
 instance Show (BatchNetwork '[] '[i]) where
   show BNNil = "BNNil"
 instance (Show x, Show (BatchNetwork xs rs)) => Show (BatchNetwork (x ': xs) (i ': rs)) where
-  show (x :~~> xs) = show x ++ " ~~> " ++ show xs
+  show (x :~>> xs) = show x ++ " ~~> " ++ show xs
 
 instance NFData (BatchNetwork '[] '[ i]) where
   rnf BNNil = ()
 instance (NFData x, NFData (BatchNetwork xs rs)) => NFData (BatchNetwork (x ': xs) (i ': rs)) where
-  rnf ((!x) :~~> (!xs)) = rnf x `seq` rnf xs
+  rnf ((!x) :~>> (!xs)) = rnf x `seq` rnf xs
 
 -- | Gradient of a network.
 --
@@ -188,9 +192,7 @@ runNetwork = go
       -> S (Head js)
       -> (Tapes ss js, S (Last js))
   go (layer :~> n) !x =
-    let (tape, forward) =
-
-          runForwards layer x
+    let (tape, forward) = runForwards layer x
         (tapes, answer) = go n forward
     in  (tape :\> tapes, answer)
 
@@ -211,7 +213,7 @@ runBatchNetwork = go
         => BatchNetwork ss js
         -> [S (Head js)]
         -> (BatchTapes ss js, [S (Last js)])
-    go (layer :~~> n) !x =
+    go (layer :~>> n) !x =
       let (batchTape, forwards) = runBatchForwards layer x 
           (batchTapes, answers) = go n forwards 
       in  (batchTape :\\> batchTapes, answers)
@@ -266,7 +268,7 @@ runBatchGradient net tapes os =
           => BatchNetwork ss js
           -> BatchTapes ss js
           -> (Gradients ss, [S (Head js)])
-      go (layer :~~> n) (tapes :\\> nt) =
+      go (layer :~>> n) (tapes :\\> nt) =
         let (gradients, feeds)    = go n nt
             (grads , backGrads)   = runBatchBackwards layer tapes feeds 
             grad                  = reduceGradient @(Head ss) grads 
@@ -285,6 +287,17 @@ applyUpdate rate (layer :~> rest) (gradient :/> grest) =
       rest' = applyUpdate rate rest grest `using` rpar
    in layer' :~> rest'
 applyUpdate _ NNil GNil = NNil
+
+-- | Apply one step of stochastic gradient descent across the network.
+applyBatchUpdate :: Optimizer opt
+                 -> BatchNetwork layers shapes
+                 -> Gradients layers
+                 -> BatchNetwork layers shapes
+applyBatchUpdate rate (layer :~>> rest) (gradient :/> grest) =
+  let layer' = runUpdate rate layer gradient
+      rest' = applyBatchUpdate rate rest grest `using` rpar
+   in layer' :~>> rest'
+applyBatchUpdate _ BNNil GNil = BNNil
 
 -- | Apply network settings across the network.
 applySettingsUpdate :: NetworkSettings -> Network layers shapes -> Network layers shapes

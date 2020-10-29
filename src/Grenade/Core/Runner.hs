@@ -65,6 +65,20 @@ train optimizer net input target (LossFunction l) =
     in case loss of 
         (S1D x) -> (net', sumV x)
 
+batchTrain :: Optimizer opt 
+           -> BatchNetwork layers shapes
+           -> [S (Head shapes)]
+           -> [S (Last shapes)]
+           -> LossFunction (S (Last shapes))
+           -> (BatchNetwork layers shapes, RealNum)
+batchTrain optimizer net inputs targets (LossFunction l) = 
+    let (tapes, outputs) = runBatchNetwork net inputs
+        losses           = zipWith l outputs targets
+        (grads, _)       = runBatchGradient net tapes losses
+        net'             = applyBatchUpdate optimizer net grads
+    in case head losses of 
+        (S1D x) -> (net', sumV $ x)
+
 -- | Run the network with input and return the given output.
 runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)
 runNet net = snd . runNetwork net
