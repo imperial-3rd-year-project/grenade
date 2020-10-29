@@ -10,6 +10,7 @@ Stability   : experimental
 -}
 module Grenade.Core.Runner (
     train
+  , batchTrain
   , validate
   , backPropagate
   , runNet

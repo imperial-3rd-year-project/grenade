@@ -49,6 +49,9 @@ instance UpdateLayer Logit where
   type Gradient Logit = ()
   runUpdate _ _ _ = Logit
 
+instance UpdateBatchLayer Logit where
+  reduceGradient _ = ()
+
 instance RandomLayer Logit where
   createRandomWith _ _ = return Logit
 

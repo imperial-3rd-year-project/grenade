@@ -139,6 +139,7 @@ library
     , terminal-progress-bar
     , ghc-typelits-knownnat
     , repa
+    , split
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
     cc-options: -DUSE_FLOAT

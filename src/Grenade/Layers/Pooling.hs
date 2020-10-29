@@ -55,6 +55,9 @@ instance UpdateLayer (Pooling kernelRows kernelColumns strideRows strideColumns)
   type Gradient (Pooling kernelRows kernelColumns strideRows strideColumns) = ()
   runUpdate _ Pooling _ = Pooling
 
+instance UpdateBatchLayer (Pooling kernelRows kernelColumns strideRows strideColumns) where
+  reduceGradient _ = ()
+
 instance RandomLayer (Pooling k k' s s') where
   createRandomWith _ _ = return Pooling
 

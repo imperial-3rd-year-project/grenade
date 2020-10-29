@@ -31,6 +31,7 @@ import           System.Random.MWC              hiding (create)
 #if MIN_VERSION_singletons(2,6,0)
 import           Data.Singletons.TypeLits       (SNat (..))
 #endif
+import           Data.List                      (foldl1')
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -84,6 +85,9 @@ instance (KnownNat i, KnownNat o, KnownNat (i * o)) => UpdateLayer (FullyConnect
         MatrixResultAdam newActivations newMActivations newVActivations = descendMatrix opt (MatrixValuesAdam (getStep store) oldActivations activationGradient oldMActivations oldVActivations)
         newStore = setData opt x store [FullyConnected' newMBias newMActivations, FullyConnected' newVBias newVActivations]
     in FullyConnected (FullyConnected' newBias newActivations) newStore
+
+instance (KnownNat i, KnownNat o, KnownNat (i * o)) => UpdateBatchLayer (FullyConnected i o) where
+  reduceGradient grads = uncurry FullyConnected' $ foldl1' (\(bs, as) (bs', as') -> (bs + bs', as + as')) $ map (\(FullyConnected' bs as) -> (bs, as)) grads
 
 instance (KnownNat i, KnownNat o, KnownNat (i * o)) => LayerOptimizerData (FullyConnected i o) (Optimizer 'SGD) where
   type MomentumDataType (FullyConnected i o) (Optimizer 'SGD) = FullyConnected' i o

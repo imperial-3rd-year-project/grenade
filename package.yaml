@@ -74,6 +74,7 @@ dependencies:
   - terminal-progress-bar
   - ghc-typelits-knownnat
   - repa
+  - split
 when:
   condition: flag(use-float)
   then:

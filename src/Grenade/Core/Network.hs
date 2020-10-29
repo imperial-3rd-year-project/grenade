@@ -28,6 +28,7 @@ module Grenade.Core.Network (
     Network (..)
   , BatchNetwork (..)
   , CreatableNetwork (..)
+  , CreatableBatchNetwork (..)
   , Gradients (..)
   , Tapes (..)
   , GNum (..)
@@ -42,6 +43,7 @@ module Grenade.Core.Network (
   , applyUpdate
   , applyBatchUpdate
   , randomNetwork
+  , randomBatchNetwork
   , randomNetworkInitWith
   ) where
 
@@ -328,10 +330,28 @@ randomNetworkInitWith m = liftIO $ withSystemRandom . asGenST $ \gen -> randomNe
 
 
 instance SingI i => CreatableNetwork '[] '[i] where
-  randomNetworkWith _  _ = return NNil
+  randomNetworkWith _  _      = return NNil
+  
 
 instance (SingI i, SingI o, Layer x i o, RandomLayer x, CreatableNetwork xs (o ': rs)) => CreatableNetwork (x ': xs) (i ': o ': rs) where
-  randomNetworkWith m gen = (:~>) <$> createRandomWith m gen <*> randomNetworkWith m gen
+  randomNetworkWith m gen      = (:~>) <$> createRandomWith m gen <*> randomNetworkWith m gen
+
+class CreatableBatchNetwork (xs :: [Type]) (ss :: [Shape]) where 
+  randomBatchNetworkWith :: PrimBase m => WeightInitMethod -> Gen (PrimState m) -> m (BatchNetwork xs ss)
+
+instance SingI i => CreatableBatchNetwork '[] '[i] where
+  randomBatchNetworkWith _  _      = return BNNil
+
+instance (SingI i, SingI o, BatchLayer x i o, RandomLayer x, CreatableBatchNetwork xs (o ': rs)) => CreatableBatchNetwork (x ': xs) (i ': o ': rs) where
+  randomBatchNetworkWith m gen = (:~>>) <$> createRandomWith m gen <*> randomBatchNetworkWith m gen
+
+randomBatchNetwork :: (MonadIO m, CreatableBatchNetwork xs ss) => m (BatchNetwork xs ss)
+randomBatchNetwork = randomBatchNetworkInitWith UniformInit
+
+-- | Create a random network using the specified weight initialization method.
+randomBatchNetworkInitWith :: (MonadIO m, CreatableBatchNetwork xs ss) => WeightInitMethod -> m (BatchNetwork xs ss)
+randomBatchNetworkInitWith m = liftIO $ withSystemRandom . asGenST $ \gen -> randomBatchNetworkWith m gen
+
 
 -- | Add very simple serialisation to the network
 instance SingI i => Serialize (Network '[] '[i]) where

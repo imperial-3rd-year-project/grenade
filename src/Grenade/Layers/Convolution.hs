@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-|
 Module      : Grenade.Layers.Convolution
 Description : Convolution layer
@@ -33,6 +35,7 @@ import           Control.Monad.Primitive             (PrimBase, PrimState)
 import           Data.Constraint                     (Dict (..))
 import           Data.Kind                           (Type)
 import           Data.Maybe
+import           Data.List                           (foldl1')
 import           Data.Proxy
 import           Data.Reflection                     (reifyNat)
 import           Data.Serialize
@@ -127,6 +130,15 @@ instance Show (Convolution c f k k' s s') where
               | otherwise = '#'
             px = (fmap . fmap . fmap) render ms
          in unlines $ foldl1 (zipWith (\a' b' -> a' ++ "   |   " ++ b')) px
+
+instance ( KnownNat channels
+         , KnownNat filters
+         , KnownNat kernelRows 
+         , KnownNat kernelColumns
+         , KnownNat strideRows
+         , KnownNat strideColumns)
+         => UpdateBatchLayer (Convolution channels filters kernelRows kernelColumns strideRows strideColumns) where
+  reduceGradient grads = Convolution' $ dmmap (/ (fromIntegral $ length grads)) (foldl1' add (map (\(Convolution' x) -> x) grads))
 
 
 instance ( KnownNat channels

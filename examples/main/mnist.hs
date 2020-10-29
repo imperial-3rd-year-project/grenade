@@ -55,7 +55,7 @@ import GHC.TypeLits
 --
 
 type MNIST
-  = Network
+  = BatchNetwork
     '[ Convolution 1 10 5 5 1 1
      , Pooling 2 2 2 2
      , Relu
@@ -122,11 +122,13 @@ runFit mnistPath iter useAdam sgd adam = do
         { optimizer = adam
         , verbose   = Full 
         , metrics   = []
+        , batchSize = 16
         }
       else TrainingOptions 
         { optimizer = sgd
         , verbose   = Full 
         , metrics   = []
+        , batchSize = 16
         }
 
 main :: IO ()
@@ -149,5 +151,5 @@ parseMNIST = do
   image    <- maybe (fail "Parsed row was of an incorrect size") pure (fromStorable . V.fromList $ map realToFrac ((/ 255) <$> pixels))
   return (image, lab)
 
-saveNet :: MNIST -> FilePath -> IO ()
-saveNet net path = B.writeFile path $ runPut (put net)
+-- saveNet :: MNIST -> FilePath -> IO ()
+-- saveNet net path = B.writeFile path $ runPut (put net)

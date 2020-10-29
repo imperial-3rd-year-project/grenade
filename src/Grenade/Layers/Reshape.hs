@@ -68,6 +68,9 @@ instance UpdateLayer Reshape where
   type Gradient Reshape = ()
   runUpdate _ _ _ = Reshape
 
+instance UpdateBatchLayer Reshape where
+  reduceGradient _ = ()
+
 instance RandomLayer Reshape where
   createRandomWith _ _ = return Reshape
 
