@@ -46,6 +46,7 @@ dependencies:
   - singletons
   - vector
   - MonadRandom
+  - terminal-progress-bar
   - containers
   - deepseq
 when:

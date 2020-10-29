@@ -10,7 +10,6 @@ Stability   : experimental
 -}
 module Grenade.Core.Runner (
     train
-  , train'
   , validate
   , backPropagate
   , runNet
@@ -26,25 +25,19 @@ import           Grenade.Core.Shape
 import           Grenade.Core.TrainingTypes
 import           Grenade.Types
 import           Grenade.Utils.LinearAlgebra
+import           Grenade.Core.Loss
 
 -- | Perform reverse automatic differentiation on the network
 --   for the current input and expected output.
---
---   /Note:/ The loss function pushed backwards is appropriate
---   for both regression and classification as a squared loss
---   or log-loss respectively.
---
---   For other loss functions, use runNetwork and runGradient
---   with the back propagated gradient of your loss.
---
 backPropagate :: (SingI (Last shapes))
               => Network layers shapes
               -> S (Head shapes)
               -> S (Last shapes)
+              -> LossFunction (S (Last shapes))
               -> Gradients layers
-backPropagate network input target =
+backPropagate network input target (LossFunction l) =
     let (tapes, output) = runNetwork network input
-        (grads, _)      = runGradient network tapes (output - target)
+        (grads, _)      = runGradient network tapes (l output target)
     in  grads
 
 validate :: Network layers shapes
@@ -57,31 +50,20 @@ validate network input target (LossFunction l)
     in case l output target of 
         (S1D x) -> sumV x
 
-train' :: Optimizer opt
+-- | Update a network with new weights after training with an instance.
+train :: Optimizer opt
        -> Network layers shapes
        -> S (Head shapes)
        -> S (Last shapes)
        -> LossFunction (S (Last shapes))
        -> (Network layers shapes, RealNum)
-train' optimizer net input target (LossFunction l) =
+train optimizer net input target (LossFunction l) =
     let (tapes, output) = runNetwork net input
         loss            = l output target
         (grads, _)      = runGradient net tapes loss
         net'            = applyUpdate optimizer net grads
     in case loss of 
         (S1D x) -> (net', sumV x)
-
--- | Update a network with new weights after training with an instance.
-train :: (SingI (Last shapes))
-      => Optimizer opt
-      -> Network layers shapes
-      -> S (Head shapes)
-      -> S (Last shapes)
-      -> Network layers shapes
-train optimizer network input output =
-    let grads = backPropagate network input output
-    in  applyUpdate optimizer network grads
-
 
 -- | Run the network with input and return the given output.
 runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)
