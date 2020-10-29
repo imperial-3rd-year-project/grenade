@@ -121,6 +121,7 @@ library:
     - cbits/im2col.c
     - cbits/gradient_descent.c
     - cbits/pad.c
+    - cbits/shrink.c
   cc-options:
     - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
 
