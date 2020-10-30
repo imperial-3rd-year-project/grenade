@@ -33,28 +33,30 @@ fit :: (CreatableNetwork layers shapes
        -> [(S (Head shapes), S (Last shapes))]
        -> TrainingOptions
        -> Int
+       -> LossFunction (S (Last shapes))
        -> IO (Network layers shapes)
-fit trainRows validateRows TrainingOptions{ optimizer = opt, loss = l} epochs = do
+fit trainRows validateRows TrainingOptions{ optimizer = opt, loss = l} epochs lossFnc = do
     -- initialise the network with random weights
     net0 <- randomNetwork
     -- then training it over the epochs
     let !trainData = trainingData trainRows
         !valData   = trainingData validateRows
-    foldM (runEpoch opt trainData valData) net0 [1..epochs]
+    foldM (runEpoch opt trainData valData lossFnc) net0 [1..epochs]
 
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
          -> TrainingData (S (Head shapes)) (S (Last shapes))
+         -> LossFunction (S (Last shapes))
          -> Network layers shapes
          -> Int
          -> IO (Network layers shapes)
-runEpoch opt (TrainingData t ts) (TrainingData v vs) net epoch = do 
+runEpoch opt (TrainingData t ts) (TrainingData v vs) lossFnc net epoch = do 
   putStrLn $ "Training epoch " ++ show epoch
   pb <- newProgressBar defStyle 10 (Progress 0 t ())
 
   -- actual training
-  (!trained, loss) <- foldM (combineTraining pb (sgdUpdateLearningParamters opt)) (net, 0) ts
+  (!trained, loss) <- foldM (combineTraining pb (sgdUpdateLearningParamters opt) lossFnc) (net, 0) ts
   
   -- validate trained model
   -- vs :: [(S (Head shapes), S (Last shapes))]
@@ -72,11 +74,12 @@ sgdUpdateLearningParamters o                     = o
 combineTraining :: SingI (Last shapes)
                      => ProgressBar ()
                      -> Optimizer opt 
+                     -> LossFunction (S (Last shapes))
                      -> (Network layers shapes, RealNum) 
                      -> (S (Head shapes), S (Last shapes))
                      -> IO (Network layers shapes, RealNum)
-combineTraining pb !opt (!net, loss) (!x, !y) 
-  = let (!net', loss') = train' opt net x y (LossFunction (-))
+combineTraining pb !opt lossFnc (!net, loss) (!x, !y) 
+  = let (!net', loss') = train opt net x y lossFnc
     in incProgress pb 1 >> return (net', loss + loss')
 
 -- combine_val :: Network layers shapes -> S (Last shapes) -> (S (Head shapes), S (Last shapes)) -> S (Last shapes)

@@ -89,6 +89,7 @@ data MnistOpts = MnistOpts FilePath          -- Training/Test data
                            (Optimizer 'Adam) -- Adam settings
                            (Maybe FilePath)  -- Save path
 
+
 mnist' :: Parser MnistOpts
 mnist' = MnistOpts <$> argument str (metavar "TRAIN")
                    <*> option auto (long "iterations" <> short 'i' <> value 15)
@@ -114,7 +115,7 @@ runFit mnistPath iter useAdam sgd adam = do
     let (trainData, validateData) = splitAt 33000 allData
 
     lift $ putStrLn "Training convolutional neural network..."
-    lift $ fit trainData validateData options iter
+    lift $ fit trainData validateData options iter quadratic'
   where
     options = if useAdam 
       then TrainingOptions 

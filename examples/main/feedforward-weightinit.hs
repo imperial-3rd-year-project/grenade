@@ -54,10 +54,10 @@ netTrain net0 op n = do
                    then S1D $ fromRational 1
                    else S1D $ fromRational 0
 
-    let trained = foldl' trainEach net0 (zip inps outs)
+    let (trained, _) = foldl' trainEach (net0, 0) (zip inps outs)
     return trained
 
-  where trainEach !network (i,o) = train op network i o
+  where trainEach (!network, r) (i,o) = train op network i o quadratic'
 
 netScore :: (KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
 netScore network = do

@@ -28,6 +28,7 @@ module Grenade.Core.Shape (
 
   , randomOfShape
   , fromStorable
+  , nk
   ) where
 
 #if MIN_VERSION_singletons(2,6,0)

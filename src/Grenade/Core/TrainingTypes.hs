@@ -7,7 +7,7 @@ module Grenade.Core.TrainingTypes where
 
 import           Data.Singletons.Prelude
 
-import           Grenade.Core.Shape 
+import           Grenade.Core.Shape
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 

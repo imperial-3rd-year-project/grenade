@@ -19,6 +19,12 @@ import qualified Numeric.LinearAlgebra.Static as HStatic
 randomVector :: forall n. ( KnownNat n ) =>  Gen (HStatic.R n)
 randomVector = (\s -> HStatic.randomVector s HStatic.Uniform * 2 - 1) <$> Gen.int Range.linearBounded
 
+randomVectorNormalised :: forall n. ( KnownNat n ) =>  Gen (HStatic.R n)
+randomVectorNormalised = (\s -> sigmoid ((HStatic.randomVector s HStatic.Uniform) * 2 - 1)) <$> Gen.int Range.linearBounded
+  where
+    sigmoid :: Floating a => a -> a
+    sigmoid x = 1/(1 + exp (-x))
+
 uniformSample :: forall m n. ( KnownNat m, KnownNat n ) => Gen (HStatic.L m n)
 uniformSample = (\s -> HStatic.uniformSample s (-1) 1 ) <$> Gen.int Range.linearBounded
 
