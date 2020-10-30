@@ -1,5 +1,5 @@
 FROM haskell:8.10.2
-RUN apt-get update -y 
+RUN apt-get update -y
 RUN apt-get install libblas-dev -y
 RUN apt-get install liblapack-dev -y
 RUN cabal update && cabal install hlint
