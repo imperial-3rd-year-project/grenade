@@ -11,7 +11,4 @@ ENV LANGUAGE=en_GB:en
 ENV LC_ALL=en_US.UTF-8
 COPY . /code
 WORKDIR /code
-RUN cd /code 
-RUN cabal build
-RUN cd ..
 CMD ["bash"]
