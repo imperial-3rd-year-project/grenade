@@ -3,7 +3,7 @@ stages:
   - test
 
 default:
-# image: thchar/grenade_ci:latest
+  image: thchar/grenade_ci:latest
   before_script:
     - cabal update
 
