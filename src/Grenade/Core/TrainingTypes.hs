@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE GADTs                     #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE BangPatterns              #-}
 
 module Grenade.Core.TrainingTypes where
 
@@ -16,24 +17,24 @@ data VerboseOptions = Silent | Minimal | Full
 data TrainingData inputShape outputShape = TrainingData Int [(inputShape, outputShape)] 
 
 trainingData :: [(S inputShape, S outputShape)] -> TrainingData (S inputShape) (S outputShape)
-trainingData xs = TrainingData (length xs) xs
+trainingData xs = let !n = length xs 
+                  in  TrainingData n xs
+
+data LossMetric = Quadratic 
+                | CrossEntropy
+                | Exponential 
+                | Hellinger 
+                | KullbackLeibler
+                | GenKullbackLeibler
+                | ItakuraSaito
+  deriving Show
 
 data TrainingOptions 
   = forall opt. TrainingOptions { optimizer      :: Optimizer opt
                                 , batchSize      :: Int
                                 , validationFreq :: Int
-                                , loss           :: Metric
                                 , verbose        :: VerboseOptions
-                                , metrics        :: [Metric]
+                                , metrics        :: [LossMetric]
                                 }
 
-data LossFunction shape = LossFunction (shape -> shape -> shape) 
-
-data Metric = Accuracy
-
-type LossUnit = Double 
-
-data Loss shape
-  = Loss { lMetric :: Metric
-         , lValue  :: shape
-         }
+data LossFunction shape = LossFunction (shape -> shape -> shape)

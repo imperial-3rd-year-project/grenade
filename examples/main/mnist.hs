@@ -121,14 +121,14 @@ runFit mnistPath iter useAdam sgd adam = do
       then TrainingOptions 
         { optimizer = adam
         , verbose   = Full 
-        , metrics   = []
-        , batchSize = 16
+        , metrics   = [Quadratic, CrossEntropy]
+        , batchSize = 1
         }
       else TrainingOptions 
         { optimizer = sgd
         , verbose   = Full 
-        , metrics   = []
-        , batchSize = 16
+        , metrics   = [Quadratic, CrossEntropy]
+        , batchSize = 1
         }
 
 main :: IO ()

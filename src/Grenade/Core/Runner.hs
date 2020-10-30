@@ -14,6 +14,7 @@ module Grenade.Core.Runner (
   , validate
   , backPropagate
   , runNet
+  , runBatchNet
   ) where
 
 import           Data.Singletons.Prelude
@@ -44,12 +45,11 @@ backPropagate network input target (LossFunction l) =
 validate :: Network layers shapes
          -> S (Head shapes)
          -> S (Last shapes)
-         -> LossFunction (S (Last shapes))
+         -> (S (Last shapes) -> S (Last shapes) -> Double)
          -> RealNum
-validate network input target (LossFunction l) 
+validate network input target l
   = let (_, output) = runNetwork network input
-    in case l output target of 
-        (S1D x) -> sumV x
+    in  l output target 
 
 -- | Update a network with new weights after training with an instance.
 train :: Optimizer opt
@@ -83,3 +83,7 @@ batchTrain optimizer net inputs targets (LossFunction l) =
 -- | Run the network with input and return the given output.
 runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)
 runNet net = snd . runNetwork net
+
+-- | Run the network with input and return the given output.
+runBatchNet :: BatchNetwork layers shapes -> S (Head shapes) -> S (Last shapes)
+runBatchNet net x = head $ snd $ runBatchNetwork net [x]

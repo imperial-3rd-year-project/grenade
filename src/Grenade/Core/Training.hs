@@ -16,6 +16,7 @@ import           Data.Singletons.Prelude
 
 import qualified Numeric.LinearAlgebra.Static as SA
 
+import           Grenade.Core.Loss
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
@@ -35,39 +36,38 @@ fit :: (CreatableBatchNetwork layers shapes
        -> Int
        -> LossFunction (S (Last shapes))
        -> IO (BatchNetwork layers shapes)
-fit trainRows validateRows TrainingOptions{ optimizer=opt, loss=l, batchSize=bs } epochs lossFnc = do
+fit trainRows validateRows TrainingOptions{ optimizer=opt, batchSize=bs, metrics=ms } epochs lossFnc = do
     -- initialise the network with random weights
     net0 <- randomBatchNetwork
-    -- then training it over the epochs
+    -- then train it over the epochs
     let !trainData = trainingData trainRows
         !valData   = trainingData validateRows
-    foldM (runEpoch opt trainData valData lossFnc bs) net0 [1..epochs]
+    foldM (runEpoch opt trainData valData lossFnc ms bs) net0 [1..epochs]
 
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
          -> TrainingData (S (Head shapes)) (S (Last shapes))
          -> LossFunction (S (Last shapes))
+         -> [LossMetric]
          -> Int
          -> BatchNetwork layers shapes
          -> Int
          -> IO (BatchNetwork layers shapes)
-runEpoch opt (TrainingData t ts) (TrainingData v vs) lossFnc batchSize net epoch = do 
+runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize net epoch = do 
   putStrLn $ "Training epoch " ++ show epoch
   pb <- newProgressBar defStyle 10 (Progress 0 t ())
 
+  -- training
   (!trained, loss) <- let batchedData = chunksOf batchSize ts 
                       in foldM (combineBatchTraining pb (sgdUpdateLearningParamters opt) lossFnc batchSize) (net, 0) batchedData
 
-  -- actual training
-  -- (!trained, loss) <- foldM (combineTraining pb (sgdUpdateLearningParamters opt) lossFnc) (net, 0) ts
-  
   -- validate trained model
-  -- vs :: [(S (Head shapes), S (Last shapes))]
-  -- let !val_loss     = foldl' (combine_val trained) 0 vs
+  let !val_losses  = map (\m -> (m, validate' trained valData m)) ms
 
   putStrLn $ "Loss:     " ++ show (loss / fromIntegral t)
-  --putStrLn $ "Val Loss: " ++ show ((sumV $ val_loss) / fromIntegral v)
+  -- print the validation losses
+  mapM_ (\(m, x) -> putStrLn $ "Val " ++ show m ++ ": " ++ show x) val_losses
   putStrLn ""
   return trained
 
@@ -100,7 +100,16 @@ combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
     in incProgress pb batchSize >> return (net', loss + loss')
 
 
--- combine_val :: Network layers shapes -> S (Last shapes) -> (S (Head shapes), S (Last shapes)) -> S (Last shapes)
-combine_val net loss (!x, !y) 
-  = undefined --let !loss' = validate net x y (LossFunction (-))
-    --in loss
+validate' :: SingI (Last shapes) 
+          => BatchNetwork layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
+validate' net (TrainingData v vs) metric
+  = case metric of
+      Quadratic          -> validateWithLoss quadratic
+      CrossEntropy       -> validateWithLoss crossEntropy
+      Exponential        -> validateWithLoss (exponential 1)
+      Hellinger          -> validateWithLoss hellinger
+      KullbackLeibler    -> validateWithLoss kullbackLeibler
+      GenKullbackLeibler -> validateWithLoss genKullbackLeibler
+      ItakuraSaito       -> validateWithLoss itakuraSaito
+  where 
+    validateWithLoss l = (/ fromIntegral v) $ foldl' (\n (x, y) -> n + l (runBatchNet net x) y) 0 vs

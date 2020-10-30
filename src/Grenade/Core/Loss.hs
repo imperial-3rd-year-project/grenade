@@ -9,7 +9,9 @@ progress.
 --}
 
 module Grenade.Core.Loss (
-    quadratic
+    LossMetric (..)
+
+  , quadratic
   , quadratic'
   , crossEntropy
   , crossEntropy'
@@ -31,6 +33,7 @@ import Data.Singletons ( SingI )
 import Numeric.LinearAlgebra.HMatrix
 import Numeric.LinearAlgebra.Static
 
+-- | Helper function that sums the elements of a matrix
 nsum :: SingI s => S s -> Double
 nsum (S1D x) = sumElements $ extract x
 nsum (S2D x) = sumElements $ extract x
@@ -45,7 +48,7 @@ quadratic' = LossFunction (-)
 crossEntropy :: SingI s => S s -> S s -> Double
 crossEntropy x y = - (nsum $ y * (log x) + ((nk 1) - y) * (log ((nk 1) - x)))
 
-crossEntropy' ::SingI s => LossFunction (S s) 
+crossEntropy' :: SingI s => LossFunction (S s) 
 crossEntropy' = LossFunction $ \x y -> (x - y) / ( ((fromInteger 1) - x) * x )
 
 exponential :: SingI s => Double -> S s -> S s -> Double
