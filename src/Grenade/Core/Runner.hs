@@ -19,20 +19,16 @@ module Grenade.Core.Runner (
 
 import           Data.Singletons.Prelude
 
-import qualified Numeric.LinearAlgebra.Static as SA
-
+import           Grenade.Core.Loss             (nsum)
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
 import           Grenade.Core.TrainingTypes
 import           Grenade.Types
-import           Grenade.Utils.LinearAlgebra
-import           Grenade.Core.Loss
 
 -- | Perform reverse automatic differentiation on the network
 --   for the current input and expected output.
-backPropagate :: (SingI (Last shapes))
-              => Network layers shapes
+backPropagate :: Network layers shapes
               -> S (Head shapes)
               -> S (Last shapes)
               -> LossFunction (S (Last shapes))
@@ -63,8 +59,7 @@ train optimizer net input target (LossFunction l) =
         loss            = l output target
         (grads, _)      = runGradient net tapes loss
         net'            = applyUpdate optimizer net grads
-    in case loss of 
-        (S1D x) -> (net', sumV x)
+    in (net', nsum loss)
 
 batchTrain :: Optimizer opt 
            -> BatchNetwork layers shapes
@@ -77,8 +72,8 @@ batchTrain optimizer net inputs targets (LossFunction l) =
         losses           = zipWith l outputs targets
         (grads, _)       = runBatchGradient net tapes losses
         net'             = applyBatchUpdate optimizer net grads
-    in case head losses of 
-        (S1D x) -> (net', sumV $ x)
+        loss             = (sum $ map nsum losses) / (fromIntegral $ length losses)
+    in (net', loss)
 
 -- | Run the network with input and return the given output.
 runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)

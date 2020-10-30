@@ -6,10 +6,7 @@
 
 module Grenade.Core.TrainingTypes where
 
-import           Data.Singletons.Prelude
-
 import           Grenade.Core.Shape
-import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 
 data VerboseOptions = Silent | Minimal | Full 
@@ -36,5 +33,21 @@ data TrainingOptions
                                 , verbose        :: VerboseOptions
                                 , metrics        :: [LossMetric]
                                 }
+
+defaultSGDOptions :: TrainingOptions
+defaultSGDOptions = TrainingOptions { optimizer      = OptSGD 0.01 0.9 0.0005
+                                    , batchSize      = 1
+                                    , validationFreq = 1
+                                    , verbose        = Full
+                                    , metrics        = [Quadratic]
+                                    }
+
+defaultAdamOptions :: TrainingOptions
+defaultAdamOptions = TrainingOptions { optimizer      = OptAdam 0.001 0.9 0.999 1e-4 1e-3
+                                     , batchSize      = 1
+                                     , validationFreq = 1
+                                     , verbose        = Full
+                                     , metrics        = [Quadratic]
+                                     }
 
 data LossFunction shape = LossFunction (shape -> shape -> shape)

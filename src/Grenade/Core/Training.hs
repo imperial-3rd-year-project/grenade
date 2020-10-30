@@ -7,14 +7,11 @@
 
 module Grenade.Core.Training where
 
-import           Control.DeepSeq
 import           Control.Monad
 
 import           Data.List                   (foldl')
 import           Data.List.Split             (chunksOf)
 import           Data.Singletons.Prelude
-
-import qualified Numeric.LinearAlgebra.Static as SA
 
 import           Grenade.Core.Loss
 import           Grenade.Core.Network
@@ -23,13 +20,11 @@ import           Grenade.Core.Shape
 import           Grenade.Core.Runner
 import           Grenade.Core.TrainingTypes
 import           Grenade.Types
-import           Grenade.Utils.LinearAlgebra
 
 import           System.ProgressBar
 
 fit :: (CreatableBatchNetwork layers shapes
-       , SingI (Last shapes)
-       , NFData (Network layers shapes))
+       , SingI (Last shapes))
        => [(S (Head shapes), S (Last shapes))]
        -> [(S (Head shapes), S (Last shapes))]
        -> TrainingOptions
@@ -75,8 +70,7 @@ sgdUpdateLearningParamters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParamters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParamters o                     = o
 
-combineTraining :: SingI (Last shapes)
-                => ProgressBar ()
+combineTraining :: ProgressBar ()
                 -> Optimizer opt 
                 -> LossFunction (S (Last shapes))
                 -> (Network layers shapes, RealNum) 
@@ -86,8 +80,7 @@ combineTraining pb !opt lossFnc (!net, loss) (!x, !y)
   = let (!net', loss') = train opt net x y lossFnc
     in incProgress pb 1 >> return (net', loss + loss')
 
-combineBatchTraining :: SingI (Last shapes)
-                     => ProgressBar ()
+combineBatchTraining :: ProgressBar ()
                      -> Optimizer opt 
                      -> LossFunction (S (Last shapes))
                      -> Int

@@ -8,36 +8,19 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 import           Control.Applicative
-import           Control.DeepSeq
-import           Control.Monad
 import           Control.Monad.Random
 import           Control.Monad.Trans.Except
 
-import           Data.Serialize
-
-import qualified Data.ByteString              as B
 import qualified Data.Attoparsec.Text         as A
-import           Data.List                    (foldl')
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T
 import qualified Data.Vector.Storable         as V
-import           Data.Singletons.Prelude
-
-
-import           Numeric.LinearAlgebra        (maxIndex, (<.>))
-import qualified Numeric.LinearAlgebra.Static as SA
-import           Numeric.LinearAlgebra.Data   (konst, size)
 
 import           Options.Applicative
 
-import           System.ProgressBar
-
 import           Grenade
-import           Grenade.Core.TrainingTypes
-import           Grenade.Core.Training
 import           Grenade.Utils.OneHot
 
-import GHC.TypeLits
 --
 -- Note: Input files can be downloaded at https://www.kaggle.com/scolianni/mnistasjpg
 --
@@ -109,7 +92,7 @@ mnist' = MnistOpts <$> argument str (metavar "TRAIN")
                  <*> optional (strOption (long "save"))
 
 runFit :: FilePath -> Int -> Bool -> Optimizer opt1 -> Optimizer opt2 -> ExceptT String IO MNIST
-runFit mnistPath iter useAdam sgd adam = do 
+runFit mnistPath iter useAdam _ _ = do 
     lift $ putStrLn "Reading data..."
     allData <- readMNIST mnistPath
     let (trainData, validateData) = splitAt 33000 allData
@@ -118,22 +101,20 @@ runFit mnistPath iter useAdam sgd adam = do
     lift $ fit trainData validateData options iter quadratic'
   where
     options = if useAdam 
-      then TrainingOptions 
-        { optimizer = adam
-        , verbose   = Full 
+      then defaultAdamOptions 
+        { verbose   = Full 
         , metrics   = [Quadratic, CrossEntropy]
         , batchSize = 1
         }
-      else TrainingOptions 
-        { optimizer = sgd
-        , verbose   = Full 
+      else defaultSGDOptions 
+        { verbose   = Full 
         , metrics   = [Quadratic, CrossEntropy]
         , batchSize = 1
         }
 
 main :: IO ()
 main = do
-    MnistOpts mnistPath iter useAdam sgd adam savePathM <- execParser (info (mnist' <**> helper) idm)
+    MnistOpts mnistPath iter useAdam sgd adam _ <- execParser (info (mnist' <**> helper) idm)
     res <- (runExceptT $ runFit mnistPath iter useAdam sgd adam) :: IO (Either String MNIST)
     case res of
       Right _  -> putStrLn "Success"

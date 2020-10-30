@@ -57,7 +57,7 @@ netTrain net0 op n = do
     let (trained, _) = foldl' trainEach (net0, 0) (zip inps outs)
     return trained
 
-  where trainEach (!network, r) (i,o) = train op network i o quadratic'
+  where trainEach (!network, _) (i,o) = train op network i o quadratic'
 
 netScore :: (KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
 netScore network = do

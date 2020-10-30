@@ -10,6 +10,8 @@ progress.
 
 module Grenade.Core.Loss (
     LossMetric (..)
+  
+  , nsum
 
   , quadratic
   , quadratic'
@@ -34,13 +36,13 @@ import Numeric.LinearAlgebra.HMatrix
 import Numeric.LinearAlgebra.Static
 
 -- | Helper function that sums the elements of a matrix
-nsum :: SingI s => S s -> Double
+nsum :: S s -> Double
 nsum (S1D x) = sumElements $ extract x
 nsum (S2D x) = sumElements $ extract x
 nsum (S3D x) = sumElements $ extract x
 
 quadratic :: SingI s => S s -> S s -> Double
-quadratic x y = 0.5 * nsum ((x - y) ^ 2)
+quadratic x y = 0.5 * nsum ((x - y) ^ (2 :: Integer))
 
 quadratic' :: SingI s => LossFunction (S s) 
 quadratic' = LossFunction (-)
@@ -54,13 +56,13 @@ crossEntropy' = LossFunction $ \x y -> (x - y) / ( ((fromInteger 1) - x) * x )
 exponential :: SingI s => Double -> S s -> S s -> Double
 exponential t x y = t * (exp (1/t * total))
   where
-    total = nsum ((x - y) ^ 2)
+    total = nsum ((x - y) ^ (2 :: Integer))
 
 exponential' :: SingI s => Double -> LossFunction (S s)
 exponential' t = LossFunction $ \x y -> (nk 2)/(nk t) * (x - y) * (nk $ exponential t x y)
 
 hellinger :: SingI s => S s -> S s -> Double
-hellinger x y = 1/(sqrt 2) * (nsum $ (sqrt x - sqrt y) ^ 2)
+hellinger x y = 1/(sqrt 2) * (nsum $ (sqrt x - sqrt y) ^ (2 :: Integer))
 
 hellinger' :: SingI s => LossFunction (S s)
 hellinger' = LossFunction $ \x y -> ((sqrt x) - (sqrt y)) / ((nk $ sqrt 2) * sqrt x)

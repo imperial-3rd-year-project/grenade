@@ -22,8 +22,6 @@ import           Options.Applicative
 
 import           Grenade
 
-import           Data.Singletons
-
 
 -- The defininition for our simple feed forward network.
 -- The type level lists represents the layers and the shapes passed through the layers.
@@ -54,7 +52,7 @@ netTrain net0 opt n = do
     inCircle :: KnownNat n => SA.R n -> (SA.R n, RealNum) -> Bool
     v `inCircle` (o, r) = SA.norm_2 (v - o) <= r
     
-    trainEach (!network, r) (i,o) = train opt network i o quadratic'
+    trainEach (!network, _) (i,o) = train opt network i o quadratic'
 
 netLoad :: FilePath -> IO FFNet
 netLoad modelPath = do
