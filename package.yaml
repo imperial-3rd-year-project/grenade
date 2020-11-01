@@ -1,5 +1,5 @@
 name:                grenade
-version:             0.1.0
+version:             0.1.1
 github:              "github.com/HuwCampbell/grenade.git"
 license:             BSD2
 author:              "Huw Campbell <huw.campbell@gmail.com>, Manuel Schneckenreither <manuel.schnecki@gmail.com>"
