@@ -13,6 +13,10 @@
 module Test.Grenade.Shape where
 
 import           Grenade.Core.Shape
+import           Grenade.Core.Network
+import           Grenade.Core.Layer
+import           Grenade.Layers.FullyConnected
+import           Grenade.Utils.ListStore
 
 import           Numeric.LinearAlgebra hiding (uniformSample, konst, (===))
 import           Numeric.LinearAlgebra.Static as H hiding ((===))
@@ -31,34 +35,19 @@ import Debug.Trace
 
 import           Test.Hedgehog.Compat
 
--- prop_batchMap_correctly_maps_1d_batches = property $ do
---   batches  <- forAll $ choose 2 100
---   width    <- forAll $ choose 2 100
---   xs       <- forAll $ Gen.list (Range.singleton (batches * width)) $ Gen.double (Range.linearFrac 0 100)
---   mul      <- forAll $ Gen.double (Range.linearFrac 0 100)
+type FFNetwork = Network '[ FullyConnected 3 5 ] '[ 'D1 3, 'D1 5 ]
 
---   case (someNatVal $ toInteger batches, someNatVal $ toInteger width) of
---     (Just (SomeNat (Proxy :: Proxy b)), Just (SomeNat (Proxy :: Proxy w))) ->
---       let m  = H.matrix xs :: L b w
---           t  = T1D m
---           mr = H.matrix (map (* mul) xs) :: L b w
---           f :: S ('D1 w) -> S ('D1 w)
---             = (\(S1D v) -> S1D $ fromJust $ H.create $ mapVectorWithIndex (const (* mul)) $ H.extract v)
---       in (H.extract mr ===) $ (\(T1D m') -> H.extract m') $ batchMap f t
+prop_feedforwardCalculatesOutputOfBatches = property $ do
+  let bias :: H.R 5 = H.fromList [1..5]
+  let acts :: H.L 5 3 = H.fromList [1..15]
+  let fc :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
+  let ins :: [S ('D1 3)] = [S1D (H.fromList [1, 2, 3]), S1D (H.fromList [4, 5, 6])]
+  let (tapes, outs :: [S ('D1 5)]) = runBatchForwards fc ins
+  let outs' = map (\(S1D v) -> (D.toList . H.extract) v) outs
+  outs' === [[15, 34, 53, 72, 91], [33, 79, 125, 171, 217]]
 
--- prop_batchMap_correctly_maps_2d_batches = property $ do
---   batches  <- forAll $ choose 2 100
---   width    <- forAll $ choose 2 100
---   height   <- forAll $ choose 2 100
---   xs       <- forAll $ Gen.list (Range.singleton (batches * width * height)) $ Gen.double (Range.linearFrac 1 100)
---   case (someNatVal $ toInteger batches, someNatVal $ toInteger width, someNatVal $ toInteger height) of
---     (Just (SomeNat (Proxy :: Proxy b)), Just (SomeNat (Proxy :: Proxy w)), Just (SomeNat (Proxy :: Proxy h))) ->
---       case (Proxy :: Proxy (KnownNat (w * h))) of 
---         _ ->
---           let v = D.vector xs
---               m = fromJust . H.create $ U.matrixFromVector U.RowMajor batches (width * height) v
---               t = T2D m :: T b ('D2 w h)
---           in (H.extract m ===) $ (\(T2D m') -> H.extract m') $ batchMap id t 
+prop_backpropCalculatesGradients = property $ do
+  undefined
 
 tests :: IO Bool
 tests = checkParallel $$(discover)
