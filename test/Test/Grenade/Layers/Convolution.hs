@@ -7,15 +7,14 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeOperators       #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# HLINT ignore "Use lambda" #-}
 module Test.Grenade.Layers.Convolution where
 
 import           Data.Constraint
 import           Data.Proxy
-import           Data.Singletons             ()
 import           Data.Singletons
 import           Data.Singletons.Prelude.Num ((%*))
 import           GHC.TypeLits
-import           GHC.TypeLits                (natVal, someNatVal)
 import           Unsafe.Coerce
 
 #if MIN_VERSION_singletons(2,6,0)

@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
+
 {-|
 Module      : Grenade.Core.WeightInitialization
 Description : Defines the Weight Initialization methods of Grenade.
@@ -48,7 +49,7 @@ getRandomVector ::
   -> WeightInitMethod
   -> Gen (PrimState m)
   -> m (R n)
-getRandomVector i o method gen = do 
+getRandomVector i o method gen = do
   unifRands <- vector <$> replicateM n (uniformR (-1, 1) gen)
   gaussRands <- vector <$> replicateM n (realToFrac <$> standard gen)
   return $
@@ -68,7 +69,7 @@ getRandomMatrix ::
   -> WeightInitMethod
   -> Gen (PrimState m)
   -> m (L r n)
-getRandomMatrix i o method gen = do 
+getRandomMatrix i o method gen = do
   unifRands <- matrix <$> replicateM nr (uniformR (-1, 1) gen)
   gaussRands <- matrix <$> replicateM nr (realToFrac <$> standard gen)
   return $

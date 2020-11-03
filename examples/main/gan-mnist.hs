@@ -4,9 +4,9 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
+
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+
 
 --
 -- Note: Input files can be downloaded at https://www.kaggle.com/scolianni/mnistasjpg
@@ -133,8 +133,7 @@ ganTest (discriminator0, generator0) iterations trainFile opt = do
   runIteration :: [S ('D2 28 28)] -> (Discriminator, Generator) -> Int -> IO (Discriminator, Generator)
   runIteration trainData ( !discriminator, !generator ) _ = do
     trained'    <- foldM ( \(!discriminatorX, !generatorX ) realExample -> do
-                      fakeExample <- randomOfShape
-                      return $ trainExample opt discriminatorX generatorX realExample fakeExample
+                      trainExample opt discriminatorX generatorX realExample <$> randomOfShape
                      ) ( discriminator, generator ) trainData
 
 

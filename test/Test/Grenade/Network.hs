@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# HLINT ignore "Use fewer imports" #-}
 module Test.Grenade.Network where
 
 import           Control.Monad                   (guard)
@@ -26,11 +27,6 @@ import           Hedgehog.Internal.Source
 
 import           Grenade
 
-#if MIN_VERSION_base(4,11,0)
-import           GHC.TypeLits                    hiding (natVal)
-#else
-import           GHC.TypeLits
-#endif
 #if MIN_VERSION_base(4,9,0)
 import           Data.Kind                       (Type)
 #endif

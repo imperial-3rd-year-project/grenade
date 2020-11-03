@@ -1,13 +1,13 @@
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveFoldable      #-}
-{-# LANGUAGE DeriveFunctor       #-}
+
+
 {-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators       #-}
+
 
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Test.Grenade.Recurrent.Layers.LSTM.Reference where
@@ -33,12 +33,12 @@ import           Grenade.Types
 --
 
 -- | List only matrix deriving functor
-data Matrix a = Matrix {
+newtype Matrix a = Matrix {
     matrixWeights         :: [[a]]
   } deriving (Functor, Foldable, Traversable, Eq, Show)
 
 -- | List only vector deriving functor
-data Vector a = Vector {
+newtype Vector a = Vector {
     vectorWeights         :: [a]
   } deriving (Functor, Foldable, Traversable, Eq, Show)
 

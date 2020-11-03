@@ -6,9 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+{-# LANGUAGE TypeOperators        #-}
 {-|
 Module      : Grenade.Core.Shape
 Description : Dependently typed shapes of data which are passed between layers of a network
@@ -55,8 +55,8 @@ import qualified Numeric.LinearAlgebra        as NLA
 import qualified Numeric.LinearAlgebra        as D
 import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
-import qualified Numeric.LinearAlgebra.Static as H
 import           Numeric.LinearAlgebra.Static (L, R)
+import qualified Numeric.LinearAlgebra.Static as H
 import qualified Numeric.LinearAlgebra.Static as H
 
 import           System.Random.MWC
@@ -241,7 +241,7 @@ nk x = case (sing :: Sing x) of
     S3D (H.konst x)
 
 visualise2D :: S ('D2 a b) -> Double -> String
-visualise2D (S2D mm) max = 
+visualise2D (S2D mm) max =
   let m  = H.extract mm
       ms = NLAD.toLists m
       render n' | n' <= 0.2 * max  = ' '

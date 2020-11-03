@@ -91,8 +91,8 @@ testValues network = do
   let ress = zip outs (map (round . normx . runNet network) inps)
       correct = length $ filter id $ map (uncurry (==)) ress
       incorrect = length $ filter id $ map (uncurry (/=)) ress
-      falsePositives = length $ filter id $ map (uncurry (\shd nn -> shd == 0 && nn == 1)) ress
-      falseNegatives = length $ filter id $ map (uncurry (\shd nn -> shd == 1 && nn == 0)) ress
+      falsePositives = length $ filter id $ map (\ (shd, nn) -> shd == 0 && nn == 1) ress
+      falseNegatives = length $ filter id $ map (\ (shd, nn) -> shd == 1 && nn == 0) ress
   putStr $ show correct  ++ " | "
   putStr $ show incorrect ++ " | "
   putStr $ show falsePositives ++ " | "

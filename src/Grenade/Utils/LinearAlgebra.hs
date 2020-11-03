@@ -49,10 +49,10 @@ sumM :: (KnownNat m, KnownNat n) => L m n -> RealNum
 sumM m = fromDoubleToRealNum $ (m #> 1) <.> 1
 
 squareV :: (KnownNat n) => R n -> R n
-squareV v = dvmap (^ (2 :: Int)) v
+squareV = dvmap (^ (2 :: Int))
 
 squareM :: (KnownNat m, KnownNat n) => L m n ->  L m n
-squareM m = dmmap (^ (2 :: Int)) m
+squareM = dmmap (^ (2 :: Int))
 
 -- | Helper function that sums the elements of a matrix
 nsum :: S s -> Double

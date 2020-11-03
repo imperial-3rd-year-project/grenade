@@ -6,7 +6,7 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+
 {-|
 Module      : Grenade.Core.Softmax
 Description : Softmax loss layer

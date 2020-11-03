@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns        #-}
+
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
+
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+
 {-# LANGUAGE OverloadedStrings   #-}
 
 module Grenade.Demos.MNIST where
@@ -26,6 +26,12 @@ import           Grenade.Layers.Internal.Shrink (shrink_2d_rgba)
 
 import qualified Numeric.LinearAlgebra.Static as SA
 
+
+netLoad :: FilePath -> IO MNIST
+netLoad modelPath = do
+  modelData <- B.readFile modelPath
+  either fail return $ runGet (get :: Get MNIST) modelData
+
 runNet'' :: MNIST -> UB.Vector Word8 -> Int -> String
 runNet'' net vec = runNet' net (DV.convert vec) 
 
@@ -33,7 +39,7 @@ runNet' :: MNIST -> V.Vector Word8 -> Int -> String
 runNet' net m d = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
                               in "This number is " ++ show i ++ " with probability " ++ (show (round (p * 100) :: Int)) ++ "%") $ runNet net (conv m)
   where
-    getProb :: (Show a, Ord a) => [a] -> (a, Int)
+    getProb :: (Ord a) => [a] -> (a, Int)
     getProb xs = maximumBy (comparing fst) (Prelude.zip xs [0..])
 
     conv :: V.Vector Word8 -> S ('D2 28 28)

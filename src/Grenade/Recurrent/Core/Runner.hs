@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+
 
 module Grenade.Recurrent.Core.Runner (
     runRecurrentExamples

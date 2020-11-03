@@ -3,7 +3,6 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Random
@@ -92,11 +91,8 @@ feedForward' =
 main :: IO ()
 main = do
     FeedForwardOpts examples rate load save <- execParser (info (feedForward' <**> helper) idm)
-    net0 <- case load of
-      Just loadFile -> netLoad loadFile
-      Nothing       -> randomNet
-
-    net <- netTrain net0 rate examples
+    net0 <- maybe randomNet netLoad load
+    net  <- netTrain net0 rate examples
     netScore net
 
     case save of

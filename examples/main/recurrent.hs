@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+
 
 import           Control.Monad                (foldM)
 import           Control.Monad.Random         (MonadRandom, getRandomR)
