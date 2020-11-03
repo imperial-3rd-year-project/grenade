@@ -2,6 +2,7 @@ import           Control.Monad
 
 import qualified Test.Grenade.Network
 import qualified Test.Grenade.Loss
+import qualified Test.Grenade.Shape
 
 import qualified Test.Grenade.Layers.Pooling
 import qualified Test.Grenade.Layers.Convolution
@@ -24,16 +25,9 @@ import           System.IO
 main :: IO ()
 main = disorderMain [
       Test.Grenade.Network.tests
-<<<<<<< HEAD
-<<<<<<< HEAD
     , Test.Grenade.Loss.tests
-=======
     , Test.Grenade.Shape.tests
->>>>>>> 9eb656f... Add batch mapping function
-=======
-    -- , Test.Grenade.Shape.tests
->>>>>>> 363f02c... Add batch normalization
-
+    , Test.Grenade.Shape.tests
     , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
     , Test.Grenade.Layers.FullyConnected.tests
