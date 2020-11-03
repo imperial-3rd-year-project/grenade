@@ -46,8 +46,6 @@ data Relu = Relu
 instance UpdateLayer Relu where
   type Gradient Relu = ()
   runUpdate _ _ _ = Relu
-
-instance UpdateBatchLayer Relu where
   reduceGradient _ = ()
 
 instance RandomLayer Relu where

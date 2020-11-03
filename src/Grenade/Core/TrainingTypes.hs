@@ -1,32 +1,32 @@
+{-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE GADTs                     #-}
-{-# LANGUAGE DuplicateRecordFields     #-}
-{-# LANGUAGE BangPatterns              #-}
 
 module Grenade.Core.TrainingTypes where
 
-import           Grenade.Core.Shape
 import           Grenade.Core.Optimizer
+import           Grenade.Core.Shape
 
-data VerboseOptions = Silent | Minimal | Full 
+data VerboseOptions = Silent | Minimal | Full
 
-data TrainingData inputShape outputShape = TrainingData Int [(inputShape, outputShape)] 
+data TrainingData inputShape outputShape = TrainingData Int [(inputShape, outputShape)]
 
 trainingData :: [(S inputShape, S outputShape)] -> TrainingData (S inputShape) (S outputShape)
-trainingData xs = let !n = length xs 
+trainingData xs = let !n = length xs
                   in  TrainingData n xs
 
-data LossMetric = Quadratic 
+data LossMetric = Quadratic
                 | CrossEntropy
-                | Exponential 
-                | Hellinger 
+                | Exponential
+                | Hellinger
                 | KullbackLeibler
                 | GenKullbackLeibler
                 | ItakuraSaito
   deriving Show
 
-data TrainingOptions 
+data TrainingOptions
   = forall opt. TrainingOptions { optimizer      :: Optimizer opt
                                 , batchSize      :: Int
                                 , validationFreq :: Int

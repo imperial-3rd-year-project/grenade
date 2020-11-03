@@ -133,16 +133,6 @@ instance Show (Convolution c f k k' s s') where
 
 instance ( KnownNat channels
          , KnownNat filters
-         , KnownNat kernelRows 
-         , KnownNat kernelColumns
-         , KnownNat strideRows
-         , KnownNat strideColumns)
-         => UpdateBatchLayer (Convolution channels filters kernelRows kernelColumns strideRows strideColumns) where
-  reduceGradient grads = Convolution' $ dmmap (/ (fromIntegral $ length grads)) (foldl1' add (map (\(Convolution' x) -> x) grads))
-
-
-instance ( KnownNat channels
-         , KnownNat filters
          , KnownNat kernelRows
          , KnownNat kernelColumns
          , KnownNat strideRows
@@ -183,6 +173,9 @@ instance ( KnownNat channels
     in Convolution (matrixActivations result) newStore
     where toTuple [m ,v] = (m, v)
           toTuple xs = error $ "unexpected input of length " ++ show (length xs) ++ "in toTuple in Convolution.hs"
+
+  reduceGradient grads = Convolution' $ dmmap (/ (fromIntegral $ length grads)) (foldl1' add (map (\(Convolution' x) -> x) grads))
+
 
 instance ( KnownNat channels
          , KnownNat filters

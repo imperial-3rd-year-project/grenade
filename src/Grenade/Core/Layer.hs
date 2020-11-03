@@ -1,18 +1,18 @@
-{-# LANGUAGE AllowAmbiguousTypes   #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE AllowAmbiguousTypes    #-}
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE ConstraintKinds        #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DefaultSignatures      #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
 {-|
 Module      : Grenade.Core.Layer
@@ -43,8 +43,6 @@ runtime errors.
 module Grenade.Core.Layer (
     Layer (..)
   , UpdateLayer (..)
-  , BatchLayer (..)
-  , UpdateBatchLayer (..)
   , FoldableGradient (..)
   , LayerOptimizerData (..)
   , RandomLayer (..)
@@ -91,11 +89,10 @@ class UpdateLayer x where
   runSettingsUpdate :: NetworkSettings -> x -> x
   runSettingsUpdate _ = id
 
-  {-# MINIMAL runUpdate #-}
-
--- | Class to take the average of the gradients 
-class UpdateLayer x => UpdateBatchLayer x where 
+  -- | Take the average of gradients
   reduceGradient :: [Gradient x] -> Gradient x
+
+  {-# MINIMAL runUpdate, reduceGradient #-}
 
 -- | Class to map and reduce gradients, e.g. to scale the gradients by the global norm.
 class FoldableGradient x where
@@ -147,7 +144,6 @@ class (UpdateLayer x) => LayerOptimizerData x optimizer where
 -- | Class for a layer. All layers implement this, however, they don't
 --   need to implement it for all shapes, only ones which are
 --   appropriate.
---
 class (UpdateLayer x) => Layer x (i :: Shape) (o :: Shape) where
   -- | The Wengert tape for this layer. Includes all that is required
   --   to generate the back propagated gradients efficiently. As a
@@ -165,6 +161,25 @@ class (UpdateLayer x) => Layer x (i :: Shape) (o :: Shape) where
   --   Returns the gradient layer and the derivatives to push back
   --   further.
   runBackwards   :: x -> Tape x i o -> S o -> (Gradient x, S i)
+  runBackwards layer tape loss = case runBatchBackwards layer [tape] [loss] of 
+    ([g], [i]) -> (g, i)
+    _          -> undefined  -- it should never reach this
+
+  -- | Used in batch training. Take the input from the previous
+  --   layer, and give the output from this layer.
+  runBatchForwards :: x -> [S i] -> ([Tape x i o], [S o])
+  runBatchForwards layer inputs = unzip $ parMap rpar (runForwards layer) inputs
+
+  -- | Back propagate a step. Takes the current layer, the inputs that
+  --   the layer gave from the inputs and the back propagated derivatives
+  --   from the layer above.
+  --
+  --   Returns the gradient layers and the derivatives to push back
+  --   further.
+  runBatchBackwards   :: x -> [Tape x i o] -> [S o] -> ([Gradient x], [S i])
+  runBatchBackwards layer tapes losses = unzip $ zipWith (runBackwards layer) tapes losses
+
+  {-# MINIMAL runForwards, (runBackwards | runBatchBackwards) #-}
 
 -- | Class for random initialization of a layer. This enables to use
 --   various initialization techniques for the networks. Every layer
@@ -175,28 +190,7 @@ class RandomLayer x where
   -- | Create a random layer according to given initialization method.
   createRandomWith    :: (PrimBase m) => WeightInitMethod -> Gen (PrimState m) -> m x
 
-
 -- | Create a new random network. This uses the uniform initialization,
 -- see @WeightInitMethod@ and @createRandomWith@.
 createRandom :: (RandomLayer x)  => IO x
 createRandom = withSystemRandom . asGenST $ \gen -> createRandomWith UniformInit gen
-
-
-class (UpdateBatchLayer x) => BatchLayer x (i :: Shape) (o :: Shape) where 
-
-  -- | Used in batch training. Take the input from the previous
-  --   layer, and give the output from this layer.
-  runBatchForwards :: x -> [S i] -> ([Tape x i o], [S o])
-
-  -- | Back propagate a step. Takes the current layer, the inputs that
-  --   the layer gave from the inputs and the back propagated derivatives
-  --   from the layer above.
-  --
-  --   Returns the gradient layers and the derivatives to push back
-  --   further.
-  runBatchBackwards   :: x -> [Tape x i o] -> [S o] -> ([Gradient x], [S i])
-
-instance (UpdateBatchLayer x, Layer x i o) => BatchLayer x i o where 
-  runBatchForwards layer inputs = unzip $ map (runForwards layer) inputs
-
-  runBatchBackwards layer tapes losses = unzip $ zipWith (runBackwards layer) tapes losses

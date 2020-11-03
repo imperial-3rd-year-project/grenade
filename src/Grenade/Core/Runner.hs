@@ -14,12 +14,11 @@ module Grenade.Core.Runner (
   , validate
   , backPropagate
   , runNet
-  , runBatchNet
   ) where
 
 import           Data.Singletons.Prelude
 
-import           Grenade.Core.Loss             (nsum)
+import           Grenade.Core.Loss          (nsum)
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
@@ -45,7 +44,7 @@ validate :: Network layers shapes
          -> RealNum
 validate network input target l
   = let (_, output) = runNetwork network input
-    in  l output target 
+    in  l output target
 
 -- | Update a network with new weights after training with an instance.
 train :: Optimizer opt
@@ -61,24 +60,20 @@ train optimizer net input target (LossFunction l) =
         net'            = applyUpdate optimizer net grads
     in (net', nsum loss)
 
-batchTrain :: Optimizer opt 
-           -> BatchNetwork layers shapes
+batchTrain :: Optimizer opt
+           -> Network layers shapes
            -> [S (Head shapes)]
            -> [S (Last shapes)]
            -> LossFunction (S (Last shapes))
-           -> (BatchNetwork layers shapes, RealNum)
-batchTrain optimizer net inputs targets (LossFunction l) = 
-    let (tapes, outputs) = runBatchNetwork net inputs
+           -> (Network layers shapes, RealNum)
+batchTrain optimizer net inputs targets (LossFunction l) =
+    let (tapes, outputs) = batchRunNetwork net inputs
         losses           = zipWith l outputs targets
-        (grads, _)       = runBatchGradient net tapes losses
-        net'             = applyBatchUpdate optimizer net grads
+        (grads, _)       = batchRunGradient net tapes losses
+        net'             = applyUpdate optimizer net grads
         loss             = (sum $ map nsum losses) / (fromIntegral $ length losses)
-    in (net', loss)
+    in (net', abs loss)
 
 -- | Run the network with input and return the given output.
 runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)
 runNet net = snd . runNetwork net
-
--- | Run the network with input and return the given output.
-runBatchNet :: BatchNetwork layers shapes -> S (Head shapes) -> S (Last shapes)
-runBatchNet net x = head $ snd $ runBatchNetwork net [x]

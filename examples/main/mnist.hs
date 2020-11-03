@@ -1,20 +1,20 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 import           Control.Applicative
 import           Control.Monad.Random
 import           Control.Monad.Trans.Except
 
-import qualified Data.Attoparsec.Text         as A
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T
-import qualified Data.Vector.Storable         as V
+import qualified Data.Attoparsec.Text       as A
+import qualified Data.Text                  as T
+import qualified Data.Text.IO               as T
+import qualified Data.Vector.Storable       as V
 
 import           Options.Applicative
 
@@ -38,7 +38,7 @@ import           Grenade.Utils.OneHot
 --
 
 type MNIST
-  = BatchNetwork
+  = Network
     '[ Convolution 1 10 5 5 1 1
      , Pooling 2 2 2 2
      , Relu
@@ -49,7 +49,7 @@ type MNIST
      , FullyConnected 256 80
      , Logit
      , FullyConnected 80 10
-     , Logit                    
+     , Logit
      ]
     '[ 'D2 28 28
      , 'D3 24 24 10
@@ -62,7 +62,7 @@ type MNIST
      , 'D1 80
      , 'D1 80
      , 'D1 10
-     , 'D1 10                   
+     , 'D1 10
      ]
 
 data MnistOpts = MnistOpts FilePath          -- Training/Test data
@@ -92,7 +92,7 @@ mnist' = MnistOpts <$> argument str (metavar "TRAIN")
                  <*> optional (strOption (long "save"))
 
 runFit :: FilePath -> Int -> Bool -> Optimizer opt1 -> Optimizer opt2 -> ExceptT String IO MNIST
-runFit mnistPath iter useAdam _ _ = do 
+runFit mnistPath iter useAdam _ _ = do
     lift $ putStrLn "Reading data..."
     allData <- readMNIST mnistPath
     let (trainData, validateData) = splitAt 33000 allData
@@ -100,16 +100,16 @@ runFit mnistPath iter useAdam _ _ = do
     lift $ putStrLn "Training convolutional neural network..."
     lift $ fit trainData validateData options iter quadratic'
   where
-    options = if useAdam 
-      then defaultAdamOptions 
-        { verbose   = Full 
+    options = if useAdam
+      then defaultAdamOptions
+        { verbose   = Full
         , metrics   = [Quadratic, CrossEntropy]
-        , batchSize = 1
+        , batchSize = 32
         }
-      else defaultSGDOptions 
-        { verbose   = Full 
+      else defaultSGDOptions
+        { verbose   = Full
         , metrics   = [Quadratic, CrossEntropy]
-        , batchSize = 1
+        , batchSize = 32
         }
 
 main :: IO ()

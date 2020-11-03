@@ -8,11 +8,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE TupleSections         #-}
-{-# LANGUAGE TypeApplications      #-}
 {-|
 Module      : Grenade.Core.Network
 Description : Core definition of a Neural Network
@@ -26,9 +26,7 @@ for non-recurrent neural networks.
 
 module Grenade.Core.Network (
     Network (..)
-  , BatchNetwork (..)
   , CreatableNetwork (..)
-  , CreatableBatchNetwork (..)
   , Gradients (..)
   , Tapes (..)
   , GNum (..)
@@ -37,13 +35,11 @@ module Grenade.Core.Network (
   , l2Norm
   , clipByGlobalNorm
   , runNetwork
-  , runBatchNetwork
+  , batchRunNetwork
   , runGradient
-  , runBatchGradient
+  , batchRunGradient
   , applyUpdate
-  , applyBatchUpdate
   , randomNetwork
-  , randomBatchNetwork
   , randomNetworkInitWith
   ) where
 
@@ -57,7 +53,6 @@ import           Data.Singletons.Prelude
 import           GHC.TypeLits                      (KnownNat)
 import           Numeric.LinearAlgebra.Static
 import           System.Random.MWC
-import           Unsafe.Coerce
 #if MIN_VERSION_base(4,9,0)
 import           Data.Kind                         (Type)
 #endif
@@ -96,26 +91,6 @@ instance NFData (Network '[] '[ i]) where
   rnf NNil = ()
 instance (NFData x, NFData (Network xs rs)) => NFData (Network (x ': xs) (i ': rs)) where
   rnf ((!x) :~> (!xs)) = rnf x `seq` rnf xs
-
-data BatchNetwork :: [Type] -> [Shape] -> Type where
-    BNNil :: SingI i 
-          => BatchNetwork '[] '[i]
-    
-    (:~>>) :: (SingI i, SingI h, BatchLayer x i h)
-          => !x
-          -> !(BatchNetwork xs (h ': hs))
-          -> BatchNetwork (x ': xs) (i ': h ': hs)
-infixr 5 :~>>
-
-instance Show (BatchNetwork '[] '[i]) where
-  show BNNil = "BNNil"
-instance (Show x, Show (BatchNetwork xs rs)) => Show (BatchNetwork (x ': xs) (i ': rs)) where
-  show (x :~>> xs) = show x ++ " ~~> " ++ show xs
-
-instance NFData (BatchNetwork '[] '[ i]) where
-  rnf BNNil = ()
-instance (NFData x, NFData (BatchNetwork xs rs)) => NFData (BatchNetwork (x ': xs) (i ': rs)) where
-  rnf ((!x) :~>> (!xs)) = rnf x `seq` rnf xs
 
 -- | Gradient of a network.
 --
@@ -167,7 +142,7 @@ data BatchTapes :: [Type] -> [Shape] -> Type where
    BTNil  :: SingI i
          => BatchTapes '[] '[i]
 
-   (:\\>) :: (SingI i, SingI h, BatchLayer x i h)
+   (:\\>) :: (SingI i, SingI h, Layer x i h)
          => !([Tape x i h])
          -> !(BatchTapes xs (h ': hs))
          -> BatchTapes (x ': xs) (i ': h ': hs)
@@ -203,24 +178,24 @@ runNetwork = go
 
 -- | Running a network forwards with a batch input data.
 --
---   This gives the batch of outputs, and the batch of Wengert 
+--   This gives the batch of outputs, and the batch of Wengert
 --   tapes required for back propagation.
-runBatchNetwork :: forall layers shapes.
-                   BatchNetwork layers shapes
+batchRunNetwork :: forall layers shapes.
+                   Network layers shapes
                    -> [S (Head shapes)]
                    -> (BatchTapes layers shapes, [S (Last shapes)])
-runBatchNetwork = go
+batchRunNetwork = go
   where
     go  :: forall js ss. (Last js ~ Last shapes)
-        => BatchNetwork ss js
+        => Network ss js
         -> [S (Head js)]
         -> (BatchTapes ss js, [S (Last js)])
-    go (layer :~>> n) !x =
-      let (batchTape, forwards) = runBatchForwards layer x 
-          (batchTapes, answers) = go n forwards 
+    go (layer :~> n) !x =
+      let (batchTape, forwards) = runBatchForwards layer x
+          (batchTapes, answers) = go n forwards
       in  (batchTape :\\> batchTapes, answers)
 
-    go BNNil !xs
+    go NNil !xs
         = (BTNil, xs)
 
 -- | Running a loss gradient back through the network.
@@ -257,26 +232,26 @@ runGradient net tapes o =
 --
 --   It reduces the batch of gradients across the layers to produces the gradient across
 --   the layers, and the gradient across the input (which may not be required).
-runBatchGradient :: forall layers shapes.
-               BatchNetwork layers shapes
+batchRunGradient :: forall layers shapes.
+               Network layers shapes
             -> BatchTapes layers shapes
             -> [S (Last shapes)]
             -> (Gradients layers, [S (Head shapes)])
-runBatchGradient net tapes os =
+batchRunGradient net tapes os =
   go net tapes
     where
-      go  :: forall js ss. 
+      go  :: forall js ss.
              ( Last js ~ Last shapes)
-          => BatchNetwork ss js
+          => Network ss js
           -> BatchTapes ss js
           -> (Gradients ss, [S (Head js)])
-      go (layer :~>> n) (tapes :\\> nt) =
+      go (layer :~> n) (tapes :\\> nt) =
         let (gradients, feeds)    = go n nt
-            (grads , backGrads)   = runBatchBackwards layer tapes feeds 
-            grad                  = reduceGradient @(Head ss) grads 
+            (grads , backGrads)   = runBatchBackwards layer tapes feeds
+            grad                  = reduceGradient @(Head ss) grads
         in  (grad :/> gradients, backGrads)
 
-      go BNNil BTNil
+      go NNil BTNil
           = (GNil, os)
 
 -- | Apply one step of stochastic gradient descent across the network.
@@ -289,17 +264,6 @@ applyUpdate rate (layer :~> rest) (gradient :/> grest) =
       rest' = applyUpdate rate rest grest `using` rpar
    in layer' :~> rest'
 applyUpdate _ NNil GNil = NNil
-
--- | Apply one step of stochastic gradient descent across the network.
-applyBatchUpdate :: Optimizer opt
-                 -> BatchNetwork layers shapes
-                 -> Gradients layers
-                 -> BatchNetwork layers shapes
-applyBatchUpdate rate (layer :~>> rest) (gradient :/> grest) =
-  let layer' = runUpdate rate layer gradient
-      rest' = applyBatchUpdate rate rest grest `using` rpar
-   in layer' :~>> rest'
-applyBatchUpdate _ BNNil GNil = BNNil
 
 -- | Apply network settings across the network.
 applySettingsUpdate :: NetworkSettings -> Network layers shapes -> Network layers shapes
@@ -331,27 +295,10 @@ randomNetworkInitWith m = liftIO $ withSystemRandom . asGenST $ \gen -> randomNe
 
 instance SingI i => CreatableNetwork '[] '[i] where
   randomNetworkWith _  _      = return NNil
-  
+
 
 instance (SingI i, SingI o, Layer x i o, RandomLayer x, CreatableNetwork xs (o ': rs)) => CreatableNetwork (x ': xs) (i ': o ': rs) where
   randomNetworkWith m gen      = (:~>) <$> createRandomWith m gen <*> randomNetworkWith m gen
-
-class CreatableBatchNetwork (xs :: [Type]) (ss :: [Shape]) where 
-  randomBatchNetworkWith :: PrimBase m => WeightInitMethod -> Gen (PrimState m) -> m (BatchNetwork xs ss)
-
-instance SingI i => CreatableBatchNetwork '[] '[i] where
-  randomBatchNetworkWith _  _      = return BNNil
-
-instance (SingI i, SingI o, BatchLayer x i o, RandomLayer x, CreatableBatchNetwork xs (o ': rs)) => CreatableBatchNetwork (x ': xs) (i ': o ': rs) where
-  randomBatchNetworkWith m gen = (:~>>) <$> createRandomWith m gen <*> randomBatchNetworkWith m gen
-
-randomBatchNetwork :: (MonadIO m, CreatableBatchNetwork xs ss) => m (BatchNetwork xs ss)
-randomBatchNetwork = randomBatchNetworkInitWith UniformInit
-
--- | Create a random network using the specified weight initialization method.
-randomBatchNetworkInitWith :: (MonadIO m, CreatableBatchNetwork xs ss) => WeightInitMethod -> m (BatchNetwork xs ss)
-randomBatchNetworkInitWith m = liftIO $ withSystemRandom . asGenST $ \gen -> randomBatchNetworkWith m gen
-
 
 -- | Add very simple serialisation to the network
 instance SingI i => Serialize (Network '[] '[i]) where

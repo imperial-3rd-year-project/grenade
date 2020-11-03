@@ -48,8 +48,6 @@ data Logit = Logit
 instance UpdateLayer Logit where
   type Gradient Logit = ()
   runUpdate _ _ _ = Logit
-
-instance UpdateBatchLayer Logit where
   reduceGradient _ = ()
 
 instance RandomLayer Logit where
