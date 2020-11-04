@@ -46,6 +46,7 @@ data Elu = Elu
 instance UpdateLayer Elu where
   type Gradient Elu = ()
   runUpdate _ _ _ = Elu
+  reduceGradient _ = ()
 
 instance RandomLayer Elu where
   createRandomWith _ _ = return Elu

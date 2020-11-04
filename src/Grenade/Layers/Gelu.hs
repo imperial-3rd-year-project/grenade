@@ -57,6 +57,7 @@ data Gelu = Gelu
 instance UpdateLayer Gelu where
   type Gradient Gelu = ()
   runUpdate _ _ _ = Gelu
+  reduceGradient _ = ()
 
 instance RandomLayer Gelu where
   createRandomWith _ _ = return Gelu

@@ -37,6 +37,7 @@ import           Control.Monad.Primitive             (PrimBase, PrimState)
 import           Data.Constraint                     (Dict (..))
 import           Data.Kind                           (Type)
 import           Data.Maybe
+import           Data.List                           (foldl1')
 import           Data.Proxy
 import           Data.Reflection                     (reifyNat)
 import           Data.Serialize
@@ -209,6 +210,10 @@ instance ( KnownNat channels
     in Deconvolution (matrixActivations result) newStore
     where toTuple [m ,v] = (m, v)
           toTuple xs = error $ "unexpected input of length " ++ show (length xs) ++ "in toTuple in Convolution.hs"
+  
+  reduceGradient grads = Deconvolution' $ dmmap (/ (fromIntegral $ length grads)) (foldl1' add (map (\(Deconvolution' x) -> x) grads))
+
+
 
 instance ( KnownNat channels
          , KnownNat filters

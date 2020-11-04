@@ -49,6 +49,7 @@ data Softmax = Softmax
 instance UpdateLayer Softmax where
   type Gradient Softmax = ()
   runUpdate _ _ _ = Softmax
+  reduceGradient _ = ()
 
 instance RandomLayer Softmax where
   createRandomWith _ _ = return Softmax

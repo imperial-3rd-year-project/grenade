@@ -51,6 +51,7 @@ instance Serialize Trivial where
 instance UpdateLayer Trivial where
   type Gradient Trivial = ()
   runUpdate _ _ _ = Trivial
+  reduceGradient _ = ()
 
 instance RandomLayer Trivial where
   createRandomWith _ _ = return Trivial

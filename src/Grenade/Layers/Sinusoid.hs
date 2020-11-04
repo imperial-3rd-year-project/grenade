@@ -44,6 +44,7 @@ data Sinusoid = Sinusoid
 instance UpdateLayer Sinusoid where
   type Gradient Sinusoid  = ()
   runUpdate _ _ _ = Sinusoid
+  reduceGradient _ = ()
 
 instance RandomLayer Sinusoid where
   createRandomWith _ _ = return Sinusoid

@@ -46,6 +46,7 @@ data LeakyRelu = LeakyRelu
 instance UpdateLayer LeakyRelu where
   type Gradient LeakyRelu = ()
   runUpdate _ _ _ = LeakyRelu
+  reduceGradient _ = ()
 
 instance RandomLayer LeakyRelu where
   createRandomWith _ _ = return LeakyRelu

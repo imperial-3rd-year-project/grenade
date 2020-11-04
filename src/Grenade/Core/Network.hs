@@ -108,6 +108,29 @@ instance NFData (Gradients '[]) where
 instance (NFData (Gradient x), NFData (Gradients xs)) => NFData (Gradients (x ': xs)) where
   rnf (g :/> gs) = rnf g `seq` rnf gs
 
+-- | 'Dragient' of a network.
+--
+-- Parameterised on the layers of a network.
+data Dragients :: [Type] -> Type where
+  DNil   :: Dragients '[]
+
+  (:/>>) :: UpdateLayer x
+         => !([Gradient x])
+         -> !(Dragients xs)
+         -> Dragients (x ': xs)
+
+reduction :: forall layers. Dragients layers -> Gradients layers
+reduction DNil = GNil
+reduction (gs :/>> rest) = grad :/> (reduction rest)
+  where
+    grad = reduceGradient @(Head layers) gs
+
+instance NFData (Dragients '[]) where
+  rnf DNil = ()
+instance (NFData (Gradient x), NFData (Dragients xs)) => NFData (Dragients (x ': xs)) where
+  rnf (g :/>> gs) = rnf g `seq` rnf gs
+
+
 
 instance Serialize (Gradients '[]) where
   put GNil = put ()
@@ -314,6 +337,19 @@ instance UpdateLayer (Network sublayers subshapes) where
   type Gradient (Network sublayers subshapes) = Gradients sublayers
   runUpdate = applyUpdate
   runSettingsUpdate = applySettingsUpdate
+  reduceGradient = (reduction . buildDragients)
+    where
+      buildDragients :: [Gradients sublayers] -> Dragients sublayers
+      buildDragients [gs] = buildDragients' gs
+      buildDragients (gs:gss) = buildDragients'' gs (buildDragients gss)
+
+      buildDragients' :: forall x. Gradients x -> Dragients x
+      buildDragients' GNil = DNil
+      buildDragients' (gx :/> gxx)  = [gx] :/>> (buildDragients' gxx)
+
+      buildDragients'' :: forall x. Gradients x -> Dragients x -> Dragients x
+      buildDragients'' GNil DNil = DNil
+      buildDragients'' (gx :/> gxx)  (dx :/>> dxx)  = (gx:dx) :/>> (buildDragients'' gxx dxx)
 
 instance FoldableGradient (Gradients '[]) where
   mapGradient _ GNil = GNil

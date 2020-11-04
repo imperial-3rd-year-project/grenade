@@ -38,6 +38,56 @@ import           Test.Hedgehog.Compat
 
 type FFNetwork = Network '[ FullyConnected 3 5 ] '[ 'D1 3, 'D1 5 ]
 
+prop_networkBatchFeedforward = property $ do
+  let bias :: H.R 5              = H.fromList [1..5]
+      acts :: H.L 5 3            = H.fromList [1..15]
+      fc   :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
+      ins  :: [S ('D1 3)]        = [S1D (H.fromList [1, 2, 3]), S1D (H.fromList [4, 5, 6])]
+      net  :: FFNetwork          = fc :~> NNil
+      (_, outs :: [S ('D1 5)]) = runBatchForwards net ins
+      outs' = map (\(S1D v) -> (D.toList . H.extract) v) outs
+  outs' === [[15, 34, 53, 72, 91], [33, 79, 125, 171, 217]]
+
+extractFCGrads :: Gradients '[FullyConnected 3 5] -> (Vector Double, Matrix Double)
+extractFCGrads ((FullyConnected' wB wN) :/> GNil) = (H.extract wB, H.extract wN)
+
+prop_networkBackpropCalculatesGradients = property $ do
+  let bias :: H.R 5 = H.fromList [1..5]
+      acts :: H.L 5 3 = H.fromList [1..15]
+      fc :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
+      ins :: [S ('D1 3)] = [S1D (H.fromList [1, 2, 3]), S1D (H.fromList [4, 5, 6])]
+      net :: FFNetwork = fc :~> NNil
+      (tapes, outs :: [S ('D1 5)]) = runBatchForwards net ins
+      (grads, vs   :: [S ('D1 3)]) = runBatchBackwards net tapes outs
+      (grad,  v    :: S ('D1 3))   = runBackwards net (tapes!!0) (outs!!0)
+      (grad', v'   :: S ('D1 3))   = runBackwards net (tapes!!1) (outs!!1)
+      grads'                       = map extractFCGrads grads
+      grads''                      = map extractFCGrads [grad, grad']
+      vs'                          = map (\(S1D v) -> (D.toList . H.extract) v) vs
+      vs''                         = map (\(S1D v) -> (D.toList . H.extract) v) [v, v']
+
+  grads' === grads''
+  vs'    === vs''
+
+ 
+prop_networkAveragesGradients = property $ do
+  let bias :: H.R 5 = H.fromList [1..5]
+      acts :: H.L 5 3 = H.fromList [1..15]
+      fc :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
+      ins :: [S ('D1 3)] = [S1D (H.fromList [1, 2, 3]), S1D (H.fromList [4, 5, 6])]
+      net :: FFNetwork = fc :~> NNil
+      (tapes, outs :: [S ('D1 5)]) = runBatchForwards net ins
+      (grads, _    :: [S ('D1 3)]) = runBatchBackwards net tapes outs
+      (grad,  _    :: S ('D1 3))   = runBackwards net (tapes!!0) (outs!!0)
+      (grad', _    :: S ('D1 3))   = runBackwards net (tapes!!1) (outs!!1)
+      rgrad                        = extractFCGrads (reduceGradient @FFNetwork grads)
+      (wB, wN)                     = extractFCGrads grad
+      (wB', wN')                   = extractFCGrads grad'
+      rgrad'                       = (0.5 * (wB + wB'), 0.5 * (wN + wN'))
+
+  rgrad === rgrad'
+   
+ 
 prop_feedforwardCalculatesOutputOfBatches = property $ do
   let bias :: H.R 5 = H.fromList [1..5]
       acts :: H.L 5 3 = H.fromList [1..15]

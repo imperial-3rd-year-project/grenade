@@ -49,6 +49,7 @@ instance Show (Crop cropLeft cropTop cropRight cropBottom) where
 instance UpdateLayer (Crop l t r b) where
   type Gradient (Crop l t r b) = ()
   runUpdate _ x _ = x
+  reduceGradient _ = ()
 
 instance Serialize (Crop l t r b) where
   put _ = return ()

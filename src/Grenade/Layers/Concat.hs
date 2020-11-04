@@ -12,6 +12,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE TypeApplications      #-}
 {-|
 Module      : Grenade.Layers.Concat
 Description : Concatenation layer
@@ -65,6 +66,9 @@ instance (Show x, Show y) => Show (Concat m x n y) where
 instance (UpdateLayer x, UpdateLayer y) => UpdateLayer (Concat m x n y) where
   type Gradient (Concat m x n y) = (Gradient x, Gradient y)
   runUpdate opt (Concat x y) (x', y') = Concat (runUpdate opt x x') (runUpdate opt y y')
+  reduceGradient grads = (reduceGradient @x xs, reduceGradient @y ys)
+    where
+      (xs, ys) = unzip grads
 
 
 instance (RandomLayer x, RandomLayer y) => RandomLayer (Concat m x n y) where

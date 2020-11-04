@@ -11,6 +11,7 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE TypeApplications      #-}
 {-|
 Module      : Grenade.Core.Network
 Description : Merging layer for parallel network composition
@@ -51,6 +52,9 @@ instance (Show x, Show y) => Show (Merge x y) where
 instance (UpdateLayer x, UpdateLayer y) => UpdateLayer (Merge x y) where
   type Gradient (Merge x y) = (Gradient x, Gradient y)
   runUpdate opt (Merge x y) (x', y') = Merge (runUpdate opt x x') (runUpdate opt y y')
+  reduceGradient grads = (reduceGradient @x xs, reduceGradient @y ys)
+    where
+      (xs, ys) = unzip grads
 
 instance (RandomLayer x, RandomLayer y) => RandomLayer (Merge x y) where
   createRandomWith m gen = Merge <$> createRandomWith m gen <*> createRandomWith m gen

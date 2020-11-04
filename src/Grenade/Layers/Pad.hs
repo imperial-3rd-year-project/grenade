@@ -50,6 +50,7 @@ instance Show (Pad padLeft padTop padRight padBottom) where
 instance UpdateLayer (Pad l t r b) where
   type Gradient (Pad l t r b) = ()
   runUpdate _ x _ = x
+  reduceGradient _ = ()
 
 instance RandomLayer (Pad l t r b)  where
   createRandomWith _ _ = return Pad
