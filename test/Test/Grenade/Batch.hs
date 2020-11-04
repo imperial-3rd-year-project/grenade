@@ -11,7 +11,7 @@
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
-module Test.Grenade.Shape where
+module Test.Grenade.Batch where
 
 import           Grenade.Core.Shape
 import           Grenade.Core.Network

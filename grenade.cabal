@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f277ef95f6d0d51c9c885562c23957518c79c2c4fd8b1b45cdec84b143455078
+-- hash: d35130120f872db42131c8a0c5112bf8b33c56a96474a9f5b393cf6e42de304b
 
 name:           grenade
 version:        0.1.0
@@ -168,6 +168,7 @@ test-suite test
   type: exitcode-stdio-1.0
   main-is: test.hs
   other-modules:
+      Test.Grenade.Batch
       Test.Grenade.Layers.Convolution
       Test.Grenade.Layers.FullyConnected
       Test.Grenade.Layers.Internal.Convolution
@@ -180,7 +181,6 @@ test-suite test
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM
       Test.Grenade.Recurrent.Layers.LSTM.Reference
-      Test.Grenade.Shape
       Test.Hedgehog.Compat
       Test.Hedgehog.Hmatrix
       Test.Hedgehog.TypeLits

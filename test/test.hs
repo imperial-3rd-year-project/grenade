@@ -2,7 +2,7 @@ import           Control.Monad
 
 import qualified Test.Grenade.Network
 import qualified Test.Grenade.Loss
-import qualified Test.Grenade.Shape
+import qualified Test.Grenade.Batch
 
 import qualified Test.Grenade.Layers.Pooling
 import qualified Test.Grenade.Layers.Convolution
@@ -26,8 +26,7 @@ main :: IO ()
 main = disorderMain [
       Test.Grenade.Network.tests
     , Test.Grenade.Loss.tests
-    , Test.Grenade.Shape.tests
-    , Test.Grenade.Shape.tests
+    , Test.Grenade.Batch.tests
     , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
     , Test.Grenade.Layers.FullyConnected.tests
