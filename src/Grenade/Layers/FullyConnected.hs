@@ -86,7 +86,7 @@ instance (KnownNat i, KnownNat o, KnownNat (i * o)) => UpdateLayer (FullyConnect
         newStore = setData opt x store [FullyConnected' newMBias newMActivations, FullyConnected' newVBias newVActivations]
     in FullyConnected (FullyConnected' newBias newActivations) newStore
 
-  reduceGradient grads = uncurry FullyConnected' $ foldl1' (\(bs, as) (bs', as') -> (bs + bs', as + as')) $ map (\(FullyConnected' bs as) -> (bs, as)) grads
+  reduceGradient = foldl1' (\(FullyConnected' bs as) (FullyConnected' bs' as') -> FullyConnected' (bs + bs') (as + as'))
 
 instance (KnownNat i, KnownNat o, KnownNat (i * o)) => LayerOptimizerData (FullyConnected i o) (Optimizer 'SGD) where
   type MomentumDataType (FullyConnected i o) (Optimizer 'SGD) = FullyConnected' i o
