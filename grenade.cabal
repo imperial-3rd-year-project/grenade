@@ -108,6 +108,7 @@ library
       Grenade.Utils.LinearAlgebra
       Grenade.Utils.ListStore
       Grenade.Utils.OneHot
+      Grenade.Utils.Parallel
   other-modules:
       Paths_grenade
   hs-source-dirs:

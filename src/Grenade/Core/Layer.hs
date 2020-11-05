@@ -64,6 +64,7 @@ import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
 import           Grenade.Core.WeightInitialization
 import           Grenade.Types
+import           Grenade.Utils.Parallel
 
 -- | Class for updating a layer. All layers implement this, as it
 --   describes how to create and update the layer.
@@ -177,7 +178,7 @@ class (UpdateLayer x) => Layer x (i :: Shape) (o :: Shape) where
   --   Returns the gradient layers and the derivatives to push back
   --   further.
   runBatchBackwards   :: x -> [Tape x i o] -> [S o] -> ([Gradient x], [S i])
-  runBatchBackwards layer tapes losses = unzip $ zipWith (runBackwards layer) tapes losses
+  runBatchBackwards layer tapes losses = zipToTuple (runBackwards layer) tapes losses
 
   {-# MINIMAL runForwards, (runBackwards | runBatchBackwards) #-}
 
