@@ -178,7 +178,7 @@ class (UpdateLayer x) => Layer x (i :: Shape) (o :: Shape) where
   --   Returns the gradient layers and the derivatives to push back
   --   further.
   runBatchBackwards   :: x -> [Tape x i o] -> [S o] -> ([Gradient x], [S i])
-  runBatchBackwards layer tapes losses = zipToTuple (runBackwards layer) tapes losses
+  runBatchBackwards layer tapes losses = unzip $ zipWith (runBackwards layer) tapes losses
 
   {-# MINIMAL runForwards, (runBackwards | runBatchBackwards) #-}
 
