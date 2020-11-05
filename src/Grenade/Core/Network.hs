@@ -292,18 +292,16 @@ randomNetwork = randomNetworkInitWith UniformInit
 randomNetworkInitWith :: (MonadIO m, CreatableNetwork xs ss) => WeightInitMethod -> m (Network xs ss)
 randomNetworkInitWith m = liftIO $ withSystemRandom . asGenST $ \gen -> randomNetworkWith m gen
 
-
 instance SingI i => CreatableNetwork '[] '[i] where
-  randomNetworkWith _  _      = return NNil
-
+  randomNetworkWith _  _ = return NNil
 
 instance (SingI i, SingI o, Layer x i o, RandomLayer x, CreatableNetwork xs (o ': rs)) => CreatableNetwork (x ': xs) (i ': o ': rs) where
-  randomNetworkWith m gen      = (:~>) <$> createRandomWith m gen <*> randomNetworkWith m gen
+  randomNetworkWith m gen = (:~>) <$> createRandomWith m gen <*> randomNetworkWith m gen
 
 -- | Add very simple serialisation to the network
 instance SingI i => Serialize (Network '[] '[i]) where
   put NNil = pure ()
-  get = return NNil
+  get      = pure NNil
 
 instance (SingI i, SingI o, Layer x i o, Serialize x, Serialize (Network xs (o ': rs))) => Serialize (Network (x ': xs) (i ': o ': rs)) where
   put (x :~> r) = put x >> put r

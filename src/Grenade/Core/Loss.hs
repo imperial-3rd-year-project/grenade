@@ -10,9 +10,6 @@ progress.
 
 module Grenade.Core.Loss (
     LossMetric (..)
-  
-  , nsum
-
   , quadratic
   , quadratic'
   , crossEntropy
@@ -34,12 +31,7 @@ import Grenade.Core.TrainingTypes
 import Data.Singletons ( SingI )
 import Numeric.LinearAlgebra.HMatrix
 import Numeric.LinearAlgebra.Static
-
--- | Helper function that sums the elements of a matrix
-nsum :: S s -> Double
-nsum (S1D x) = sumElements $ extract x
-nsum (S2D x) = sumElements $ extract x
-nsum (S3D x) = sumElements $ extract x
+import Grenade.Utils.LinearAlgebra
 
 quadratic :: SingI s => S s -> S s -> Double
 quadratic x y = 0.5 * nsum ((x - y) ^ (2 :: Integer))

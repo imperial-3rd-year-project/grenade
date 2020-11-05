@@ -20,7 +20,6 @@ Stability   : experimental
 -}
 module Grenade.Core.Shape (
     S (..)
-  -- , T (..)
   , Shape (..)
 #if MIN_VERSION_singletons(2,6,0)
   , SShape (..)

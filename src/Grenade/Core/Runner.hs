@@ -18,7 +18,7 @@ module Grenade.Core.Runner (
 
 import           Data.Singletons.Prelude
 
-import           Grenade.Core.Loss          (nsum)
+import           Grenade.Utils.LinearAlgebra (nsum)
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape

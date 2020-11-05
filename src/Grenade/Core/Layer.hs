@@ -162,9 +162,9 @@ class (UpdateLayer x) => Layer x (i :: Shape) (o :: Shape) where
   --   Returns the gradient layer and the derivatives to push back
   --   further.
   runBackwards   :: x -> Tape x i o -> S o -> (Gradient x, S i)
-  runBackwards layer tape loss = case runBatchBackwards layer [tape] [loss] of 
+  runBackwards layer tape loss = case runBatchBackwards layer [tape] [loss] of
     ([g], [i]) -> (g, i)
-    _          -> undefined  -- it should never reach this
+    _          -> error "Output list sizes of runBatchBackwards should equal size of input lists (batch size)"
 
   -- | Used in batch training. Take the input from the previous
   --   layer, and give the output from this layer.
