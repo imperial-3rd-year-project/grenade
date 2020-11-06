@@ -17,6 +17,7 @@ import           Grenade.Core.Shape
 import           Grenade.Core.Network
 import           Grenade.Core.Layer
 import           Grenade.Layers.FullyConnected
+import           Grenade.Layers.Convolution
 import           Grenade.Utils.ListStore
 
 import           Numeric.LinearAlgebra hiding (uniformSample, konst, (===))
@@ -99,7 +100,57 @@ prop_networkAveragesGradients = property $ do
   rgrad === [rgrad', rgrad'']
 
 
-prop_feedforwardCalculatesOutputOfBatches = property $ do
+prop_convolutionCalculatesOutputOfBatches = property $ do
+  let weights :: H.L 25 1 = H.fromList [1..25]
+      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      ins :: [S ('D2 11 11)] = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
+      (_, outs :: [S ('D2 4 4)]) = runBatchForwards convLayer ins
+      outs' = map (\(S2D v) -> (concat . D.toLists . H.extract) v) outs
+  (take 9 (concat outs')) === [10925, 11575, 12225, 12875, 18075, 18725, 19375, 20025, 25225]
+
+unwrapGradConv :: ( KnownNat c
+              , KnownNat f
+              , KnownNat kR
+              , KnownNat kC
+              , KnownNat sR
+              , KnownNat sC
+              , KnownNat kF
+              , kF ~ (kR * kC * c)) => Convolution' c f kR kC sR sC -> Matrix Double
+unwrapGradConv (Convolution' mat) = H.extract mat
+
+prop_convolutionBackprop = property $ do
+  let weights :: H.L 25 1 = H.fromList [1..25]
+      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      ins :: [S ('D2 11 11)] = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
+      (tapes, outs :: [S ('D2 4 4)]) = runBatchForwards convLayer ins
+      (grads, vs   :: [S ('D2 11 11)]) = runBatchBackwards convLayer tapes outs
+      (grad,  v    :: S ('D2 11 11))   = runBackwards convLayer (tapes!!0) (outs!!0)
+      (grad', v'   :: S ('D2 11 11))   = runBackwards convLayer (tapes!!1) (outs!!1)
+      grads'                           = map unwrapGradConv grads
+      grads''                          = map unwrapGradConv [grad, grad']
+      vs'                              = map (\(S2D u) -> (D.toLists . H.extract) u) vs
+      vs''                             = map (\(S2D u) -> (D.toLists . H.extract) u) [v, v']
+
+  grads' === grads''
+  vs'    === vs''
+
+prop_convolutionAveragesGradients = property $ do
+  let weights :: H.L 25 1                  = H.fromList (concat (replicate 5 [1, 2, 3, 4, 5]))
+      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      ins :: [S ('D2 11 11)]               = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
+      (tapes, outs :: [S ('D2 4 4)])       = runBatchForwards convLayer ins
+      (grads, _    :: [S ('D2 11 11)])     = runBatchBackwards convLayer tapes outs
+      (grad,  _    :: S ('D2 11 11))       = runBackwards convLayer (tapes!!0) (outs!!0)
+      (grad', _    :: S ('D2 11 11))       = runBackwards convLayer (tapes!!1) (outs!!1)
+      rgrad                                = unwrapGradConv (reduceGradient @(Convolution 1 1 5 5 2 2) grads)
+      w                                    = unwrapGradConv grad
+      w'                                   = unwrapGradConv grad'
+      rgrad'                       = 0.5 * (w + w') 
+
+  rgrad === rgrad'
+
+
+prop_fullyConnectedCalculatesOutputOfBatches = property $ do
   let bias :: H.R 5 = H.fromList [1..5]
       acts :: H.L 5 3 = H.fromList [1..15]
       fc :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
@@ -108,7 +159,7 @@ prop_feedforwardCalculatesOutputOfBatches = property $ do
       outs' = map (\(S1D v) -> (D.toList . H.extract) v) outs
   outs' === [[15, 34, 53, 72, 91], [33, 79, 125, 171, 217]]
 
-prop_backpropCalculatesGradients = property $ do
+prop_fullyConnectedBackprop = property $ do
   let bias :: H.R 5 = H.fromList [1..5]
       acts :: H.L 5 3 = H.fromList [1..15]
       fc :: FullyConnected 3 5 = FullyConnected (FullyConnected' bias acts) mkListStore
