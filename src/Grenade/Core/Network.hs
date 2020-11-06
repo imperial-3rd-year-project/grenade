@@ -108,28 +108,30 @@ instance NFData (Gradients '[]) where
 instance (NFData (Gradient x), NFData (Gradients xs)) => NFData (Gradients (x ': xs)) where
   rnf (g :/> gs) = rnf g `seq` rnf gs
 
--- | 'Dragient' of a network.
+-- | BatchGradients of a network.
 --
--- Parameterised on the layers of a network.
-data Dragients :: [Type] -> Type where
-  DNil   :: Dragients '[]
+-- BatchGradients consist of a list of lists of gradients of layers,
+-- parameterised on the layers of a network.
+data BatchGradients :: [Type] -> Type where
+  DNil   :: BatchGradients '[]
 
   (:/>>) :: UpdateLayer x
          => !([Gradient x])
-         -> !(Dragients xs)
-         -> Dragients (x ': xs)
+         -> !(BatchGradients xs)
+         -> BatchGradients (x ': xs)
 
-reduction :: forall layers. Dragients layers -> Gradients layers
-reduction DNil = GNil
-reduction (gs :/>> rest) = grad :/> (reduction rest)
+-- Reduces BatchGradients into Gradients, by calling reduceGradient on each list
+-- of gradients.
+reduceBatchGradients :: forall layers. BatchGradients layers -> Gradients layers
+reduceBatchGradients DNil = GNil
+reduceBatchGradients (gs :/>> rest) = grad :/> (reduceBatchGradients rest)
   where
     grad = reduceGradient @(Head layers) gs
 
-instance NFData (Dragients '[]) where
+instance NFData (BatchGradients '[]) where
   rnf DNil = ()
-instance (NFData (Gradient x), NFData (Dragients xs)) => NFData (Dragients (x ': xs)) where
+instance (NFData (Gradient x), NFData (BatchGradients xs)) => NFData (BatchGradients (x ': xs)) where
   rnf (g :/>> gs) = rnf g `seq` rnf gs
-
 
 
 instance Serialize (Gradients '[]) where
@@ -337,19 +339,23 @@ instance UpdateLayer (Network sublayers subshapes) where
   type Gradient (Network sublayers subshapes) = Gradients sublayers
   runUpdate = applyUpdate
   runSettingsUpdate = applySettingsUpdate
-  reduceGradient = (reduction . buildDragients)
+  reduceGradient = (reduceBatchGradients . buildBatchGradients)
     where
-      buildDragients :: [Gradients sublayers] -> Dragients sublayers
-      buildDragients [gs] = buildDragients' gs
-      buildDragients (gs:gss) = buildDragients'' gs (buildDragients gss)
+      buildBatchGradients :: [Gradients sublayers] -> BatchGradients sublayers
+      buildBatchGradients [gs] = buildSingletonBatches gs
+      buildBatchGradients (gs:gss) = buildBatchGradients' gs (buildBatchGradients gss)
 
-      buildDragients' :: forall x. Gradients x -> Dragients x
-      buildDragients' GNil = DNil
-      buildDragients' (gx :/> gxx)  = [gx] :/>> (buildDragients' gxx)
+      -- We use this to initialize the BatchGradients
+      buildSingletonBatches :: forall x. Gradients x -> BatchGradients x
+      buildSingletonBatches GNil = DNil
+      buildSingletonBatches (gx :/> gxx)  = [gx] :/>> (buildSingletonBatches gxx)
 
-      buildDragients'' :: forall x. Gradients x -> Dragients x -> Dragients x
-      buildDragients'' GNil DNil = DNil
-      buildDragients'' (gx :/> gxx)  (dx :/>> dxx)  = (gx:dx) :/>> (buildDragients'' gxx dxx)
+      -- Accumulates the BatchGradients and prepends the new gradients
+      -- We expect the Gradients and the BatchGradients to have the same length, equal 
+      -- to the number of layers in the network.
+      buildBatchGradients' :: forall x. Gradients x -> BatchGradients x -> BatchGradients x
+      buildBatchGradients' GNil DNil = DNil
+      buildBatchGradients' (gx :/> gxx)  (dx :/>> dxx)  = (gx:dx) :/>> (buildBatchGradients' gxx dxx)
 
 instance FoldableGradient (Gradients '[]) where
   mapGradient _ GNil = GNil
