@@ -81,6 +81,8 @@ dependencies:
   - repa
   - split
   - random
+  - proto-lens-runtime
+  - proto-lens
 when:
   condition: flag(use-float)
   then:
@@ -93,6 +95,25 @@ when:
       - hmatrix                         >= 0.18        && < 0.21
     cpp-options: -DUSE_DOUBLE
     cc-options: -DUSE_DOUBLE
+
+custom-setup:
+  dependencies:
+    - base
+    - Cabal
+    - proto-lens-setup
+
+build-tools: proto-lens-protoc:proto-lens-protoc
+
+extra-source-files:
+- README.md
+- cbits/im2col.h
+- cbits/im2col.c
+- cbits/gradient_descent.h
+- cbits/gradient_descent.c
+- cbits/pad.h
+- cbits/pad.c
+- cbits/type.h
+- proto/onnx.proto
 
 library:
   source-dirs:
@@ -123,6 +144,9 @@ library:
         ghc-options: -O2
     - condition: flag(debug)
       cpp-options: -DDEBUG
+  other-modules:
+    - Proto.Onnx
+    - Proto.Onnx_Fields
   c-sources:
     - cbits/im2col.c
     - cbits/gradient_descent.c

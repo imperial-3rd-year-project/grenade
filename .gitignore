@@ -16,3 +16,4 @@ dist-newstyle/
 /examples/main/mnist_test.csv
 /examples/main/mnist_train.csv
 *.swp
+*~
