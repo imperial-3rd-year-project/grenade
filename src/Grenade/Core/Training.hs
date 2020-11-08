@@ -54,8 +54,13 @@ runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize net epoch = do
   pb <- newProgressBar defStyle 10 (Progress 0 t ())
 
   -- training
-  (!trained, loss) <- let batchedData = chunksOf batchSize ts
-                      in foldM (combineBatchTraining pb (sgdUpdateLearningParameters opt) lossFnc batchSize) (net, 0) batchedData
+  (!trained, loss) <- if batchSize == 1 
+                         then let updates = (sgdUpdateLearningParameters opt)
+                               in foldM (combineTraining pb updates lossFnc) (net, 0) ts
+                         else let bs      = (chunksOf batchSize ts)
+                                  updates = (sgdUpdateLearningParameters opt)
+                                  f       = (combineBatchTraining pb updates lossFnc batchSize)
+                               in foldM f (net, 0) bs
 
   -- validate trained model
   let !val_losses  = map (\m -> (m, validate' trained valData m)) ms
@@ -76,9 +81,8 @@ combineTraining :: ProgressBar ()
                 -> (Network layers shapes, RealNum)
                 -> (S (Head shapes), S (Last shapes))
                 -> IO (Network layers shapes, RealNum)
-combineTraining pb !opt lossFnc (!net, loss) (!x, !y)
-  = let (!net', loss') = train opt net x y lossFnc
-    in incProgress pb 1 >> return (net', loss + loss')
+combineTraining pb !opt lossFnc (!net, _) (!x, !y)
+  = incProgress pb 1 >> return (train opt net x y lossFnc)
 
 combineBatchTraining :: ProgressBar ()
                      -> Optimizer opt
@@ -88,9 +92,10 @@ combineBatchTraining :: ProgressBar ()
                      -> [(S (Head shapes), S (Last shapes))]
                      -> IO (Network layers shapes, RealNum)
 combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
-  = let (xs, ys)       = unzip ts
-        (!net', loss') = batchTrain opt net xs ys lossFnc
-    in incProgress pb batchSize >> return (net', loss + loss')
+  = incProgress pb batchSize >> return (batchTrain opt net xs ys lossFnc)
+    where
+      (xs, ys) = unzip ts
+
 
 
 validate' :: SingI (Last shapes)
