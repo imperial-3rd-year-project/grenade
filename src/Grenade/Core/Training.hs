@@ -81,8 +81,9 @@ combineTraining :: ProgressBar ()
                 -> (Network layers shapes, RealNum)
                 -> (S (Head shapes), S (Last shapes))
                 -> IO (Network layers shapes, RealNum)
-combineTraining pb !opt lossFnc (!net, _) (!x, !y)
-  = incProgress pb 1 >> return (train opt net x y lossFnc)
+combineTraining pb !opt lossFnc (!net, loss) (!x, !y)
+  = let (!net', loss') = train opt net x y lossFnc
+    in incProgress pb 1 >> return (net', loss + loss')
 
 combineBatchTraining :: ProgressBar ()
                      -> Optimizer opt
@@ -92,10 +93,9 @@ combineBatchTraining :: ProgressBar ()
                      -> [(S (Head shapes), S (Last shapes))]
                      -> IO (Network layers shapes, RealNum)
 combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
-  = incProgress pb batchSize >> return (batchTrain opt net xs ys lossFnc)
-    where
-      (xs, ys) = unzip ts
-
+  = let (xs, ys)       = unzip ts
+        (!net', loss') = batchTrain opt net xs ys lossFnc
+    in incProgress pb batchSize >> return (net', loss + loss')
 
 
 validate' :: SingI (Last shapes)

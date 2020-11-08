@@ -69,9 +69,9 @@ executables:
     ghc-options:       -Wall -threaded -O2
     main:              main/feedforward.hs
 
-  feedforward-fit:
+  circle:
     ghc-options:       -Wall -threaded -O2
-    main:              main/feedforward-fit.hs
+    main:              main/circle.hs
 
   feedforward-weightinit:
     ghc-options:       -Wall -threaded -O2
