@@ -37,7 +37,7 @@ runNet'' net vec = runNet' net (DV.convert vec)
 
 runNet' :: MNIST -> V.Vector Word8 -> String
 runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
-                              in "This number is " ++ show i ++ " with probability " ++ show (p * 100) ++ "%") $ runNet net (conv m)
+                              in "This number is " ++ show i ++ " with probability " ++ (show (round (p * 100) :: Int)) ++ "%") $ runNet net (conv m)
   where
     getProb :: (Show a, Ord a) => [a] -> (a, Int)
     getProb xs = maximumBy (comparing fst) (Prelude.zip xs [0..])

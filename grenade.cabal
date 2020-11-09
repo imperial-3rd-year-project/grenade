@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: 73e8060229070fc651e0afdc2dcf0154519cb6d1129b53e4e032f4ca6f5e1f00
 
 name:           grenade
-version:        0.1.0
+version:        0.1.1
 synopsis:       Practical Deep Learning in Haskell
 description:    Grenade is a composable, dependently typed, practical, and fast recurrent neural network library for precise specifications and complex deep neural networks in Haskell.
                 Grenade provides an API for composing layers of a neural network into a sequence parallel graph in a type safe manner; running networks with reverse automatic differentiation to calculate their gradients; and applying gradient descent for learning.
@@ -122,6 +122,7 @@ library
       cbits/im2col.c
       cbits/gradient_descent.c
       cbits/pad.c
+      cbits/shrink.c
   build-depends:
       MonadRandom >=0.4 && <0.6
     , base >=4.7 && <5
