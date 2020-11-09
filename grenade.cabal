@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 73e8060229070fc651e0afdc2dcf0154519cb6d1129b53e4e032f4ca6f5e1f00
+-- hash: 0e32d8eb699eae6e7cf40b35cf17e880b3a528365d312339275e9f69bce558dc
 
 name:           grenade
 version:        0.1.1
@@ -32,6 +32,8 @@ extra-source-files:
     cbits/type.h
     cbits/shrink.h
     cbits/shrink.c
+data-files:
+    assets/mnistModel
 
 source-repository head
   type: git
@@ -56,7 +58,8 @@ flag use-float
 library
   exposed-modules:
       Grenade
-      Grenade.Canvas.Helpers
+      Grenade.Assets
+      Grenade.Assets.Paths
       Grenade.Core
       Grenade.Core.Layer
       Grenade.Core.Loss
@@ -68,6 +71,7 @@ library
       Grenade.Core.Training
       Grenade.Core.TrainingTypes
       Grenade.Core.WeightInitialization
+      Grenade.Demos.MNIST
       Grenade.Dynamic
       Grenade.Dynamic.Build
       Grenade.Dynamic.Internal.Build
@@ -86,6 +90,7 @@ library
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
+      Grenade.Layers.Internal.Shrink
       Grenade.Layers.Internal.Update
       Grenade.Layers.LeakyRelu
       Grenade.Layers.Logit
