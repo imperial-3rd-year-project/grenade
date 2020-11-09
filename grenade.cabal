@@ -78,6 +78,7 @@ library
       Grenade.Dynamic.Network
       Grenade.Dynamic.Specification
       Grenade.Layers
+      Grenade.Layers.BatchNormalisation
       Grenade.Layers.Concat
       Grenade.Layers.Convolution
       Grenade.Layers.Crop

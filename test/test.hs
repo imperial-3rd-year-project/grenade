@@ -9,6 +9,7 @@ import qualified Test.Grenade.Layers.Convolution
 import qualified Test.Grenade.Layers.FullyConnected
 import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
+import qualified Test.Grenade.Layers.BatchNorm
 
 import qualified Test.Grenade.Layers.Internal.Convolution
 import qualified Test.Grenade.Layers.Internal.Pooling
@@ -29,11 +30,13 @@ main = disorderMain [
       Test.Grenade.Network.tests
     , Test.Grenade.Loss.tests
     , Test.Grenade.Batch.tests
+    
     , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
     , Test.Grenade.Layers.FullyConnected.tests
     , Test.Grenade.Layers.Nonlinear.tests
     , Test.Grenade.Layers.PadCrop.tests
+    , Test.Grenade.Layers.BatchNorm.tests
 
     , Test.Grenade.Layers.Internal.Convolution.tests
     , Test.Grenade.Layers.Internal.Pooling.tests
