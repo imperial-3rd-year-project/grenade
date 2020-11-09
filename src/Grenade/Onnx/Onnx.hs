@@ -16,8 +16,8 @@ data S
 data P
 
 data SPG s a where
-  Node :: a -> SPG s a
-  Series :: [SPG P a] -> SPG S a
+  Node     :: a -> SPG s a
+  Series   :: [SPG P a] -> SPG S a
   Parallel :: [SPG S a] -> SPG P a
 
 graphCons :: a -> SPG s a -> SPG S a
@@ -36,13 +36,13 @@ graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
 graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
 graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
 
+
 generateGraph :: P.ModelProto -> (P.GraphProto, SPG S P.NodeProto)
 generateGraph model = (graphProto, graph)
   where
-    graphProto = model ^. #graph
+    graphProto     = model ^. #graph
     nodes@(node:_) = graphProto ^. #node
-
-    (graph, _) = genGraph node
+    (graph, _)     = genGraph node
 
     (inputNodes, outputNodes) = foldl' classifyNode (Map.empty, Map.empty) nodes
 
@@ -55,17 +55,18 @@ generateGraph model = (graphProto, graph)
         input = node ^. #input
         output = node ^. #output
 
-        updateMap = foldl' (\m k -> alter k m)
+        updateMap = foldl' (\m k -> insert k m)
 
-        alter = Map.alter (Just . (\case
+        insert = Map.alter (Just . (\case
           Just xs -> node : xs
           Nothing -> [node]))
 
-    findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
 
     genGraph :: P.NodeProto -> (SPG S P.NodeProto, Maybe P.NodeProto)
     genGraph node = genGraph' outputs
       where
+        findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
+
         outputNames = node ^. #output
         outputs = findNodes inputNodes outputNames
 
