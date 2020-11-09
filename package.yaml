@@ -83,6 +83,9 @@ dependencies:
   - random
   - proto-lens-runtime
   - proto-lens
+  - microlens
+  - microlens-platform
+  - text
 when:
   condition: flag(use-float)
   then:

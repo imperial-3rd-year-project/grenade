@@ -108,7 +108,11 @@ library
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
       Grenade.Layers.Trivial
+<<<<<<< HEAD
       Grenade.Networks.ResNet18
+=======
+      Grenade.Onnx.Onnx
+>>>>>>> 24a843f (Parse ONNX model into a SPG)
       Grenade.Recurrent
       Grenade.Recurrent.Core
       Grenade.Recurrent.Core.Layer
@@ -149,6 +153,8 @@ library
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -161,6 +167,7 @@ library
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -227,6 +234,8 @@ test-suite test
     , ghc-typelits-knownnat
     , grenade
     , hedgehog
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -239,6 +248,7 @@ test-suite test
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , typelits-witnesses
     , vector >=0.11 && <0.13
   if flag(use-float)
@@ -282,6 +292,8 @@ benchmark bench
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -343,6 +355,7 @@ benchmark bench-layers
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -380,6 +393,8 @@ benchmark bench-lstm
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -441,6 +456,7 @@ benchmark bench-util
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
