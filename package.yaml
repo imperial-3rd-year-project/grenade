@@ -52,6 +52,9 @@ flags:
     manual: true
     default: false
 
+data-files:
+- assets/mnistModel
+    
 dependencies:
   - base                            >= 4.8         && < 5
   - bytestring                      == 0.10.*
@@ -93,6 +96,8 @@ when:
 library:
   source-dirs:
     - src
+  other-modules:
+    - Paths_grenade
   ghc-options:
     -Wall
     -Wcompat

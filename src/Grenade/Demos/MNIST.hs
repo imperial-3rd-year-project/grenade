@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE OverloadedStrings   #-}
 
-module Grenade.Canvas.Helpers where
+module Grenade.Demos.MNIST where
 
 import qualified Data.ByteString              as B
 import           Data.List                    (maximumBy)
@@ -27,9 +27,10 @@ import           Grenade.Layers.Internal.Shrink (shrink_2d_rgba)
 import qualified Numeric.LinearAlgebra.Static as SA
 
 
-netLoad :: FilePath -> IO MNIST
-netLoad modelPath = do
-  modelData <- B.readFile modelPath
+loadMNIST :: IO MNIST
+loadMNIST = do
+  path <- getPathForNetwork MNIST
+  modelData <- B.readFile path
   either fail return $ runGet (get :: Get MNIST) modelData
 
 runNet'' :: MNIST -> UB.Vector Word8 -> String
