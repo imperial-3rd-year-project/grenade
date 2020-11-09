@@ -23,14 +23,18 @@ module Grenade (
     -- See @networkToSpecification@ and @networkFromSpecification@ as good starting points.
 
   , module Grenade.Dynamic
-
+  
+    -- * Load networks bundled with the library.
+  
+  , module Grenade.Assets
 
   ) where
-
+import Grenade.Types ( RealNum, fromDoubleToRealNum, nameF )
 import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Layers
 import           Grenade.Types
+import           Grenade.Assets
 
 {- $library
 Grenade is a purely functional deep learning library.
