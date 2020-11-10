@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Grenade.Onnx.Onnx where
 
@@ -12,32 +14,31 @@ import qualified Data.Map as Map
 import Data.Foldable (foldl')
 import qualified Data.Text as T
 
-data S
-data P
+data Composition = S | P
 
-data SPG s a where
+data SPG (s :: Composition) a where
   Node     :: a -> SPG s a
-  Series   :: [SPG P a] -> SPG S a
-  Parallel :: [SPG S a] -> SPG P a
+  Series   :: [SPG 'P a] -> SPG 'S a
+  Parallel :: [SPG 'S a] -> SPG 'P a
 
-graphCons :: a -> SPG s a -> SPG S a
+graphCons :: a -> SPG s a -> SPG 'S a
 graphCons x (Node x') = Series [Node x, Node x']
 graphCons x (Series xs) = Series (Node x : xs)
 graphCons x x'@(Parallel _) = Series [Node x, x']
 
-wrapSeries :: SPG s a -> SPG S a
+wrapSeries :: SPG s a -> SPG 'S a
 wrapSeries (Node x) = Node x
 wrapSeries x@(Parallel _) = Series [x]
 wrapSeries xs@(Series _) = xs
 
-graphAppend :: SPG s a -> SPG s' a -> SPG S a
+graphAppend :: SPG s a -> SPG s' a -> SPG 'S a
 graphAppend (Node x) graph = x `graphCons` graph
 graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
 graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
 graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
 
 
-generateGraph :: P.ModelProto -> (P.GraphProto, SPG S P.NodeProto)
+generateGraph :: P.ModelProto -> (P.GraphProto, SPG 'S P.NodeProto)
 generateGraph model = (graphProto, graph)
   where
     graphProto     = model ^. #graph
@@ -62,7 +63,7 @@ generateGraph model = (graphProto, graph)
           Nothing -> [node]))
 
 
-    genGraph :: P.NodeProto -> (SPG S P.NodeProto, Maybe P.NodeProto)
+    genGraph :: P.NodeProto -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
     genGraph node = genGraph' outputs
       where
         findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
@@ -70,7 +71,7 @@ generateGraph model = (graphProto, graph)
         outputNames = node ^. #output
         outputs = findNodes inputNodes outputNames
 
-        genGraph' :: [P.NodeProto] -> (SPG S P.NodeProto, Maybe P.NodeProto)
+        genGraph' :: [P.NodeProto] -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
         genGraph' []  = (Node node, Nothing)
 
         genGraph' [x] = case nextNodeInputNodes of
