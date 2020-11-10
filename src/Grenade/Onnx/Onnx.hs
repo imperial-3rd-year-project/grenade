@@ -64,9 +64,14 @@ generateGraph model = (graphProto, graph)
 
 
     genGraph :: P.NodeProto -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
-    genGraph node = genGraph' outputs
+    genGraph node = case inputs of
+                      (_ : _ : _) -> (Series [], Just node)
+                      _           -> genGraph' outputs
       where
         findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
+
+        inputNames = node ^. #input
+        inputs = findNodes outputNodes inputNames
 
         outputNames = node ^. #output
         outputs = findNodes inputNodes outputNames
@@ -74,13 +79,9 @@ generateGraph model = (graphProto, graph)
         genGraph' :: [P.NodeProto] -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
         genGraph' []  = (Node node, Nothing)
 
-        genGraph' [x] = case nextNodeInputNodes of
-                          (_ : _ : _) -> (Node node, Just x)
-                          _           -> (node `graphCons` graph, next)
+        genGraph' [x] = (node `graphCons` graph, next)
           where
             (graph, next) = genGraph x
-            nextNodeInputNames = x ^. #input
-            nextNodeInputNodes = findNodes outputNodes nextNodeInputNames
 
         genGraph' xs  = (Parallel parGraphs `graphAppend` remGraph, next')
           where 
