@@ -86,8 +86,17 @@ data BatchNormGrad :: Nat -- The number of channels of the tensor
             -> R flattenSize -- dbeta
             -> BatchNormGrad channels rows columns
 
-instance NFData (BatchNorm channels rows columns mom) where
-  rnf (BatchNorm _ _ _ _ _) = undefined
+instance NFData (BatchNormTape channels rows columns) where
+  rnf TestBatchNormTape = ()
+  rnf (TrainBatchNormTape xnorm std mean var) = rnf xnorm `seq` rnf std `seq` rnf mean `seq` rnf var
+
+instance NFData (BatchNormParams flattenSize) where
+  rnf (BatchNormParams gamma beta) 
+    = rnf gamma `seq` rnf beta
+
+instance NFData (BatchNorm channels rows columns momentum) where
+  rnf (BatchNorm training bnparams mean var store) 
+    = rnf training `seq` rnf bnparams `seq` rnf mean `seq` rnf var `seq` rnf store
 
 instance Show (BatchNorm channels rows columns mom) where
   show (BatchNorm _ _ _ _ _) = "Batch Normalization"

@@ -38,7 +38,6 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Control.DeepSeq              (NFData (..))
-import           Data.Maybe                   (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -51,8 +50,7 @@ import qualified Numeric.LinearAlgebra        as D
 import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
 import qualified Numeric.LinearAlgebra.Static as H
-import qualified Numeric.LinearAlgebra.Devel  as U
-import qualified Data.Array.Repa              as A 
+import           Numeric.LinearAlgebra.Static (L, R)
 import           Data.Array.Repa              hiding (map, Shape(..))
 
 
@@ -170,13 +168,13 @@ randomOfShape = do
   seed :: Int <- withSystemRandom . asGenST $ \gen -> uniform gen
   return $ case (sing :: Sing x) of
     D1Sing SNat ->
-        S1D (randomVector seed Uniform * 2 - 1)
+        S1D (H.randomVector seed H.Uniform * 2 - 1)
 
     D2Sing SNat SNat ->
-        S2D (uniformSample seed (-1) 1)
+        S2D (H.uniformSample seed (-1) 1)
 
     D3Sing SNat SNat SNat ->
-        S3D (uniformSample seed (-1) 1)
+        S3D (H.uniformSample seed (-1) 1)
 
 -- | Generate a shape from a Storable Vector.
 --
@@ -229,13 +227,13 @@ n2 f (S3D x) (S3D y) = S3D (f x y)
 nk :: forall x. SingI x => RealNum -> S x
 nk x = case (sing :: Sing x) of
   D1Sing SNat ->
-    S1D (konst x)
+    S1D (H.konst x)
 
   D2Sing SNat SNat ->
-    S2D (konst x)
+    S2D (H.konst x)
 
   D3Sing SNat SNat SNat ->
-    S3D (konst x)
+    S3D (H.konst x)
 
 visualise2D :: S ('D2 a b) -> Double -> String
 visualise2D (S2D mm) max = 

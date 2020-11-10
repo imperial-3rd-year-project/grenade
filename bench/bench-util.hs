@@ -28,31 +28,31 @@ main = do
   defaultMain
     [ bgroup
         "bmean 1D"
-        [ bench "bmean 32 of 5" $ whnf bmean xs1D
-        , bench "bmean 32 of 250" $ whnf bmean ys1D
-        , bench "bmean 128 of 5" $ whnf bmean xs'1D
-        , bench "bmean 128 of 250" $ whnf bmean ys'1D
+        [ bench "bmean 32 of 5"    $ nf bmean xs1D
+        , bench "bmean 32 of 250"  $ nf bmean ys1D
+        , bench "bmean 128 of 5"   $ nf bmean xs'1D
+        , bench "bmean 128 of 250" $ nf bmean ys'1D
         ]
     , bgroup
         "bmean 2D"
-        [ bench "bmean 32 of 3x4" $ whnf bmean xs2D
-        , bench "bmean 32 of 100x100" $ whnf bmean ys2D
-        , bench "bmean 128 of 3x4" $ whnf bmean xs'2D
-        , bench "bmean 128 of 100x100" $ whnf bmean ys'2D
+        [ bench "bmean 32 of 3x4"      $ nf bmean xs2D
+        , bench "bmean 32 of 100x100"  $ nf bmean ys2D
+        , bench "bmean 128 of 3x4"     $ nf bmean xs'2D
+        , bench "bmean 128 of 100x100" $ nf bmean ys'2D
         ]
     , bgroup
         "bvar 1D"
-        [ bench "bvar 32 of 5" $ whnf bvar xs1D
-        , bench "bvar 32 of 250" $ whnf bvar ys1D
-        , bench "bvar 128 of 5" $ whnf bvar xs'1D
-        , bench "bvar 128 of 250" $ whnf bvar ys'1D
+        [ bench "bvar 32 of 5"    $ nf bvar xs1D
+        , bench "bvar 32 of 250"  $ nf bvar ys1D
+        , bench "bvar 128 of 5"   $ nf bvar xs'1D
+        , bench "bvar 128 of 250" $ nf bvar ys'1D
         ]
     , bgroup
         "bvar 2D"
-        [ bench "bvar 32 of 3x4" $ whnf bvar xs2D
-        , bench "bvar 32 of 100x100" $ whnf bvar ys2D
-        , bench "bvar 128 of 3x4" $ whnf bvar xs'2D
-        , bench "bvar 128 of 100x100" $ whnf bvar ys'2D
+        [ bench "bvar 32 of 3x4"      $ nf bvar xs2D
+        , bench "bvar 32 of 100x100"  $ nf bvar ys2D
+        , bench "bvar 128 of 3x4"     $ nf bvar xs'2D
+        , bench "bvar 128 of 100x100" $ nf bvar ys'2D
         ]
     ]
 

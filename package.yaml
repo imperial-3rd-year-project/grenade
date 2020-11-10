@@ -80,6 +80,7 @@ dependencies:
   - ghc-typelits-knownnat
   - repa
   - split
+  - random
 when:
   condition: flag(use-float)
   then:
@@ -174,4 +175,10 @@ benchmarks:
       - grenade
       - criterion                       >= 1.1        && < 1.6
 
-
+  bench-layers:
+    main:                bench-layers.hs
+    ghc-options:         -Wall -threaded -O2
+    source-dirs:         bench
+    dependencies:
+      - grenade
+      - criterion                       >= 1.1        && < 1.6

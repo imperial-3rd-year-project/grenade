@@ -12,9 +12,7 @@ import           Data.Singletons.Prelude.List
 import           GHC.TypeLits
 import qualified Numeric.LinearAlgebra.Static        as SA
 
-
 import           Grenade
-
 import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Pooling
 

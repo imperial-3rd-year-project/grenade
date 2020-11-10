@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4fb62e41a9d9dde8313b5c59a2c4db4286676de3ef1b5f7f9c3eb8527c088011
+-- hash: b2c07d6575397871f24ba9402cb49780a1be0cd621fda2072f136ad2cf857c6d
 
 name:           grenade
 version:        0.1.1
@@ -145,6 +145,7 @@ library
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
+    , random
     , reflection >=0.11.2
     , repa
     , singletons
@@ -219,6 +220,7 @@ test-suite test
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
+    , random
     , reflection
     , repa
     , singletons
@@ -269,6 +271,52 @@ benchmark bench
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
+    , random
+    , reflection >=0.11.2
+    , repa
+    , singletons
+    , split
+    , terminal-progress-bar
+    , vector >=0.11 && <0.13
+  if flag(use-float)
+    cpp-options: -DUSE_FLOAT
+    cc-options: -DUSE_FLOAT
+    build-depends:
+        hmatrix-float
+  else
+    cpp-options: -DUSE_DOUBLE
+    cc-options: -DUSE_DOUBLE
+    build-depends:
+        hmatrix >=0.18 && <0.21
+  default-language: Haskell2010
+
+benchmark bench-layers
+  type: exitcode-stdio-1.0
+  main-is: bench-layers.hs
+  other-modules:
+      Paths_grenade
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall -threaded -O2
+  build-depends:
+      MonadRandom >=0.4 && <0.6
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring ==0.10.*
+    , cereal >=0.5 && <0.6
+    , constraints >=0.10.1
+    , containers >=0.5 && <0.7
+    , criterion >=1.1 && <1.6
+    , data-default
+    , deepseq >=1.4 && <1.5
+    , ghc-prim >=0.5.3
+    , ghc-typelits-knownnat
+    , grenade
+    , mtl
+    , mwc-random >=0.13
+    , parallel
+    , primitive >=0.6 && <0.8
+    , random
     , reflection >=0.11.2
     , repa
     , singletons
@@ -313,6 +361,7 @@ benchmark bench-lstm
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
+    , random
     , reflection >=0.11.2
     , repa
     , singletons
@@ -357,6 +406,7 @@ benchmark bench-util
     , mwc-random >=0.13
     , parallel
     , primitive >=0.6 && <0.8
+    , random
     , reflection >=0.11.2
     , repa
     , singletons

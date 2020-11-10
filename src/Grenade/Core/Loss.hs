@@ -1,10 +1,10 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs     #-}
 
 {--
-Module to define the loss functions and their derivatives. 
+Module to define the loss functions and their derivatives.
 While only the derivatives are needed for backpropagation,
-the loss functions themselves may be useful for measuring 
+the loss functions themselves may be useful for measuring
 progress.
 --}
 
@@ -28,23 +28,23 @@ module Grenade.Core.Loss (
   , categoricalCrossEntropy'
   ) where
 
-import Grenade.Core.Shape
-import Grenade.Core.TrainingTypes
-import Data.Singletons ( SingI )
-import Numeric.LinearAlgebra.HMatrix
-import Numeric.LinearAlgebra.Static
-import Grenade.Utils.LinearAlgebra
+import           Data.Singletons               (SingI)
+import           Grenade.Core.Shape
+import           Grenade.Core.TrainingTypes
+import           Grenade.Utils.LinearAlgebra
+import           Numeric.LinearAlgebra.HMatrix
+import           Numeric.LinearAlgebra.Static
 
 quadratic :: SingI s => S s -> S s -> Double
 quadratic x y = 0.5 * nsum ((x - y) ^ (2 :: Integer))
 
-quadratic' :: SingI s => LossFunction (S s) 
+quadratic' :: SingI s => LossFunction (S s)
 quadratic' = LossFunction (-)
 
 crossEntropy :: SingI s => S s -> S s -> Double
 crossEntropy x y = - (nsum $ y * (log x) + ((nk 1) - y) * (log ((nk 1) - x)))
 
-crossEntropy' :: SingI s => LossFunction (S s) 
+crossEntropy' :: SingI s => LossFunction (S s)
 crossEntropy' = LossFunction $ \x y -> (x - y) / ( ((fromInteger 1) - x) * x )
 
 exponential :: SingI s => Double -> S s -> S s -> Double
