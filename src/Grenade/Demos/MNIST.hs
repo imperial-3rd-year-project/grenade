@@ -33,18 +33,18 @@ loadMNIST = do
   modelData <- B.readFile path
   either fail return $ runGet (get :: Get MNIST) modelData
 
-runNet'' :: MNIST -> UB.Vector Word8 -> String
+runNet'' :: MNIST -> UB.Vector Word8 -> Int -> String
 runNet'' net vec = runNet' net (DV.convert vec) 
 
-runNet' :: MNIST -> V.Vector Word8 -> String
-runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
+runNet' :: MNIST -> V.Vector Word8 -> Int -> String
+runNet' net m d = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
                               in "This number is " ++ show i ++ " with probability " ++ (show (round (p * 100) :: Int)) ++ "%") $ runNet net (conv m)
   where
     getProb :: (Show a, Ord a) => [a] -> (a, Int)
     getProb xs = maximumBy (comparing fst) (Prelude.zip xs [0..])
 
     conv :: V.Vector Word8 -> S ('D2 28 28)
-    conv m = S2D $ fromMaybe (error "") $ SA.create $ shrink_2d_rgba 280 280 28 28 m 
+    conv m = S2D $ fromMaybe (error "") $ SA.create $ shrink_2d_rgba d d 28 28 m 
 
 type MNIST
   = Network
