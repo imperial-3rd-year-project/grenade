@@ -147,7 +147,7 @@ library:
         ghc-options: -O2
     - condition: flag(debug)
       cpp-options: -DDEBUG
-  other-modules:
+  generated-other-modules:
     - Proto.Onnx
     - Proto.Onnx_Fields
   c-sources:

@@ -1,4 +1,4 @@
-cabal-version: 1.24
+cabal-version: 2.0
 
 -- This file has been generated from package.yaml by hpack version 0.34.2.
 --
@@ -128,6 +128,10 @@ library
       Grenade.Utils.OneHot
       Grenade.Utils.Parallel
   other-modules:
+      Paths_grenade
+      Proto.Onnx
+      Proto.Onnx_Fields
+  autogen-modules:
       Proto.Onnx
       Proto.Onnx_Fields
   hs-source-dirs:
