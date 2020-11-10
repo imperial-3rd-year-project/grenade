@@ -20,6 +20,8 @@ import           Data.Kind                      (Type)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
+
+import qualified Numeric.LinearAlgebra          as LA
 import           Numeric.LinearAlgebra.Static   hiding (Seed)
 
 import           Grenade.Core
@@ -86,6 +88,9 @@ data BatchNormGrad :: Nat -- The number of channels of the tensor
             -> R flattenSize -- dbeta
             -> BatchNormGrad channels rows columns
 
+
+-- | NFData instances 
+
 instance NFData (BatchNormTape channels rows columns) where
   rnf TestBatchNormTape = ()
   rnf (TrainBatchNormTape xnorm std mean var) = rnf xnorm `seq` rnf std `seq` rnf mean `seq` rnf var
@@ -98,12 +103,48 @@ instance NFData (BatchNorm channels rows columns momentum) where
   rnf (BatchNorm training bnparams mean var store) 
     = rnf training `seq` rnf bnparams `seq` rnf mean `seq` rnf var `seq` rnf store
 
-instance Show (BatchNorm channels rows columns mom) where
+-- | Show instance
+
+instance Show (BatchNorm channels rows columns momentum) where
   show (BatchNorm _ _ _ _ _) = "Batch Normalization"
 
-instance Serialize (BatchNorm channels rows columns mom) where
-  put = undefined
-  get = undefined
+-- Serialize instances
+
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) 
+  => Serialize (BatchNorm channels rows columns momentum) where
+
+  put (BatchNorm training bnparams mean var store) = do 
+    put training 
+    put bnparams 
+    putListOf put . LA.toList . extract $ mean 
+    putListOf put . LA.toList . extract $ var 
+    put store
+
+  get = do
+    let ch = fromIntegral $ natVal (Proxy :: Proxy channels)
+    let r  = fromIntegral $ natVal (Proxy :: Proxy rows)
+    let co = fromIntegral $ natVal (Proxy :: Proxy columns)
+
+    training <- get 
+    bnparams <- get
+    mean     <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
+    var      <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
+    store    <- get 
+
+    return $ BatchNorm training bnparams mean var store
+
+instance KnownNat flattenSize => Serialize (BatchNormParams flattenSize) where
+  put (BatchNormParams gamma beta) = do 
+    putListOf put . LA.toList . extract $ gamma 
+    putListOf put . LA.toList . extract $ beta 
+  
+  get = do 
+    gamma <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
+    beta  <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
+
+    return $ BatchNormParams gamma beta
+
+-- | Neural network operations
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat (channels * rows * columns)) 
   => UpdateLayer (BatchNorm channels rows columns mom) where
