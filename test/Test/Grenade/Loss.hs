@@ -21,9 +21,6 @@ genShapes =
   let len = Range.linear 0 10
   in  Gen.list len (S1D <$> randomVectorNormalised)
 
-extractVec :: KnownNat n => S ('D1 n) -> [Double]
-extractVec (S1D vec) = toList $ NLA.extract vec
-
 prop_quadratic :: Property
 prop_quadratic = property $ do
   xs <- forAll genShapes

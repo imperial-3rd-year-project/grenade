@@ -157,5 +157,13 @@ benchmarks:
     dependencies:
       - grenade
       - criterion                       >= 1.1        && < 1.6
+  
+  bench-util:
+    main:                bench-util.hs
+    ghc-options:         -Wall -threaded -O2
+    source-dirs:         bench
+    dependencies:
+      - grenade
+      - criterion                       >= 1.1        && < 1.6
 
 

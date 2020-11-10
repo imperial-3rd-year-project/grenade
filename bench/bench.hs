@@ -15,7 +15,6 @@ import qualified Numeric.LinearAlgebra.Static        as SA
 
 import           Grenade
 
-
 import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Pooling
 
@@ -117,8 +116,8 @@ netTrain net0 op n = do
             then S1D $ fromRational 1
             else S1D $ fromRational 0
   let trained = foldl' trainEach net0 (zip inps outs)
-  return trained
+  return $ trained
   where
-    trainEach !network (i, o) = train op network i o
+    trainEach !network (i, o) = fst $ train op network i o quadratic'
     inCircle :: KnownNat n => SA.R n -> (SA.R n, RealNum) -> Bool
     v `inCircle` (o, r) = SA.norm_2 (v - o) <= r

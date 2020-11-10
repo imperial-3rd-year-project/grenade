@@ -15,6 +15,8 @@ import qualified Test.Grenade.Layers.Internal.Pooling
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM
 
+import qualified Test.Grenade.Utils.LinearAlgebra
+
 import Hedgehog.Internal.Runner
 import Hedgehog
 import Hedgehog.Range
@@ -37,6 +39,8 @@ main = disorderMain [
     , Test.Grenade.Layers.Internal.Pooling.tests
 
     , Test.Grenade.Recurrent.Layers.LSTM.tests
+
+    , Test.Grenade.Utils.LinearAlgebra.tests
 
     ]
 
