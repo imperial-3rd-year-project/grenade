@@ -108,15 +108,12 @@ library
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
       Grenade.Layers.Trivial
-<<<<<<< HEAD
-<<<<<<< HEAD
       Grenade.Networks.ResNet18
-=======
-=======
       Grenade.Onnx.Graph
->>>>>>> ae088ac (Helper function that reads an initializer from Onnx graph)
+      Grenade.Onnx.LoadNetwork
       Grenade.Onnx.Onnx
->>>>>>> 24a843f (Parse ONNX model into a SPG)
+      Grenade.Onnx.OnnxLoadable
+      Grenade.Onnx.TrivialLayer
       Grenade.Recurrent
       Grenade.Recurrent.Core
       Grenade.Recurrent.Core.Layer
@@ -314,6 +311,7 @@ benchmark bench
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -351,6 +349,8 @@ benchmark bench-layers
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -415,6 +415,7 @@ benchmark bench-lstm
     , singletons
     , split
     , terminal-progress-bar
+    , text
     , vector >=0.11 && <0.13
   if flag(use-float)
     cpp-options: -DUSE_FLOAT
@@ -452,6 +453,8 @@ benchmark bench-util
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
+    , microlens
+    , microlens-platform
     , mtl
     , mwc-random >=0.13
     , parallel

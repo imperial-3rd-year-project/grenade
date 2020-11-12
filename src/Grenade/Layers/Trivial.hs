@@ -36,6 +36,8 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
+import Grenade.Onnx.TrivialLayer
+
 
 -- | A Trivial layer.
 --
@@ -103,3 +105,6 @@ instance GNum Trivial where
   gFromRational _ = Trivial
 
 
+-------------------- OnnxLoadableTrivial instances --------------------
+instance OnnxLoadableTrivial Trivial where
+  trivialLayer = Trivial
