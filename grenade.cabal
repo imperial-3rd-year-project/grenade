@@ -109,8 +109,12 @@ library
       Grenade.Layers.Tanh
       Grenade.Layers.Trivial
 <<<<<<< HEAD
+<<<<<<< HEAD
       Grenade.Networks.ResNet18
 =======
+=======
+      Grenade.Onnx.Graph
+>>>>>>> ae088ac (Helper function that reads an initializer from Onnx graph)
       Grenade.Onnx.Onnx
 >>>>>>> 24a843f (Parse ONNX model into a SPG)
       Grenade.Recurrent
