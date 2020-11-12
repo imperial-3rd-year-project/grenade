@@ -26,13 +26,6 @@ import           Grenade.Layers.Internal.Shrink (shrink_2d_rgba)
 
 import qualified Numeric.LinearAlgebra.Static as SA
 
-
-loadMNIST :: IO MNIST
-loadMNIST = do
-  path <- getPathForNetwork MNIST
-  modelData <- B.readFile path
-  either fail return $ runGet (get :: Get MNIST) modelData
-
 runNet'' :: MNIST -> UB.Vector Word8 -> Int -> String
 runNet'' net vec = runNet' net (DV.convert vec) 
 

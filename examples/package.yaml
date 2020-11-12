@@ -50,6 +50,8 @@ dependencies:
   - containers
   - deepseq
   - terminal-progress-bar
+  - gloss
+  - convertible
 when:
   condition: flag(use-float)
   then:
@@ -84,6 +86,11 @@ executables:
   mnist:
     ghc-options:       -Wall -threaded -O2
     main:              main/mnist.hs
+
+  mnist-load:
+    ghc-options:       -Wall -threaded -O2
+    main:              main/mnist-load.hs
+
 
   gan-mnist:
     ghc-options:       -Wall -threaded -O2

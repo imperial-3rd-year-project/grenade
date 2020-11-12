@@ -41,27 +41,9 @@ import           Options.Applicative
 import           Unsafe.Coerce 
 
 import           Grenade
+import           Grenade.Demos.MNIST hiding (runNet')
 import           Grenade.Utils.OneHot
 import           Grenade.Layers.Internal.Shrink
-
-type MNIST
-  = Network
-    '[ Convolution 1 10 5 5 1 1, Pooling 2 2 2 2, Relu
-     , Convolution 10 16 5 5 1 1, Pooling 2 2 2 2, Reshape, Relu
-     , FullyConnected 256 80, Logit, FullyConnected 80 10, Logit]
-    '[ 'D2 28 28, 'D3 24 24 10, 'D3 12 12 10, 'D3 12 12 10
-     , 'D3 8 8 16, 'D3 4 4 16, 'D1 256, 'D1 256
-     , 'D1 80, 'D1 80, 'D1 10, 'D1 10]
-
-data MNistLoadOpts = MNistLoadOpts FilePath -- Model path
-
-mnist' :: Parser MNistLoadOpts
-mnist' = MNistLoadOpts <$> argument str  (metavar "MODEL")
-
-netLoad :: FilePath -> IO MNIST
-netLoad modelPath = do
-  modelData <- B.readFile modelPath
-  either fail return $ runGet (get :: Get MNIST) modelData
 
 runNet' :: MNIST -> S ('D2 28 28) -> String
 runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
@@ -69,18 +51,6 @@ runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
   where
     getProb :: (Show a, Ord a) => [a] -> (a, Int)
     getProb xs = maximumBy (comparing fst) (zip xs [0..])
-
-showShape' :: S ('D2 a b) -> String
-showShape' (S2D mm) = 
-  let m  = SA.extract mm
-      ms = toLists m
-      render n' | n' <= 0.2 * 255  = ' '
-                | n' <= 0.4 * 255  = '.'
-                | n' <= 0.6 * 255  = '-'
-                | n' <= 0.8 * 255  = '='
-                | otherwise =  '#'
-      px = (fmap . fmap) render ms
-  in unlines px
 
 data MouseState = MouseDown | MouseUp
 data Canvas = Canvas (S ('D2 224 224)) MouseState MNIST
@@ -133,9 +103,8 @@ draw (S2D arr) x y = S2D $ fromMaybe (error "") $ SA.create m
 
 main :: IO ()
 main = do 
-    MNistLoadOpts modelPath <- execParser (info (mnist' <**> helper) idm)
-    
-    net <- netLoad modelPath
+    mnistPath <- getPathForNetwork MNIST
+    net <- (loadNetwork mnistPath :: IO MNIST)
     putStrLn "Successfully loaded model"
   
     let initialCanvas = Canvas initialMat MouseUp net
