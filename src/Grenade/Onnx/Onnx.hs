@@ -10,13 +10,14 @@ module Grenade.Onnx.Onnx where
 import Data.ProtoLens.Labels ()
 import qualified Proto.Onnx as P
 import Lens.Micro
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Foldable (foldl')
 import qualified Data.Text as T
 
 data Composition = S | P
 
 data SPG (s :: Composition) a where
+  Empty    :: SPG s a
   Node     :: a -> SPG s a
   Series   :: [SPG 'P a] -> SPG 'S a
   Parallel :: [SPG 'S a] -> SPG 'P a
@@ -37,6 +38,9 @@ graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
 graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
 graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
 
+generateInitializerMap :: P.ModelProto -> Map.Map T.Text P.TensorProto
+generateInitializerMap model = foldl' (\map node -> Map.insert (node ^. #name) node map) Map.empty
+                             $ model ^. #graph . #initializer
 
 generateGraph :: P.ModelProto -> (P.GraphProto, SPG 'S P.NodeProto)
 generateGraph model = (graphProto, graph)
