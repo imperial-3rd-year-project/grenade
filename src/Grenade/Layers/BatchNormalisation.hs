@@ -17,12 +17,14 @@ module Grenade.Layers.BatchNormalisation where
 
 import           Control.DeepSeq
 import           Data.Kind                      (Type)
+import           Data.Maybe                     (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
 
 import qualified Numeric.LinearAlgebra          as LA
 import           Numeric.LinearAlgebra.Static   hiding (Seed)
+import           Numeric.LinearAlgebra.Static   as H
 
 import           Grenade.Core
 import           Grenade.Layers.Internal.Update
@@ -253,3 +255,55 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
           std'        = dvmap (\x -> 1 / (n * x)) std :: R i
           dx          = map (std' *) (zipWith (-) (map (\x -> x - dx_norm_sum) dx_norm_N) dx_sum')
       in ([BatchNormGrad running_mean' running_var' dgamma dbeta], map S1D dx)
+
+instance (KnownNat (i * j), KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownNat j, (channels * rows * columns) ~ (i * j), (i * j) ~ flattenSize, rows ~ i, columns ~ j)
+  => Layer (BatchNorm channels rows columns momentum) ('D2 i j) ('D2 i j) where
+
+  type Tape (BatchNorm channels rows columns momentum) ('D2 i j) ('D2 i j) = BatchNormTape channels rows columns
+
+  runForwards (BatchNorm True _ _ _ _) _
+    = error "Cannot train use batch size of 1 with BatchNorm layer during training"
+
+  runForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar _) (S2D x')
+    = let ε      = 0.000001
+          x      = sflatten x' :: R (i * j)
+          std    = vsqrt $ dvmap (+ε) runningVar
+          x_norm = (x - runningMean) / std
+          out    = gamma * x_norm + beta
+      in (TestBatchNormTape, S2D (sreshape out))
+
+  runBatchForwards bn@(BatchNorm False _ _ _ _) xs
+    = let outs = map (snd . runForwards bn) xs
+      in ([TestBatchNormTape], outs)
+
+  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) xs
+    = let ε                = 0.000001
+          m                = fromIntegral $ natVal (Proxy :: Proxy momentum)
+          S2D sample_mean' = bmean xs
+          S2D sample_var'  = bvar' (S2D sample_mean') xs
+          sample_mean      = sflatten sample_mean'
+          sample_var       = sflatten sample_var'
+          running_mean'    = m * runningMean + (1 - m) * sample_mean
+          running_var'     = m * runningVar + (1 - m) * sample_var
+          std              = vsqrt $ dvmap (+ε) sample_var :: R (i * j)
+          x_centered       = map (\(S2D x) -> sflatten (x - sample_mean')) xs :: [R (i * j)]
+          x_norm           = map (/ std) x_centered
+          out              = map (\x -> S2D $ sreshape $ gamma * x + beta) x_norm :: [S ('D2 i j)]
+      in ([TrainBatchNormTape x_norm std running_mean' running_var'], out)
+
+  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
+    = let douts'      = map (\(S2D v) -> sflatten v) douts :: [R (i * j)]
+          dgamma_int  = zipWith (*) douts' x_norm
+          dgamma      = sum dgamma_int
+          dbeta       = sum douts'
+          dx_norm     = map (* gamma) douts' -- :: [R i]
+
+          n           = fromIntegral $ length douts :: Double
+          dx_sum      = sum $ zipWith (*) x_norm dx_norm -- :: R i
+          dx_sum'     = map (* dx_sum) x_norm -- :: [R i]
+          dx_norm_sum = sum dx_norm -- :: R i
+          dx_norm_N   = map (vscale n) dx_norm -- :: [R i]
+          std'        = dvmap (\x -> 1 / (n * x)) std -- :: R i
+          dx          = map (std' *) (zipWith (-) (map (\x -> x - dx_norm_sum) dx_norm_N) dx_sum')
+          dx'         = map (fromJust . fromStorable . H.extract) dx :: [S ('D2 i j)]
+      in ([BatchNormGrad running_mean' running_var' dgamma dbeta], dx')

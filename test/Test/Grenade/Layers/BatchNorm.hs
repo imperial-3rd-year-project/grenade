@@ -21,6 +21,7 @@ import           Grenade.Utils.LinearAlgebra
 
 import           Numeric.LinearAlgebra.Data        as D hiding (R, (===))
 import           Numeric.LinearAlgebra.Static      as H hiding ((===))
+import           Data.Maybe                        (fromJust)
 
 import           GHC.TypeLits
 import           Hedgehog
@@ -29,14 +30,24 @@ import qualified Hedgehog.Range                    as Range
 
 import           Test.Hedgehog.Hmatrix
 
+import Debug.Trace
+
 convToList = D.toList . H.extract
 
-batchNormLayer :: Bool -> BatchNorm 1 1 3 90
-batchNormLayer training = 
+batchNormLayer1D :: Bool -> BatchNorm 1 1 3 90
+batchNormLayer1D training = 
   let gamma        = H.fromList [1, 1, 1]                :: R 3
       beta         = H.fromList [0, 0, 0]                :: R 3
       running_mean = H.fromList [-0.143, -0.135, -0.126] :: R 3
       running_var  = H.fromList [1.554, 1.550, 1.574]    :: R 3
+  in  BatchNorm training (BatchNormParams gamma beta) running_mean running_var mkListStore
+
+batchNormLayer2D :: Bool -> BatchNorm 1 3 3 90
+batchNormLayer2D training = 
+  let gamma        = H.fromList [1, 1, 1, 1, 1, 1, 1, 1, 1]                                            :: R 9
+      beta         = H.fromList [0, 0, 0, 0, 0, 0, 0, 0, 0]                                            :: R 9
+      running_mean = H.fromList [-0.143, -0.135, -0.126, 0.308, -0.349, -0.420, -0.514, -1.566, 0.400] :: R 9
+      running_var  = H.fromList [1.554, 1.550, 1.574, 1.908, 0.453, 0.643, 0.701, 0.393, 0.631]        :: R 9
   in  BatchNorm training (BatchNormParams gamma beta) running_mean running_var mkListStore
 
 prop_batchnorm_initialisation = withTests 1 $ property $ do
@@ -53,7 +64,7 @@ prop_batchnorm_initialisation = withTests 1 $ property $ do
   ones   === convToList running_var
 
 prop_batchnorm_1D_training_forward_pass_tf = withTests 1 $ property $ do
-  let bn = batchNormLayer True :: BatchNorm 1 1 3 90 
+  let bn = batchNormLayer1D True :: BatchNorm 1 1 3 90 
 
       batch1 = map (S1D . H.fromList) [[0.5, 0.1, 0.5], [0.3, 0.2, 0.3], [0.2, 0.01, 0.3]] :: [S ('D1 3)]
       batch2 = map (S1D . H.fromList) [[0.63733305, 0.36265903, 0.23532884], [0.32620134, 0.75205251, 0.94982708], [0.82240409, 0.41710665, 0.52376456], [0.88524989, 0.88508441, 0.92493869], [0.88527866, 0.74423246, 0.91648224]] :: [S ('D1 3)]
@@ -68,24 +79,32 @@ prop_batchnorm_1D_training_forward_pass_tf = withTests 1 $ property $ do
   assert . and $ zipWith allClose output1 refOutput1
   assert . and $ zipWith allClose output2 refOutput2
 
-prop_batchnorm_1D_testing_forward_pass_tf = withTests 1 $ property $ do
-  let bn = batchNormLayer False :: BatchNorm 1 1 3 90 
+prop_batchnorm_2D_training_forward_pass_tf = withTests 1 $ property $ do
+  let bn = batchNormLayer2D True :: BatchNorm 1 3 3 90 
 
-      batch1 = map (S1D . H.fromList) [[0.5, 0.1, 0.5], [0.3, 0.2, 0.3], [0.2, 0.01, 0.3]] :: [S ('D1 3)]
-      batch2 = map (S1D . H.fromList) [[0.63733305, 0.36265903, 0.23532884], [0.32620134, 0.75205251, 0.94982708], [0.82240409, 0.41710665, 0.52376456], [0.88524989, 0.88508441, 0.92493869], [0.88527866, 0.74423246, 0.91648224]] :: [S ('D1 3)]
+      batch1 = map (S2D . fromJust . H.create . D.fromLists) [[[0.970, 0.182, 0.557],[0.004, 0.997, 0.408],[0.583, 0.131, 0.914]],[[0.070, 0.028, 0.044],[0.872, 0.323, 0.402],[0.599, 0.18374973, 0.391]],[[0.942, 0.243, 0.506],[0.583, 0.736, 0.833],[0.539, 0.151, 0.560]]] :: [S ('D2 3 3)]
 
       (_, output1) = runBatchForwards bn batch1
-      (_, output2) = runBatchForwards bn batch2
 
       -- these reference values were produced using Python and tf.nn.batch_normalization
-      refOutput1 = map (S1D . H.fromList) [[0.51580474, 0.18875648, 0.49896701], [0.3553678, 0.26907839, 0.33955263], [0.27514934, 0.11646677, 0.33955263]] :: [S ('D1 3)]
-      refOutput2 = map (S1D . H.fromList) [[0.6259712, 0.39972922, 0.28800506], [0.37638612, 0.71249749, 0.85751153], [0.77443235, 0.44346259, 0.51790907], [0.82484629, 0.81935125, 0.8376737 ], [0.82486937, 0.70621628, 0.8309333 ]] :: [S ('D1 3)]
+      refOutput1 = map (S2D . fromJust . H.create . D.fromLists) [[[ 0.74034717,  0.34263732,  0.81472356],  [-1.33649888,  1.12318896, -0.6921782 ],  [ 0.36762632, -1.11408615,  1.34145069]], [[-1.41368015, -1.35949647, -1.40843169],  [ 1.06864492, -1.30578225, -0.72191378],  [ 0.99784287,  1.30933495, -1.05847649]], [[ 0.67333299,  1.01685915,  0.59370813],  [ 0.26785396,  0.18259329,  1.41409199],  [-1.36546919, -0.1952488 , -0.28297421]]] :: [S ('D2 3 3)]
 
   assert . and $ zipWith allClose output1 refOutput1
-  assert . and $ zipWith allClose output2 refOutput2
+
+prop_batchnorm_2D_testing_forward_pass_tf = withTests 1 $ property $ do
+  let bn = batchNormLayer2D False :: BatchNorm 1 3 3 90 
+
+      batch1 = map (S2D . fromJust . H.create . D.fromLists) [[[0.970, 0.182, 0.557],[0.004, 0.997, 0.408],[0.583, 0.131, 0.914]],[[0.070, 0.028, 0.044],[0.872, 0.323, 0.402],[0.599, 0.18374973, 0.391]],[[0.942, 0.243, 0.506],[0.583, 0.736, 0.833],[0.539, 0.151, 0.560]]] :: [S ('D2 3 3)]
+
+      (_, output1) = runBatchForwards bn batch1
+
+      -- these reference values were produced using Python and tf.nn.batch_normalization
+      refOutput1 = map (S2D . fromJust . H.create . D.fromLists) [[[ 0.89283153,  0.25462045,  0.54440011],  [-0.22008188,  1.99984105,  1.03258191],  [ 1.31022931,  2.7069798 ,  0.64706528]], [[ 0.17086533,  0.13092471,  0.13550222],  [ 0.4083098 ,  0.99843476,  1.02509943],  [ 1.3293393 ,  2.79112385, -0.01132994]], [[ 0.87037036,  0.30361681,  0.50374944],  [ 0.19908723,  1.61205612,  1.56259074],  [ 1.25767681,  2.73888292,  0.2014211 ]]] :: [S ('D2 3 3)]
+
+  assert . and $ zipWith allClose output1 refOutput1
 
 prop_batchnorm_1D_testing_forward_pass_paper = property $ do
-  let bn = batchNormLayer True :: BatchNorm 1 1 3 90 
+  let bn = batchNormLayer1D True :: BatchNorm 1 1 3 90 
       BatchNorm _ (BatchNormParams γ β) _ _ _ = bn
 
   batch :: [S ('D1 3)] <- forAll . sequence $ replicate 5 genOfShape 
@@ -96,7 +115,7 @@ prop_batchnorm_1D_testing_forward_pass_paper = property $ do
   assert . and $ zipWith allClose ys refys
 
 prop_batchnorm_1D_testing_backward_pass = property $ do
-  let bn = batchNormLayer True :: BatchNorm 1 1 3 90 
+  let bn = batchNormLayer1D True :: BatchNorm 1 1 3 90 
       BatchNorm _ (BatchNormParams γ _) _ _ _ = bn
 
   sxs    :: [S ('D1 3)] <- forAll $ Gen.list (Range.singleton 32) genOfShape

@@ -1,14 +1,20 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Grenade.Utils.LinearAlgebra
     ( bmean
     , bvar
     , bvar'
     , vsqrt
+    , msqrt
+    , sreshape
+    , sflatten
     , vscale
     , vadd
     , vflatten
@@ -22,11 +28,13 @@ module Grenade.Utils.LinearAlgebra
 
 import           Data.List                    (foldl', foldl1')
 import           Data.Maybe                   (fromJust)
+import           Data.Proxy
 import           Data.Singletons
 import           GHC.TypeLits
 import           Grenade.Core.Shape
 import           Grenade.Types
 import           Numeric.LinearAlgebra        (flatten, fromRows, sumElements)
+import           Numeric.LinearAlgebra.Data   as D hiding (L, R)
 import           Numeric.LinearAlgebra.Static
 
 sumV :: (KnownNat n) => R n -> RealNum
@@ -87,8 +95,20 @@ vadd x v = dvmap (+x) v
 vsqrt :: KnownNat n => R n -> R n
 vsqrt v = dvmap sqrt v
 
+msqrt :: (KnownNat n, KnownNat m) => L m n -> L m n
+msqrt m = dmmap sqrt m
+
 vflatten :: (KnownNat m, KnownNat n) => [R n] -> R m
 vflatten xs = fromJust . create . flatten . fromRows $ map extract xs
+
+sflatten :: (KnownNat m, KnownNat n) => L m n -> R (m * n)
+sflatten = fromJust . create . flatten . extract
+
+sreshape :: forall m n. (KnownNat m, KnownNat n) => R (m * n) -> L m n
+sreshape v
+  = let rows = fromIntegral $ natVal (Proxy :: Proxy m)
+    in  fromJust . create . D.reshape rows . extract $ v
+
 
 -- bsqrt :: SingI s => [S s] -> [S s]
 -- bsqrt xs = map msqrt xs
