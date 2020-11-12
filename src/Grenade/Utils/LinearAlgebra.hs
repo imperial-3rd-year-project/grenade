@@ -1,11 +1,13 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE GADTs        #-}
-{-# LANGUAGE RankNTypes   #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Grenade.Utils.LinearAlgebra
     ( bmean
     , bvar
+    , bvar'
     , vsqrt
     , vscale
     , vadd
@@ -18,13 +20,13 @@ module Grenade.Utils.LinearAlgebra
     , extractV
     ) where
 
-import           Data.List                    (foldl1')
+import           Data.List                    (foldl', foldl1')
 import           Data.Maybe                   (fromJust)
 import           Data.Singletons
 import           GHC.TypeLits
 import           Grenade.Core.Shape
 import           Grenade.Types
-import           Numeric.LinearAlgebra        (flatten, sumElements, fromRows)
+import           Numeric.LinearAlgebra        (flatten, fromRows, sumElements)
 import           Numeric.LinearAlgebra.Static
 
 sumV :: (KnownNat n) => R n -> RealNum
@@ -46,23 +48,32 @@ nsum (S2D x) = sumElements $ extract x
 nsum (S3D x) = sumElements $ extract x
 
 -- | Calculate elementwise mean of list of matrices
-bmean :: SingI s => [S s] -> S s
+bmean :: forall s. SingI s => [S s] -> S s
 bmean xs
-  = let !l = fromIntegral $ length xs :: Double
-    in  case foldl1' (+) xs of
-          S1D x -> S1D $ dvmap (/ l) x
-          S2D x -> S2D $ dmmap (/ l) x
-          S3D x -> S3D $ dmmap (/ l) x
+  = let (!m, !l) = foldl' (\(m, l) x -> (m + x, l + 1)) (0 :: S s, 0) xs :: (S s, Int)
+    in  case (m, l) of
+          (S1D x, _) -> S1D $ dvmap (/ fromIntegral l) x
+          (S2D x, _) -> S2D $ dmmap (/ fromIntegral l) x
+          (S3D x, _) -> S3D $ dmmap (/ fromIntegral l) x
 
 -- | Calculate element wise variance
-bvar :: SingI s => [S s] -> S s
+bvar :: forall s. SingI s => [S s] -> S s
 bvar xs
-  = let !l = fromIntegral $ length xs :: Double
-        !m = bmean xs
-    in  case foldl1' (+) $ map (\x -> (x - m) ** 2) xs of
-          S1D x -> S1D $ dvmap (/ l) x
-          S2D x -> S2D $ dmmap (/ l) x
-          S3D x -> S3D $ dmmap (/ l) x
+  = let !m       = bmean xs
+        (!v, !l) = foldl' (\(v, l) x -> (v + (x - m)**2, l + 1)) (0 :: S s, 0) xs :: (S s, Int)
+    in  case (v, l) of
+          (S1D x, _) -> S1D $ dvmap (/ fromIntegral l) x
+          (S2D x, _) -> S2D $ dmmap (/ fromIntegral l) x
+          (S3D x, _) -> S3D $ dmmap (/ fromIntegral l) x
+
+-- | Calculate element wise variance, with the mean precalculated
+bvar' :: forall s. SingI s => S s -> [S s] -> S s
+bvar' m xs
+  = let (!v, !l) = foldl' (\(v, l) x -> (v + (x - m)**2, l + 1)) (0 :: S s, 0) xs :: (S s, Int)
+    in  case (v, l) of
+          (S1D x, _) -> S1D $ dvmap (/ fromIntegral l) x
+          (S2D x, _) -> S2D $ dmmap (/ fromIntegral l) x
+          (S3D x, _) -> S3D $ dmmap (/ fromIntegral l) x
 
 extractV :: S ('D1 x) -> R x
 extractV (S1D v) = v

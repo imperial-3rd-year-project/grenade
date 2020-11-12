@@ -3,14 +3,14 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Grenade.Layers.BatchNormalisation where
@@ -67,8 +67,8 @@ data BatchNorm :: Nat -- The number of channels of the tensor
             -> ListStore (BatchNormParams flattenSize) -- momentum store
             -> BatchNorm channels rows columns momentum
 
-data BatchNormParams :: Nat -> Type where 
-  BatchNormParams :: KnownNat flattenSize 
+data BatchNormParams :: Nat -> Type where
+  BatchNormParams :: KnownNat flattenSize
                   => R flattenSize -- gamma
                   -> R flattenSize -- beta
                   -> BatchNormParams flattenSize
@@ -89,18 +89,18 @@ data BatchNormGrad :: Nat -- The number of channels of the tensor
             -> BatchNormGrad channels rows columns
 
 
--- | NFData instances 
+-- | NFData instances
 
 instance NFData (BatchNormTape channels rows columns) where
   rnf TestBatchNormTape = ()
   rnf (TrainBatchNormTape xnorm std mean var) = rnf xnorm `seq` rnf std `seq` rnf mean `seq` rnf var
 
 instance NFData (BatchNormParams flattenSize) where
-  rnf (BatchNormParams gamma beta) 
+  rnf (BatchNormParams gamma beta)
     = rnf gamma `seq` rnf beta
 
 instance NFData (BatchNorm channels rows columns momentum) where
-  rnf (BatchNorm training bnparams mean var store) 
+  rnf (BatchNorm training bnparams mean var store)
     = rnf training `seq` rnf bnparams `seq` rnf mean `seq` rnf var `seq` rnf store
 
 -- | Show instance
@@ -110,14 +110,14 @@ instance Show (BatchNorm channels rows columns momentum) where
 
 -- Serialize instances
 
-instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) 
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => Serialize (BatchNorm channels rows columns momentum) where
 
-  put (BatchNorm training bnparams mean var store) = do 
-    put training 
-    put bnparams 
-    putListOf put . LA.toList . extract $ mean 
-    putListOf put . LA.toList . extract $ var 
+  put (BatchNorm training bnparams mean var store) = do
+    put training
+    put bnparams
+    putListOf put . LA.toList . extract $ mean
+    putListOf put . LA.toList . extract $ var
     put store
 
   get = do
@@ -125,20 +125,20 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
     let r  = fromIntegral $ natVal (Proxy :: Proxy rows)
     let co = fromIntegral $ natVal (Proxy :: Proxy columns)
 
-    training <- get 
+    training <- get
     bnparams <- get
     mean     <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
     var      <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
-    store    <- get 
+    store    <- get
 
     return $ BatchNorm training bnparams mean var store
 
 instance KnownNat flattenSize => Serialize (BatchNormParams flattenSize) where
-  put (BatchNormParams gamma beta) = do 
-    putListOf put . LA.toList . extract $ gamma 
-    putListOf put . LA.toList . extract $ beta 
-  
-  get = do 
+  put (BatchNormParams gamma beta) = do
+    putListOf put . LA.toList . extract $ gamma
+    putListOf put . LA.toList . extract $ beta
+
+  get = do
     gamma <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
     beta  <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
 
@@ -146,12 +146,12 @@ instance KnownNat flattenSize => Serialize (BatchNormParams flattenSize) where
 
 -- | Neural network operations
 
-instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat (channels * rows * columns)) 
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat (channels * rows * columns))
   => UpdateLayer (BatchNorm channels rows columns mom) where
 
   type Gradient (BatchNorm channels rows columns mom) = BatchNormGrad channels rows columns
   type MomentumStore (BatchNorm channels rows columns mom) = ListStore (BatchNormParams (channels * rows * columns))
-  
+
   reduceGradient = head
 
   runUpdate opt@OptSGD{} x@(BatchNorm training (BatchNormParams oldGamma oldBeta) _ _ store) (BatchNormGrad runningMean runningVar dGamma dBeta)
@@ -170,7 +170,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, Know
 
   runSettingsUpdate set _ = undefined
 
-instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat flattenSize, flattenSize ~ (channels * rows * columns)) 
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat flattenSize, flattenSize ~ (channels * rows * columns))
   => LayerOptimizerData (BatchNorm channels rows columns mom) (Optimizer 'SGD) where
 
   type MomentumDataType (BatchNorm channels rows columns mom) (Optimizer 'SGD) = BatchNormParams (channels * rows * columns)
@@ -178,7 +178,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, Know
   setData opt x store = setListStore opt x store . return
   newData _ _ = BatchNormParams (konst 0) (konst 0)
 
-instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat flattenSize, flattenSize ~ (channels * rows * columns)) 
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat flattenSize, flattenSize ~ (channels * rows * columns))
   => LayerOptimizerData (BatchNorm channels rows columns mom) (Optimizer 'Adam) where
 
   type MomentumDataType (BatchNorm channels rows columns mom) (Optimizer 'Adam) = BatchNormParams (channels * rows * columns)
@@ -191,7 +191,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => RandomLayer (BatchNorm channels rows columns momentum) where
   createRandomWith _ _ = pure initBatchNorm
 
-initBatchNorm :: forall channels rows columns momentum. 
+initBatchNorm :: forall channels rows columns momentum.
   (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => BatchNorm channels rows columns momentum
 initBatchNorm =
@@ -229,7 +229,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
     = let ε               = 0.000001
           m               = fromIntegral $ natVal (Proxy :: Proxy momentum)
           S1D sample_mean = bmean xs
-          S1D sample_var  = bvar xs
+          S1D sample_var  = bvar' (S1D sample_mean) xs
           running_mean'   = m * runningMean + (1 - m) * sample_mean
           running_var'    = m * runningVar + (1 - m) * sample_var
           std             = vsqrt $ dvmap (+ε) sample_var
@@ -246,10 +246,10 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
           dx_norm     = map (* gamma) douts' :: [R i]
 
           n           = fromIntegral $ length douts :: Double
-          dx_sum      = sum $ zipWith (*) x_norm dx_norm :: R i -- (dx_norm * x_norm).sum(axis=0)
-          dx_sum'     = map (* dx_sum) x_norm :: [R i]          -- x_norm * (dx_norm * x_norm).sum(axis=0))   
-          dx_norm_sum = sum dx_norm :: R i                      -- dx_norm.sum(axis=0)
-          dx_norm_N   = map (vscale n) dx_norm :: [R i]         -- N * dx_norm
-          std'        = dvmap (\x -> 1 / (n * x)) std :: R i    -- 1/N / std
+          dx_sum      = sum $ zipWith (*) x_norm dx_norm :: R i
+          dx_sum'     = map (* dx_sum) x_norm :: [R i]
+          dx_norm_sum = sum dx_norm :: R i
+          dx_norm_N   = map (vscale n) dx_norm :: [R i]
+          std'        = dvmap (\x -> 1 / (n * x)) std :: R i
           dx          = map (std' *) (zipWith (-) (map (\x -> x - dx_norm_sum) dx_norm_N) dx_sum')
       in ([BatchNormGrad running_mean' running_var' dgamma dbeta], map S1D dx)
