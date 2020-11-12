@@ -10,6 +10,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-|
 Module      : Grenade.Core.Network
 Description : Merging layer for parallel network composition
@@ -31,7 +32,9 @@ import           GHC.Generics
 import           Data.Kind       (Type)
 #endif
 
+import           Data.ProtoLens.Labels ()
 import           Grenade.Core
+import           Grenade.Onnx.OnnxLoadable
 
 
 -- | A Merging layer.
@@ -82,3 +85,10 @@ instance (GNum x, GNum y) => GNum (Merge x y) where
   n |* (Merge x y) = Merge (n |* x) (n |* y)
   (Merge x y) |+ (Merge x2 y2) = Merge (x |+ x2) (y |+ y2)
   gFromRational r = Merge (gFromRational r) (gFromRational r)
+
+
+-------------------- OnnxLoadable instances --------------------
+
+instance OnnxLoadableParallel Merge where
+  onnxOpTypeName _ = "Add"
+  mkParallelLayer = Merge
