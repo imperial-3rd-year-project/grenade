@@ -17,7 +17,6 @@ import qualified Data.Text as T
 data Composition = S | P
 
 data SPG (s :: Composition) a where
-  Empty    :: SPG s a
   Node     :: a -> SPG s a
   Series   :: [SPG 'P a] -> SPG 'S a
   Parallel :: [SPG 'S a] -> SPG 'P a

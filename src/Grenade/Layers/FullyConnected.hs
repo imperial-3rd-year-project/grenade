@@ -24,7 +24,6 @@ module Grenade.Layers.FullyConnected (
 
 import           Control.DeepSeq
 import           Control.Monad.Primitive        (PrimBase, PrimState)
-import           Control.Monad
 import           Data.Reflection                (reifyNat)
 import           GHC.Generics                   (Generic)
 import           GHC.TypeLits
@@ -33,7 +32,6 @@ import           System.Random.MWC              hiding (create)
 import           Data.Singletons.TypeLits       (SNat (..))
 #endif
 import           Data.List                      (foldl1')
-import qualified Data.Map                       as Map
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -46,12 +44,11 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Update
+import           Grenade.Onnx.Graph
 import           Grenade.Onnx.Onnx
 import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
-
-import qualified Proto.Onnx                     as P
 
 import           Lens.Micro
 
@@ -161,30 +158,17 @@ randomFullyConnected m gen = do
         o = natVal (Proxy :: Proxy o)
 
 
-instance (KnownNat i, KnownNat o, KnownNat (i*o)) => OnnxLoadable (FullyConnected i o) where
-  loadOnnx initializers (Node node) = do
-    node `hasType` "Geem"
-
-    case (node ^. #input) of
-      [_, b, c] -> undefined
-
-      _         -> mzero
+-- TODO: Add support for attributes beta, transB
+instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
+  loadOnnx inits (Node node) = node `hasType` "Geem" >> case (node ^. #input) of
+    [_, b, c] -> do
+      loadedB <- readInitializerMatrix inits b
+      loadedC <- readInitializerVector inits c
+      return (FullyConnected (FullyConnected' loadedC loadedB) mkListStore, Series [])
+    _         -> Nothing
+  loadOnnx inits (Series ((Node node) : ns)) = fmap (Series ns <$) (loadOnnx inits $ Node node)
+  loadOnnx _ _ = Nothing
       
-  -- Check if node type is Gemm, then A and B are matrices being multiplied, C is bias vector
-  -- Check that A is input and B kind initialiser or vice versa
-  -- Check dimensions of A and B --- constant one has size o x i
-  -- Check dimensions of C       --- size o
-  -- Load matrices
-  -- ListStore for momentum ????
-  -- return (loaded layer, Empty)
-    
-
---loadWeights :: (KnownNat i, KnownNat o)
---            => SPG s P.NodeProto -> Maybe (FullyConnected i o, SPG s P.NodeProto)
---loadWeights (Node node)     = 
---loadWeights (Series (n:ns)) = (\(fc, _) -> (fc, Series ns)) <$> loadWeights n
---loadWeights _               = Nothing
-
 -------------------- DynamicNetwork instance --------------------
 
 instance (KnownNat i, KnownNat o) => FromDynamicLayer (FullyConnected i o) where
