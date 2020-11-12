@@ -4,6 +4,7 @@ module Grenade.Core.NetworkSettings
     ) where
 
 
-newtype NetworkSettings = NetworkSettings
+data NetworkSettings = NetworkSettings
   { setDropoutActive :: Bool
+  , trainingActive   :: Bool
   }

@@ -168,7 +168,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, Know
           newStore                                                                 = setData opt x store [BatchNormParams newMGamma newMBeta, BatchNormParams newVGamma newVBeta]
       in  BatchNorm training (BatchNormParams newGamma newBeta) runningMean runningVar newStore
 
-  runSettingsUpdate set _ = undefined
+  runSettingsUpdate NetworkSettings{trainingActive=training} (BatchNorm _ bnparams mean var store) = BatchNorm training bnparams mean var store
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat flattenSize, flattenSize ~ (channels * rows * columns))
   => LayerOptimizerData (BatchNorm channels rows columns mom) (Optimizer 'SGD) where
