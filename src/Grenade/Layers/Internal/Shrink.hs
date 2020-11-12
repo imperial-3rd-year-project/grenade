@@ -49,6 +49,7 @@ shrink_2d_rgba rows cols rows' cols' vec
       
       let matVec = S.unsafeFromForeignPtr0 outPtr outMatSize
       return (U.matrixFromVector U.RowMajor rows' cols' matVec)
+--{-# INLINE shrink_2d_rgba #-}
 
 foreign import ccall unsafe
     shrink_2d_cpu :: Ptr RealNum -> Int -> Int -> Int -> Int -> Ptr RealNum -> IO ()

@@ -30,6 +30,7 @@ module Grenade.Core.Shape (
   , randomOfShape
   , fromStorable
   , nk
+  , visualise2D
   ) where
 
 #if MIN_VERSION_singletons(2,6,0)
@@ -47,6 +48,7 @@ import qualified Data.Vector.Storable         as V
 import           GHC.TypeLits                 hiding (natVal)
 import qualified Numeric.LinearAlgebra        as NLA
 import qualified Numeric.LinearAlgebra        as D
+import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
 import qualified Numeric.LinearAlgebra.Static as H
 import qualified Numeric.LinearAlgebra.Devel  as U
@@ -234,3 +236,16 @@ nk x = case (sing :: Sing x) of
 
   D3Sing SNat SNat SNat ->
     S3D (konst x)
+
+visualise2D :: S ('D2 a b) -> Double -> String
+visualise2D (S2D mm) max = 
+  let m  = H.extract mm
+      ms = NLAD.toLists m
+      render n' | n' <= 0.2 * max  = ' '
+                | n' <= 0.4 * max  = '.'
+                | n' <= 0.6 * max  = '-'
+                | n' <= 0.8 * max  = '='
+                | otherwise =  '#'
+      px = (fmap . fmap) render ms
+  in unlines px
+
