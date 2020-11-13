@@ -55,7 +55,7 @@ import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Trivial
 
 import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.TrivialLayer
+import           Grenade.Onnx.ActivationLayer
 
 -- | Reshape Layer
 --
@@ -208,5 +208,5 @@ instance GNum Reshape where
 instance OnnxOperator Reshape where
   onnxOpTypeNames _ = ["Flatten", "Reshape"]
 
-instance OnnxLoadableTrivial Reshape where
-  trivialLayer = Reshape
+instance OnnxLoadableActivation Reshape where
+  activationLayer = Reshape

@@ -37,7 +37,7 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
-import           Grenade.Onnx.TrivialLayer
+import           Grenade.Onnx.ActivationLayer
 import           Grenade.Onnx.OnnxLoadable
 
 
@@ -137,5 +137,5 @@ instance GNum Relu where
 instance OnnxOperator Relu where
   onnxOpTypeNames _ = ["Relu"]
 
-instance OnnxLoadableTrivial Relu where
-  trivialLayer = Relu
+instance OnnxLoadableActivation Relu where
+  activationLayer = Relu

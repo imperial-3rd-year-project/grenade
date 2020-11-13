@@ -36,6 +36,8 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
+import           Grenade.Onnx.BypassLayer
+
 
 -- | A Trivial layer.
 --
@@ -101,3 +103,6 @@ instance GNum Trivial where
   _ |* Trivial = Trivial
   _ |+ Trivial  = Trivial
   gFromRational _ = Trivial
+
+instance OnnxLoadableBypass Trivial where
+  bypassLayer = Trivial

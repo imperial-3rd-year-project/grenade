@@ -38,7 +38,7 @@ import           Grenade.Layers.Internal.Pooling
 import           Numeric.LinearAlgebra.Static    as LAS hiding (build, toRows, (|||))
 
 import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.TrivialLayer
+import           Grenade.Onnx.ActivationLayer
 
 -- | A pooling layer for a neural network.
 --
@@ -154,5 +154,5 @@ instance GNum (Pooling k k' s s') where
 instance OnnxOperator (Pooling a b c d) where
   onnxOpTypeNames _ = ["MaxPool"]
 
-instance OnnxLoadableTrivial (Pooling a b c d) where
-  trivialLayer = Pooling
+instance OnnxLoadableActivation (Pooling a b c d) where
+  activationLayer = Pooling
