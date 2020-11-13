@@ -24,6 +24,7 @@ data LossMetric = Quadratic
                 | KullbackLeibler
                 | GenKullbackLeibler
                 | ItakuraSaito
+                | CategoricalCrossEntropy
   deriving Show
 
 data TrainingOptions

@@ -102,12 +102,13 @@ validate' :: SingI (Last shapes)
           => Network layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
 validate' net (TrainingData v vs) metric
   = case metric of
-      Quadratic          -> validateWithLoss quadratic
-      CrossEntropy       -> validateWithLoss crossEntropy
-      Exponential        -> validateWithLoss (exponential 1)
-      Hellinger          -> validateWithLoss hellinger
-      KullbackLeibler    -> validateWithLoss kullbackLeibler
-      GenKullbackLeibler -> validateWithLoss genKullbackLeibler
-      ItakuraSaito       -> validateWithLoss itakuraSaito
+      Quadratic               -> validateWithLoss quadratic
+      CrossEntropy            -> validateWithLoss crossEntropy
+      Exponential             -> validateWithLoss (exponential 1)
+      Hellinger               -> validateWithLoss hellinger
+      KullbackLeibler         -> validateWithLoss kullbackLeibler
+      GenKullbackLeibler      -> validateWithLoss genKullbackLeibler
+      ItakuraSaito            -> validateWithLoss itakuraSaito
+      CategoricalCrossEntropy -> validateWithLoss categoricalCrossEntropy
   where
     validateWithLoss l = (/ fromIntegral v) $ foldl' (\n (x, y) -> n + l (runNet net x) y) 0 vs

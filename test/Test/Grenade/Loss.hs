@@ -204,5 +204,49 @@ prop_itakuraSaito' = property $ do
   costs === costs'
 
 
+
+prop_categoricalCrossEntropy :: Property
+prop_categoricalCrossEntropy = property $ do
+  xs <- forAll genShapes
+  ys <- forAll genShapes
+  let zs = zip xs ys
+  let costs  = map (uncurry categoricalCrossEntropy) zs
+  let xs'    = map extractVec xs
+  let ys'    = map extractVec ys
+  let f      = \(x, y) -> -1 * (sum $ zipWith (\a b -> b * log a) x y)
+  let costs' = map f (zip xs' ys')
+  costs === costs'
+
+
+
+prop_categoricalCrossEntropy' :: Property
+prop_categoricalCrossEntropy' = property $ do
+  xs <- forAll genShapes
+  ys <- forAll genShapes
+  let zs = zip xs ys
+  let (LossFunction (l :: (S ('D1 10) -> S ('D1 10) -> S ('D1 10)))) = categoricalCrossEntropy'
+  let costs  = map (extractVec . (uncurry l)) zs
+  let xs'    = map extractVec xs
+  let ys'    = map extractVec ys
+  let f      = \(x, y) -> zipWith (\a b -> -b / a) x y
+  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  costs === costs'
+
+exampleShape :: (S ('D1 3), S ('D1 3))
+exampleShape = (gen predicted, gen true)
+    where
+      gen       = S1D . NLA.vector
+      predicted = [0.1, 0.8, 0.1]
+      true      = [0, 0, 1]
+
+prop_categoricalCrossEntropy_matchesActualValues :: Property
+prop_categoricalCrossEntropy_matchesActualValues = property $ do
+    let calculated = (uncurry categoricalCrossEntropy) exampleShape :: Double
+    diff (abs (calculated - expectedResult)) (<) 0.01
+    where
+      expectedResult = 2.303
+    
+
+
 tests :: IO Bool
 tests = checkParallel $$(discover)

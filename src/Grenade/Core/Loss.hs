@@ -24,6 +24,8 @@ module Grenade.Core.Loss (
   , genKullbackLeibler'
   , itakuraSaito
   , itakuraSaito'
+  , categoricalCrossEntropy
+  , categoricalCrossEntropy'
   ) where
 
 import Grenade.Core.Shape
@@ -77,7 +79,9 @@ itakuraSaito x y = nsum ((y/x) - (log (y/x)) - (nk 1))
 itakuraSaito' :: (SingI s) => LossFunction (S s)
 itakuraSaito' = LossFunction $ \x y -> (x - y)/(x * x)
 
+categoricalCrossEntropy :: SingI s => S s -> S s -> Double
+categoricalCrossEntropy x y = - (nsum $ y * log x)
 
-
-
+categoricalCrossEntropy' :: (SingI s) => LossFunction (S s)
+categoricalCrossEntropy' = LossFunction $ \x y -> -y / x
 
