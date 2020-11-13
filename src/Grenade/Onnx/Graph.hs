@@ -34,10 +34,18 @@ readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
 readAttribute attribute node = listToMaybe $ filter ((== attribute) . (^. #name)) $ node ^. #attribute
 
 readDoubleAttribute :: T.Text -> P.NodeProto -> Maybe Double
-readDoubleAttribute attribute node = float2Double . (^. #f) <$> readAttribute attribute node
+readDoubleAttribute attribute node = readAttribute attribute node >>= retrieve
+  where
+    retrieve attribute = case (attribute ^. #type') of
+                           P.AttributeProto'FLOAT -> Just $ float2Double $ attribute ^. #f
+                           _                      -> Nothing
 
 readIntsAttribute :: T.Text -> P.NodeProto -> Maybe [Int]
-readIntsAttribute attribute node = map fromIntegral . (^. #ints) <$> readAttribute attribute node
+readIntsAttribute attribute node = readAttribute attribute node >>= retrieve
+  where
+    retrieve attribute = case (attribute ^. #type') of
+                           P.AttributeProto'INTS -> Just $ map fromIntegral $ attribute ^. #ints
+                           _                     -> Nothing
 
 doesNotHaveAttribute :: P.NodeProto -> T.Text -> Maybe ()
 doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribute node
