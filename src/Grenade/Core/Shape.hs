@@ -31,6 +31,8 @@ module Grenade.Core.Shape (
   , fromStorable
   , nk
   , visualise2D
+  , splitChannels
+  , combineChannels
   ) where
 
 #if MIN_VERSION_singletons(2,6,0)
@@ -38,6 +40,10 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Control.DeepSeq              (NFData (..))
+import           Data.Array.Repa              hiding (Shape (..), map)
+import           Data.List                    (foldl1')
+import           Data.List.Split              (chunksOf)
+import           Data.Maybe                   (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -51,8 +57,7 @@ import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
 import qualified Numeric.LinearAlgebra.Static as H
 import           Numeric.LinearAlgebra.Static (L, R)
-import           Data.Array.Repa              hiding (map, Shape(..))
-
+import qualified Numeric.LinearAlgebra.Static as H
 
 import           System.Random.MWC
 
@@ -247,3 +252,20 @@ visualise2D (S2D mm) max =
       px = (fmap . fmap) render ms
   in unlines px
 
+splitChannels :: forall rows columns channels.
+                 (KnownNat rows, KnownNat columns, KnownNat channels)
+                 => S ('D3 rows columns channels) -> [S ('D2 rows columns)]
+splitChannels (S3D x)
+  = let r   = fromIntegral $ natVal (Proxy :: Proxy rows)
+        rs  = NLA.toRows $ H.extract x
+        rs' = chunksOf r rs
+        ms  = map (S2D . fromJust . H.create . NLA.fromRows) rs' :: [S ('D2 rows columns)]
+    in ms
+
+combineChannels :: forall rows columns channels.
+                 (KnownNat rows, KnownNat columns, KnownNat channels)
+                 => [S ('D2 rows columns)] -> S ('D3 rows columns channels)
+combineChannels xs
+  = let xs' = map (\(S2D x) -> NLA.toRows $ H.extract x) xs :: [[Vector RealNum]]
+        xs'' = concat xs'
+    in  S3D $ fromJust . H.create . NLA.fromRows $ xs''
