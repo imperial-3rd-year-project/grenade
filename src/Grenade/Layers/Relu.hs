@@ -36,6 +36,8 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
+import           Grenade.Onnx.TrivialLayer
+
 
 -- | A rectifying linear unit.
 --   A layer which can act between any shape of the same dimension, acting as a
@@ -129,3 +131,6 @@ instance GNum Relu where
   _ |+ Relu = Relu
   gFromRational _ = Relu
 
+
+instance OnnxLoadableTrivial Relu where
+  trivialLayer = Relu

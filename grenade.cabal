@@ -110,9 +110,11 @@ library
       Grenade.Layers.Trivial
       Grenade.Networks.ResNet18
       Grenade.Onnx.Graph
+      Grenade.Onnx.Iso
       Grenade.Onnx.LoadNetwork
       Grenade.Onnx.Onnx
       Grenade.Onnx.OnnxLoadable
+      Grenade.Onnx.ParallelLayer
       Grenade.Onnx.TrivialLayer
       Grenade.Recurrent
       Grenade.Recurrent.Core

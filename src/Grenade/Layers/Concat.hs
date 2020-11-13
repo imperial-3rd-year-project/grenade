@@ -12,6 +12,7 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-|
 Module      : Grenade.Layers.Concat
 Description : Concatenation layer
@@ -39,6 +40,9 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Grenade.Core
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.Iso
+import           Grenade.Onnx.ParallelLayer
 
 
 -- | A Concatenating Layer.
@@ -188,3 +192,7 @@ instance (GNum x, GNum y) => GNum (Concat m x n y) where
   gFromRational r = Concat (gFromRational r) (gFromRational r)
 
 
+-------------------- OnnxLoadableParallel instance --------------------
+instance OnnxLoadableParallel (Concat m x n y) x y where
+  onnxOpTypeName _ = "Concat"
+  mkParallelLayer = Concat
