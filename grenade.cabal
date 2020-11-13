@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b54adc1558d61b332284614f79870c6b5540e78213c3f9f1f6cc87d967c166fc
+-- hash: b90b4cc7d77de627ad5290d617289bc526b1efe8ce831ffe954355bbaba5c996
 
 name:           grenade
 version:        0.1.1
@@ -104,6 +104,7 @@ library
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
       Grenade.Layers.Trivial
+      Grenade.Networks.ResNet18
       Grenade.Recurrent
       Grenade.Recurrent.Core
       Grenade.Recurrent.Core.Layer
