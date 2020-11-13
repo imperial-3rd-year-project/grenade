@@ -14,20 +14,20 @@ import           Hedgehog (Gen)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import qualified Numeric.LinearAlgebra.Static as HStatic
+import qualified Numeric.LinearAlgebra.Static as H
 import           Numeric.LinearAlgebra.Data   hiding ((===))
 
-randomVector :: forall n. ( KnownNat n ) =>  Gen (HStatic.R n)
-randomVector = (\s -> HStatic.randomVector s HStatic.Uniform * 2 - 1) <$> Gen.int Range.linearBounded
+randomVector :: forall n. ( KnownNat n ) =>  Gen (H.R n)
+randomVector = (\s -> H.randomVector s H.Uniform * 2 - 1) <$> Gen.int Range.linearBounded
 
-randomVectorNormalised :: forall n. ( KnownNat n ) =>  Gen (HStatic.R n)
-randomVectorNormalised = (\s -> sigmoid ((HStatic.randomVector s HStatic.Uniform) * 2 - 1)) <$> Gen.int Range.linearBounded
+randomVectorNormalised :: forall n. ( KnownNat n ) =>  Gen (H.R n)
+randomVectorNormalised = (\s -> sigmoid ((H.randomVector s H.Uniform) * 2 - 1)) <$> Gen.int Range.linearBounded
   where
     sigmoid :: Floating a => a -> a
     sigmoid x = 1/(1 + exp (-x))
 
-uniformSample :: forall m n. ( KnownNat m, KnownNat n ) => Gen (HStatic.L m n)
-uniformSample = (\s -> HStatic.uniformSample s (-1) 1 ) <$> Gen.int Range.linearBounded
+uniformSample :: forall m n. ( KnownNat m, KnownNat n ) => Gen (H.L m n)
+uniformSample = (\s -> H.uniformSample s (-1) 1 ) <$> Gen.int Range.linearBounded
 
 -- | Generate random data of the desired shape
 genOfShape :: forall x. ( SingI x ) => Gen (S x)
@@ -44,22 +44,25 @@ genOfShape =
         S3D <$> uniformSample
 
 nice :: S shape -> String
-nice (S1D x) = show . HStatic.extract $ x
-nice (S2D x) = show . HStatic.extract $ x
-nice (S3D x) = show . HStatic.extract $ x
+nice (S1D x) = show . H.extract $ x
+nice (S2D x) = show . H.extract $ x
+nice (S3D x) = show . H.extract $ x
 
 allClose :: SingI shape => S shape -> S shape -> Bool 
 allClose xs ys = case xs - ys of
-  (S1D x) -> HStatic.norm_Inf x < 0.0001
-  (S2D x) -> HStatic.norm_Inf x < 0.0001
-  (S3D x) -> HStatic.norm_Inf x < 0.0001 
+  (S1D x) -> H.norm_Inf x < 0.0001
+  (S2D x) -> H.norm_Inf x < 0.0001
+  (S3D x) -> H.norm_Inf x < 0.0001 
+
+allCloseV :: KnownNat n => H.R n -> H.R n -> Bool 
+allCloseV xs ys = H.norm_Inf (xs - ys) < 0.0001
 
 -- | generate a 2D list with random elements
 genLists :: Int -> Int -> Gen [[Double]]
 genLists height width = Gen.list (Range.singleton height) $ Gen.list (Range.singleton width) (Gen.double (Range.constant (-2.0) 2.0))
 
 extractVec :: KnownNat n => S ('D1 n) -> [Double]
-extractVec (S1D vec) = toList $ HStatic.extract vec
+extractVec (S1D vec) = toList $ H.extract vec
 
 extractMat :: (KnownNat a, KnownNat b) => S ('D2 a b) -> [[Double]]
-extractMat (S2D mat) = toLists $ HStatic.extract mat
+extractMat (S2D mat) = toLists $ H.extract mat

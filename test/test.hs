@@ -18,10 +18,6 @@ import qualified Test.Grenade.Recurrent.Layers.LSTM
 
 import qualified Test.Grenade.Utils.LinearAlgebra
 
-import Hedgehog.Internal.Runner
-import Hedgehog
-import Hedgehog.Range
-
 import           System.Exit
 import           System.IO
 

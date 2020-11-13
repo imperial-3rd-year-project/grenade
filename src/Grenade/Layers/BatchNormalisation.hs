@@ -16,26 +16,13 @@
 module Grenade.Layers.BatchNormalisation where
 
 import           Control.DeepSeq
-import           Control.Monad.Primitive        (PrimBase, PrimState)
 import           Data.Kind                      (Type)
 import           Data.Proxy
-import           Data.Reflection                (reifyNat)
 import           Data.Serialize
-import           Data.Singletons
-import           GHC.Generics                   hiding (R, S)
 import           GHC.TypeLits
 import           Numeric.LinearAlgebra.Static   hiding (Seed)
-import           System.Random.MWC
-import           Grenade.Utils.LinearAlgebra
 
 import           Grenade.Core
-import           Grenade.Dynamic
-import           Grenade.Dynamic.Internal.Build
-import           Grenade.Types
-
-import           Grenade.Core
-import           Grenade.Dynamic
-import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Update
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
@@ -55,7 +42,6 @@ data BatchNormTape :: Nat -- The number of channels of the tensor
                      , KnownNat flattenSize
                      , flattenSize ~ (channels * rows * columns))
                      => [R flattenSize]  -- xnorm
-                     -> [R flattenSize]  -- xcent
                      -> R flattenSize    -- std
                      -> R flattenSize    -- running mean
                      -> R flattenSize    -- running variance
@@ -175,46 +161,45 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
 
   type Tape (BatchNorm channels rows columns momentum) ('D1 i) ('D1 i) = BatchNormTape channels rows columns
 
-  runForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) (S1D x) = undefined
+  runForwards (BatchNorm True _ _ _ _) _
+    = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
   runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar _) (S1D x)
-    = let eps    = 0.000001
-          std     = vsqrt $ dvmap (+eps) runningVar
-          x_norm  = (x - runningMean) / std
-          out     = gamma * x_norm + beta
+    = let ε      = 0.000001
+          std    = vsqrt $ dvmap (+ε) runningVar
+          x_norm = (x - runningMean) / std
+          out    = gamma * x_norm + beta
       in (TestBatchNormTape, S1D out)
 
-  runBatchForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar _) xs
+  runBatchForwards bn@(BatchNorm False _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
       in ([TestBatchNormTape], outs)
 
   runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) xs
-    = let eps             = 0.000001
+    = let ε               = 0.000001
           m               = fromIntegral $ natVal (Proxy :: Proxy momentum)
           S1D sample_mean = bmean xs
           S1D sample_var  = bvar xs
           running_mean'   = m * runningMean + (1 - m) * sample_mean
           running_var'    = m * runningVar + (1 - m) * sample_var
-          std             = vsqrt $ dvmap (+eps) sample_var
+          std             = vsqrt $ dvmap (+ε) sample_var
           x_centered      = map (\(S1D x) -> x - sample_mean) xs
           x_norm          = map (/ std) x_centered
           out             = map (\x -> S1D $ gamma * x + beta) x_norm
-      in ([TrainBatchNormTape x_norm x_centered std running_mean' running_var'], out)
+      in ([TrainBatchNormTape x_norm std running_mean' running_var'], out)
 
-  runBatchBackwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) [TrainBatchNormTape x_norm x_centered std running_mean' running_var'] douts
+  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
     = let douts'      = map (\(S1D v) -> v) douts
           dgamma_int  = zipWith (*) douts' x_norm
           dgamma      = sum dgamma_int
-          S1D dbeta   = sum douts
+          dbeta       = sum douts'
           dx_norm     = map (* gamma) douts' :: [R i]
 
           n           = fromIntegral $ length douts :: Double
-          dx_sum      = sum $ zipWith (*) x_norm dx_norm
-          dx_sum'     = map (* dx_sum) x_norm :: [R i]
-          dx_norm_sum = sum dx_norm :: R i
-          dx_norm_N   = map (vscale n) dx_norm :: [R i]
-          std'        = dvmap (\x -> 1 / (n * x)) std :: R i
+          dx_sum      = sum $ zipWith (*) x_norm dx_norm :: R i -- (dx_norm * x_norm).sum(axis=0)
+          dx_sum'     = map (* dx_sum) x_norm :: [R i]          -- x_norm * (dx_norm * x_norm).sum(axis=0))   
+          dx_norm_sum = sum dx_norm :: R i                      -- dx_norm.sum(axis=0)
+          dx_norm_N   = map (vscale n) dx_norm :: [R i]         -- N * dx_norm
+          std'        = dvmap (\x -> 1 / (n * x)) std :: R i    -- 1/N / std
           dx          = map (std' *) (zipWith (-) (map (\x -> x - dx_norm_sum) dx_norm_N) dx_sum')
       in ([BatchNormGrad running_mean' running_var' dgamma dbeta], map S1D dx)
-
-
