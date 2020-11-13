@@ -41,7 +41,6 @@ import           Data.Kind                    (Type)
 
 import           Grenade.Core
 import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.Iso
 import           Grenade.Onnx.ParallelLayer
 
 
@@ -194,5 +193,7 @@ instance (GNum x, GNum y) => GNum (Concat m x n y) where
 
 -------------------- OnnxLoadableParallel instance --------------------
 instance OnnxLoadableParallel (Concat m x n y) x y where
-  onnxOpTypeName _ = "Concat"
   mkParallelLayer = Concat
+
+instance OnnxOperator (Concat m x n y) where
+  onnxOpTypeNames _ = ["Concat"]

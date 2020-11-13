@@ -45,7 +45,6 @@ import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx.Graph
-import           Grenade.Onnx.Onnx
 import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
@@ -158,16 +157,17 @@ randomFullyConnected m gen = do
         o = natVal (Proxy :: Proxy o)
 
 
+instance OnnxOperator (FullyConnected i o) where
+  onnxOpTypeNames _ = ["Geem"]
+
 -- TODO: Add support for attributes beta, transB
 instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
-  loadOnnx inits (Node node) = node `hasType` "Geem" >> case (node ^. #input) of
+  loadOnnxNode inits node = case (node ^. #input) of
     [_, b, c] -> do
       loadedB <- readInitializerMatrix inits b
       loadedC <- readInitializerVector inits c
-      return (FullyConnected (FullyConnected' loadedC loadedB) mkListStore, Series [])
+      return $ FullyConnected (FullyConnected' loadedC loadedB) mkListStore
     _         -> Nothing
-  loadOnnx inits (Series ((Node node) : ns)) = fmap (Series ns <$) (loadOnnx inits $ Node node)
-  loadOnnx _ _ = Nothing
       
 -------------------- DynamicNetwork instance --------------------
 

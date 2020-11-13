@@ -11,7 +11,6 @@ module Grenade.Onnx.ParallelLayer where
 
 import           Data.Proxy
 import           Data.Maybe (listToMaybe, catMaybes)
-import qualified Data.Text           as T
 import           Lens.Micro             ((^.))
 
 import Grenade.Onnx.OnnxLoadable
@@ -24,11 +23,13 @@ instance Iso LoadParallel where
   to = LoadParallel
   from (LoadParallel x) = x
 
-class OnnxLoadableParallel a x y | a -> x, a -> y where
-  onnxOpTypeName :: Proxy a -> T.Text
+class OnnxOperator a => OnnxLoadableParallel a x y | a -> x, a -> y where
   mkParallelLayer :: x -> y -> a
 
-instance (OnnxLoadableParallel a x y, OnnxLoadable x, OnnxLoadable y) 
+instance OnnxOperator x => OnnxOperator (LoadParallel x) where
+  onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
+
+instance (OnnxLoadableParallel a x y, OnnxLoadable x, OnnxLoadable y)
          => OnnxLoadable (LoadParallel a) where
   loadOnnx tensors (Series (Parallel [x, y] : combineNode : nodes))
     | isCombNode combineNode = 
@@ -38,7 +39,7 @@ instance (OnnxLoadableParallel a x y, OnnxLoadable x, OnnxLoadable y)
         (layerX, Series []) <- loadOnnx tensors x
         (layerY, Series []) <- loadOnnx tensors y
         return (to (mkParallelLayer layerX layerY))
-      isCombNode (Node node) = node ^. #opType == onnxOpTypeName (Proxy :: Proxy a)
+      isCombNode (Node node) = node ^. #opType `elem` onnxOpTypeNames (Proxy :: Proxy a)
       isCombNode _ = False
 
   loadOnnx _ _ = Nothing

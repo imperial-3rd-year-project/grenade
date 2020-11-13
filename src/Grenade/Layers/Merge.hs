@@ -34,6 +34,7 @@ import           Data.Kind       (Type)
 
 import           Data.ProtoLens.Labels ()
 import           Grenade.Core
+import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Onnx.ParallelLayer
 
 
@@ -90,5 +91,7 @@ instance (GNum x, GNum y) => GNum (Merge x y) where
 -------------------- OnnxLoadable instances --------------------
 
 instance OnnxLoadableParallel (Merge x y) x y where
-  onnxOpTypeName _ = "Add"
   mkParallelLayer = Merge
+
+instance OnnxOperator (Merge x y) where
+  onnxOpTypeNames _ = ["Add"]

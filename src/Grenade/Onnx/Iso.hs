@@ -6,6 +6,8 @@
 
 module Grenade.Onnx.Iso where
 
+import Data.Proxy
+
 import Grenade.Core.Layer
 import Grenade.Onnx.OnnxLoadable
 
@@ -31,6 +33,9 @@ instance (Layer x i o, Iso f) => Layer (Lift (f x)) i o where
 
 instance (RandomLayer x, Iso f) => RandomLayer (f x) where
   createRandomWith method gen = to <$> createRandomWith method gen
+
+instance OnnxOperator x => OnnxOperator (Lift x) where
+  onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
 
 instance OnnxLoadable x => OnnxLoadable (Lift x) where
   loadOnnx tensors graph = (\(x, graph') -> (Lift x, graph')) <$> loadOnnx tensors graph

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
@@ -37,6 +38,7 @@ import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
 import           Grenade.Onnx.TrivialLayer
+import           Grenade.Onnx.OnnxLoadable
 
 
 -- | A rectifying linear unit.
@@ -131,6 +133,9 @@ instance GNum Relu where
   _ |+ Relu = Relu
   gFromRational _ = Relu
 
+
+instance OnnxOperator Relu where
+  onnxOpTypeNames _ = ["Relu"]
 
 instance OnnxLoadableTrivial Relu where
   trivialLayer = Relu
