@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-|
 Module      : Grenade.Layers.Reshape
 Description : Multipurpose reshaping layer
@@ -52,6 +53,9 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Trivial
+
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.TrivialLayer
 
 -- | Reshape Layer
 --
@@ -200,3 +204,9 @@ instance GNum Reshape where
   _ |* Reshape = Reshape
   _ |+ Reshape = Reshape
   gFromRational _ = Reshape
+
+instance OnnxOperator Reshape where
+  onnxOpTypeNames _ = ["Flatten", "Reshape"]
+
+instance OnnxLoadableTrivial Reshape where
+  trivialLayer = Reshape

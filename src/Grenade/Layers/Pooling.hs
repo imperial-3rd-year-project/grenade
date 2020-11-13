@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-|
 Module      : Grenade.Core.Pooling
 Description : Max Pooling layer for 2D and 3D images
@@ -35,6 +36,9 @@ import           Grenade.Core
 import           Grenade.Layers.Internal.Pooling
 
 import           Numeric.LinearAlgebra.Static    as LAS hiding (build, toRows, (|||))
+
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.TrivialLayer
 
 -- | A pooling layer for a neural network.
 --
@@ -146,3 +150,9 @@ instance GNum (Pooling k k' s s') where
   _ |* _ = Pooling
   _ |+ _ = Pooling
   gFromRational _ = Pooling
+
+instance OnnxOperator (Pooling a b c d) where
+  onnxOpTypeNames _ = ["MaxPool"]
+
+instance OnnxLoadableTrivial (Pooling a b c d) where
+  trivialLayer = Pooling
