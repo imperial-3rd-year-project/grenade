@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Grenade.Onnx.Onnx where
 
@@ -13,6 +14,8 @@ import Lens.Micro
 import qualified Data.Map.Strict as Map
 import Data.Foldable (foldl')
 import qualified Data.Text as T
+import qualified Data.ByteString as B
+import Data.ProtoLens.Encoding (decodeMessage)
 
 data Composition = S | P
 
@@ -37,9 +40,9 @@ graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
 graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
 graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
 
-generateInitializerMap :: P.ModelProto -> Map.Map T.Text P.TensorProto
-generateInitializerMap model = foldl' (\map node -> Map.insert (node ^. #name) node map) Map.empty
-                             $ model ^. #graph . #initializer
+generateInitializerMap :: P.GraphProto -> Map.Map T.Text P.TensorProto
+generateInitializerMap graph = foldl' (\map node -> Map.insert (node ^. #name) node map) Map.empty
+                             $ graph ^. #initializer
 
 generateGraph :: P.ModelProto -> (P.GraphProto, SPG 'S P.NodeProto)
 generateGraph model = (graphProto, graph)
@@ -90,3 +93,11 @@ generateGraph model = (graphProto, graph)
           where 
             (parGraphs, Just next : _) = unzip (map genGraph xs)
             (remGraph, next') = genGraph next
+
+readOnnxModel :: FilePath -> IO (Maybe P.ModelProto)
+readOnnxModel path = do
+  modelContent <- B.readFile path
+  let (model :: Either String P.ModelProto) = decodeMessage modelContent
+  case model of
+    Left err -> error err
+    Right modelProto -> return (Just $ modelProto)

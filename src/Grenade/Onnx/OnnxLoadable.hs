@@ -39,3 +39,13 @@ class OnnxLoadable a where
 
 hasType :: (Alternative m, OnnxOperator a) => P.NodeProto -> Proxy a -> m ()
 hasType node a = guard $ node ^. #opType `elem` onnxOpTypeNames a
+
+loadOnnxModel :: OnnxLoadable a => FilePath -> IO (Maybe a)
+loadOnnxModel path = do
+  maybeModel <- readOnnxModel path
+  case maybeModel of
+    Nothing -> return Nothing
+    Just model -> do
+      let (graphProto, graph) = generateGraph model
+          initMap = generateInitializerMap graphProto
+      return (fst <$> loadOnnx initMap graph)
