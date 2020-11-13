@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
@@ -28,8 +30,12 @@ import           Numeric.LinearAlgebra.Static   hiding (Seed)
 
 import           Grenade.Core
 import           Grenade.Layers.Internal.Update
+import           Grenade.Onnx.Graph
+import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
+
+import           Lens.Micro
 
 data BatchNormTape :: Nat -- The number of channels of the tensor
                    -> Nat -- The number of rows of the tensor
@@ -368,4 +374,21 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
     = undefined
   
   runBatchBackwards _ _ _ = undefined
+
+instance OnnxOperator (BatchNorm channels rows columns momentum) where
+  onnxOpTypeNames _ = ["BatchNormalization"]
+
+-- TODO: Right now we are ignoring momentum as it is a weird type variable ~~~ oops. Also ignoring spatial.
+instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) => OnnxLoadable (BatchNorm channels rows columns momentum) where
+  loadOnnxNode inits node = case (node ^. #input) of
+    [_, scale, b, mean, var] -> do
+      epsilon     <- readDoubleAttribute "epsilon" node
+      loadedScale <- readInitializerVector inits scale
+      loadedB     <- readInitializerVector inits b
+      loadedMean  <- readInitializerVector inits mean
+      loadedVar   <- readInitializerVector inits var
+
+      return $ BatchNorm False (BatchNormParams loadedScale loadedB) loadedMean loadedVar epsilon mkListStore
+    _               -> Nothing
+    
 

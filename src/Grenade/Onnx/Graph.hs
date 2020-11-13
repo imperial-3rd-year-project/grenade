@@ -12,6 +12,7 @@ module Grenade.Onnx.Graph
   ( readInitializerMatrix
   , readInitializerVector
   , readIntsAttribute
+  , readDoubleAttribute
   , doesNotHaveAttribute
   )
   where
@@ -32,8 +33,11 @@ import           Numeric.LinearAlgebra.Static
 readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
 readAttribute attribute node = listToMaybe $ filter ((== attribute) . (^. #name)) $ node ^. #attribute
 
+readDoubleAttribute :: T.Text -> P.NodeProto -> Maybe Double
+readDoubleAttribute attribute node = float2Double . (^. #f) <$> readAttribute attribute node
+
 readIntsAttribute :: T.Text -> P.NodeProto -> Maybe [Int]
-readIntsAttribute attribute node = map fromIntegral <$> (^. #ints) <$> readAttribute attribute node
+readIntsAttribute attribute node = map fromIntegral . (^. #ints) <$> readAttribute attribute node
 
 doesNotHaveAttribute :: P.NodeProto -> T.Text -> Maybe ()
 doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribute node

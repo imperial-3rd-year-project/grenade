@@ -47,11 +47,17 @@ type ResNet18BranchShrinkRight inChannels outChannels inSize outSize
             , 'D3 outSize outSize outChannels
             , 'D3 outSize outSize outChannels
             , 'D3 outSize outSize outChannels
-            , 'D3 outSize outSize outChannels ]
+            , 'D3 outSize outSize outChannels
+            ]
 
 type ResNet18BranchShrinkLeft inChannels outChannels inSize outSize
-  = Network [ Convolution inChannels outChannels 1 1 2 2, BatchNorm outChannels outSize outSize 90 ]
-            [ 'D3 inSize inSize inChannels, 'D3 outSize outSize outChannels, 'D3 outSize outSize outChannels ]
+  = Network [ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) inChannels outChannels 1 1 2 2 0 0 0 0
+            , BatchNorm outChannels outSize outSize 90
+            ]
+            [ 'D3 inSize inSize inChannels
+            , 'D3 outSize outSize outChannels
+            , 'D3 outSize outSize outChannels
+            ]
 
 type ResNet18Block size channels
   = Network [Merge Trivial (ResNet18BranchRight size channels), Relu]

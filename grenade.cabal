@@ -101,6 +101,7 @@ library
       Grenade.Layers.Logit
       Grenade.Layers.Merge
       Grenade.Layers.Pad
+      Grenade.Layers.PaddedConvolution
       Grenade.Layers.Pooling
       Grenade.Layers.Relu
       Grenade.Layers.Reshape
