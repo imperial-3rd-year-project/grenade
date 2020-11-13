@@ -17,12 +17,37 @@ import           Grenade.Layers
 
 
 type ResNet18BranchRight channels size
-  = Network [ Convolution channels channels 3 3 1 1, Pad 1 1 1 1, BatchNorm channels size size 90, Relu, Convolution channels channels 3 3 1 1, Pad 1 1 1 1, BatchNorm channels size size 90 ]
-            [ 'D3 size size channels, 'D3 (size - 2) (size - 2) channels, 'D3 size size channels, 'D3 size size channels, 'D3 size size channels, 'D3 (size - 2) (size - 2) channels, 'D3 size size channels, 'D3 size size channels ]
+  -- Convolution channels channels 3 3 1 1, Pad 1 1 1 1
+  -- 'D3 size size channels, 'D3 size size channels
+
+
+  = Network [ PaddedConvolution ('D3 size size channels) ('D3 size size channels) channels channels 3 3 1 1 1 1 1 1
+            , BatchNorm channels size size 90
+            , Relu
+            , PaddedConvolution ('D3 size size channels) ('D3 size size channels) channels channels 3 3 1 1 1 1 1 1
+            , BatchNorm channels size size 90 
+            ]
+            [ 'D3 size size channels
+            , 'D3 size size channels
+            , 'D3 size size channels
+            , 'D3 size size channels
+            , 'D3 size size channels
+            , 'D3 size size channels
+            ]
 
 type ResNet18BranchShrinkRight inChannels outChannels inSize outSize
-  = Network [ Convolution inChannels outChannels 3 3 2 2, Pad 1 1 1 1, BatchNorm outChannels outSize outSize 90, Relu, Convolution outChannels outChannels 3 3 1 1, Pad 1 1 1 1, BatchNorm outChannels outSize outSize 90 ]
-            [ 'D3 inSize inSize inChannels, 'D3 (outSize - 2) (outSize - 2) outChannels, 'D3 outSize outSize outChannels, 'D3 outSize outSize outChannels, 'D3 outSize outSize outChannels, 'D3 (outSize - 2) (outSize - 2) outChannels, 'D3 outSize outSize outChannels, 'D3 outSize outSize outChannels ]
+  = Network [ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) inChannels outChannels 3 3 2 2 1 1 1 1
+            , BatchNorm outChannels outSize outSize 90
+            , Relu
+            , PaddedConvolution ('D3 outSize outSize outChannels)('D3 outSize outSize outChannels) outChannels outChannels 3 3 1 1 1 1 1 1
+            , BatchNorm outChannels outSize outSize 90
+            ]
+            [ 'D3 inSize inSize inChannels
+            , 'D3 outSize outSize outChannels
+            , 'D3 outSize outSize outChannels
+            , 'D3 outSize outSize outChannels
+            , 'D3 outSize outSize outChannels
+            , 'D3 outSize outSize outChannels ]
 
 type ResNet18BranchShrinkLeft inChannels outChannels inSize outSize
   = Network [ Convolution inChannels outChannels 1 1 2 2, BatchNorm outChannels outSize outSize 90 ]
@@ -39,8 +64,7 @@ type ResNet18ShrinkBlock inSize outSize inChannels outChannels
 
 type ResNet18 
   = Network 
-      [ Convolution 3 64 7 7 2 2
-      , Pad 3 3 3 3
+      [ PaddedConvolution ('D3 224 224 3) ('D3 112 112 64 ) 3 64 7 7 2 2 3 3 3 3
       , Relu
       , Pooling 3 3 2 2
       , ResNet18Block 56 64
@@ -56,7 +80,6 @@ type ResNet18
       , FullyConnected 512 1000
       ]
       [ 'D3 224 224 3
-      , 'D3 106 106 64 
       , 'D3 112 112 64 
       , 'D3 112 112 64 
       , 'D3 56  56  64  -- first block in

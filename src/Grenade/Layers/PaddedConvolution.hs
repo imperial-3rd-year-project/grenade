@@ -14,7 +14,9 @@
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
-module Grenade.Layers.PaddedConvolution where
+module Grenade.Layers.PaddedConvolution (
+    PaddedConvolution (..)
+  ) where
 
 import           Control.Monad           (guard)
 import           Data.Proxy

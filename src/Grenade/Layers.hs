@@ -21,6 +21,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Sinusoid
   , module Grenade.Layers.Tanh
   , module Grenade.Layers.Trivial
+  , module Grenade.Layers.PaddedConvolution
   ) where
 
 import           Grenade.Layers.BatchNormalisation
@@ -45,3 +46,4 @@ import           Grenade.Layers.Sinusoid
 import           Grenade.Layers.Softmax
 import           Grenade.Layers.Tanh
 import           Grenade.Layers.Trivial
+import           Grenade.Layers.PaddedConvolution
