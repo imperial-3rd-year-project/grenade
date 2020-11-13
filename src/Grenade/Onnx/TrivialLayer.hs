@@ -20,4 +20,4 @@ instance OnnxOperator x => OnnxOperator (LoadTrivial x) where
   onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
 
 instance OnnxLoadableTrivial x => OnnxLoadable (LoadTrivial x) where
-  loadOnnx _ graph = Just (LoadTrivial trivialLayer, graph)
+  loadOnnxNode _ _ = Just (LoadTrivial trivialLayer)
