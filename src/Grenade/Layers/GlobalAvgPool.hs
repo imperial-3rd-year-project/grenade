@@ -7,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module Grenade.Layers.GlobalAvgPool where
 
@@ -20,6 +21,9 @@ import qualified Numeric.LinearAlgebra.Static   as H
 
 import           Grenade.Core
 import           Grenade.Utils.LinearAlgebra
+
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.ActivationLayer
 
 data GlobalAvgPool = GlobalAvgPool
   deriving (Generic, NFData, Show)
@@ -72,3 +76,9 @@ instance (KnownNat i, KnownNat j, KnownNat k) => Layer GlobalAvgPool ('D3 i j k)
     in  (x, S3D mat)
 
   runBackwards = undefined
+
+instance OnnxOperator GlobalAvgPool where
+  onnxOpTypeNames _ = ["GlobalAveragePool"]
+
+instance OnnxLoadableActivation GlobalAvgPool where
+  activationLayer = GlobalAvgPool
