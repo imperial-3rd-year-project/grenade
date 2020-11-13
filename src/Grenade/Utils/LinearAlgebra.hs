@@ -24,6 +24,11 @@ module Grenade.Utils.LinearAlgebra
     , squareV
     , squareM
     , extractV
+    , extractM2D
+    , batchNormMean
+    , batchNormVariance
+    , vectorToList
+    , listToVector
     ) where
 
 import           Data.List                    (foldl', foldl1')
@@ -33,9 +38,9 @@ import           Data.Singletons
 import           GHC.TypeLits
 import           Grenade.Core.Shape
 import           Grenade.Types
-import           Numeric.LinearAlgebra        (flatten, fromRows, sumElements)
+import           Numeric.LinearAlgebra        (flatten, fromRows, sumElements, fromList)
 import           Numeric.LinearAlgebra.Data   as D hiding (L, R)
-import           Numeric.LinearAlgebra.Static
+import           Numeric.LinearAlgebra.Static hiding (fromList)
 
 sumV :: (KnownNat n) => R n -> RealNum
 sumV v = fromDoubleToRealNum $ v <.> 1
@@ -83,8 +88,26 @@ bvar' m xs
           (S2D x, _) -> S2D $ dmmap (/ fromIntegral l) x
           (S3D x, _) -> S3D $ dmmap (/ fromIntegral l) x
 
+batchNormMean :: forall n. KnownNat n => [R n] -> Double
+batchNormMean vs 
+  = let hw  = fromIntegral $ natVal (Proxy :: Proxy n)
+        vs' = map (sumElements . extract) vs :: [Double]
+        n   = fromIntegral $ length vs 
+    in  sum vs' / (hw * n)
+
+batchNormVariance :: forall n. KnownNat n => [R n] -> Double
+batchNormVariance vs 
+  = let mu  = batchNormMean vs
+        hw  = fromIntegral $ natVal (Proxy :: Proxy n)
+        vs' = map (\x -> sumElements . extract $ dvmap (\a -> (a - mu) ^ 2) x) vs :: [Double] 
+        n   = fromIntegral $ length vs 
+    in  sum vs' / (hw * n)
+
 extractV :: S ('D1 x) -> R x
 extractV (S1D v) = v
+
+extractM2D :: S ('D2 x y) -> L x y
+extractM2D (S2D m) = m
 
 vscale :: KnownNat n => RealNum -> R n -> R n
 vscale x v = dvmap (*x) v
@@ -109,6 +132,12 @@ sreshape v
   = let rows = fromIntegral $ natVal (Proxy :: Proxy m)
     in  fromJust . create . D.reshape rows . extract $ v
 
+
+vectorToList :: KnownNat n => R n -> [RealNum]
+vectorToList = toList . extract
+
+listToVector :: KnownNat n => [RealNum] -> R n
+listToVector = fromJust . create . fromList
 
 -- bsqrt :: SingI s => [S s] -> [S s]
 -- bsqrt xs = map msqrt xs
