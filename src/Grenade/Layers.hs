@@ -8,6 +8,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Elu
   , module Grenade.Layers.FullyConnected
   , module Grenade.Layers.Gelu
+  , module Grenade.Layers.GlobalAvgPool
   , module Grenade.Layers.Inception
   , module Grenade.Layers.LeakyRelu
   , module Grenade.Layers.Logit
@@ -31,6 +32,7 @@ import           Grenade.Layers.Dropout
 import           Grenade.Layers.Elu
 import           Grenade.Layers.FullyConnected
 import           Grenade.Layers.Gelu
+import           Grenade.Layers.GlobalAvgPool
 import           Grenade.Layers.Inception
 import           Grenade.Layers.LeakyRelu
 import           Grenade.Layers.Logit

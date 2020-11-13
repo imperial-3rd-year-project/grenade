@@ -51,7 +51,7 @@ type ResNet18
       , ResNet18Block 14 256
       , ResNet18ShrinkBlock 14 7 256 512
       , ResNet18Block 7 512
-      , Pooling 7 7 1 1 -- THIS SHOULD BE GLOBAL AVG POOL
+      , GlobalAvgPool
       , Reshape
       , FullyConnected 512 1000
       ]

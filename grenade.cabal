@@ -87,6 +87,7 @@ library
       Grenade.Layers.Elu
       Grenade.Layers.FullyConnected
       Grenade.Layers.Gelu
+      Grenade.Layers.GlobalAvgPool
       Grenade.Layers.Inception
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Pad
