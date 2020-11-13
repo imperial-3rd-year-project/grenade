@@ -158,6 +158,8 @@ instance ( KnownNat kernelRows
   --
 --   size of w is filters x channels x kernelRows x kernelCols
   loadOnnxNode inits node = do
+    doesNotHaveAttribute  node "autoPad"
+    doesNotHaveAttribute  node "group"
     hasSupportedDilations node
     hasMatchingShape  node "kernelShape" kernelShape
     hasMatchingShape  node "strides"     strideShape

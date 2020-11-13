@@ -12,6 +12,7 @@ module Grenade.Onnx.Graph
   ( readInitializerMatrix
   , readInitializerVector
   , readIntsAttribute
+  , doesNotHaveAttribute
   )
   where
 
@@ -19,19 +20,23 @@ import Data.ProtoLens.Labels ()
 import qualified Proto.Onnx as P
 import Lens.Micro
 import qualified Data.Text as T
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isNothing, listToMaybe)
 
+import           Control.Monad (guard)
 import qualified Data.Map.Strict                as Map
-import           Numeric.LinearAlgebra.Static
+import           Data.Proxy
 import           GHC.TypeLits
 import           GHC.Float (float2Double)
-import           Data.Proxy
+import           Numeric.LinearAlgebra.Static
 
 readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
 readAttribute attribute node = listToMaybe $ filter ((== attribute) . (^. #name)) $ node ^. #attribute
 
 readIntsAttribute :: T.Text -> P.NodeProto -> Maybe [Int]
 readIntsAttribute attribute node = map fromIntegral <$> (^. #ints) <$> readAttribute attribute node
+
+doesNotHaveAttribute :: P.NodeProto -> T.Text -> Maybe ()
+doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribute node
 
 readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Maybe ([Int], [Double])
 readInitializer inits name = Map.lookup name inits >>= retrieve
