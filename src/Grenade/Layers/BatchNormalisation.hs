@@ -63,6 +63,7 @@ data BatchNorm :: Nat -- The number of channels of the tensor
             -> BatchNormParams channels             -- gamma and beta
             -> R channels                           -- running mean
             -> R channels                           -- running variance
+            -> Double                               -- epsilon
             -> ListStore (BatchNormParams channels) -- momentum store
             -> BatchNorm channels rows columns momentum
 
@@ -97,24 +98,25 @@ instance NFData (BatchNormParams flattenSize) where
     = rnf gamma `seq` rnf beta
 
 instance NFData (BatchNorm channels rows columns momentum) where
-  rnf (BatchNorm training bnparams mean var store)
-    = rnf training `seq` rnf bnparams `seq` rnf mean `seq` rnf var `seq` rnf store
+  rnf (BatchNorm training bnparams mean var eps store)
+    = rnf training `seq` rnf bnparams `seq` rnf mean `seq` rnf var `seq` rnf eps `seq` rnf store
 
 -- | Show instance
 
 instance Show (BatchNorm channels rows columns momentum) where
-  show (BatchNorm _ _ _ _ _) = "Batch Normalization"
+  show (BatchNorm _ _ _ _ _ _) = "Batch Normalization"
 
 -- Serialize instances
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => Serialize (BatchNorm channels rows columns momentum) where
 
-  put (BatchNorm training bnparams mean var store) = do
+  put (BatchNorm training bnparams mean var ε store) = do
     put training
     put bnparams
     putListOf put . LA.toList . extract $ mean
     putListOf put . LA.toList . extract $ var
+    put ε
     put store
 
   get = do
@@ -126,9 +128,10 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
     bnparams <- get
     mean     <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
     var      <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
+    ε        <- get
     store    <- get
 
-    return $ BatchNorm training bnparams mean var store
+    return $ BatchNorm training bnparams mean var ε store
 
 instance KnownNat flattenSize => Serialize (BatchNormParams flattenSize) where
   put (BatchNormParams gamma beta) = do
@@ -151,21 +154,21 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, Know
 
   reduceGradient = undefined
 
-  runUpdate opt@OptSGD{} x@(BatchNorm training (BatchNormParams oldGamma oldBeta) _ _ store) (BatchNormGrad runningMean runningVar dGamma dBeta)
+  runUpdate opt@OptSGD{} x@(BatchNorm training (BatchNormParams oldGamma oldBeta) _ _ ε store) (BatchNormGrad runningMean runningVar dGamma dBeta)
     = let BatchNormParams oldGammaMomentum oldBetaMomentum = getData opt x store
           VectorResultSGD newGamma newGammaMomentum        = descendVector opt (VectorValuesSGD oldGamma dGamma oldGammaMomentum)
           VectorResultSGD newBeta  newBetaMomentum         = descendVector opt (VectorValuesSGD oldBeta dBeta oldBetaMomentum)
           newStore                                         = setData opt x store (BatchNormParams newGammaMomentum newBetaMomentum)
-      in  BatchNorm training (BatchNormParams newGamma newBeta) runningMean runningVar newStore
+      in  BatchNorm training (BatchNormParams newGamma newBeta) runningMean runningVar ε newStore
 
-  runUpdate opt@OptAdam{} x@(BatchNorm training (BatchNormParams oldGamma oldBeta) _ _ store) (BatchNormGrad runningMean runningVar dGamma dBeta)
+  runUpdate opt@OptAdam{} x@(BatchNorm training (BatchNormParams oldGamma oldBeta) _ _ ε store) (BatchNormGrad runningMean runningVar dGamma dBeta)
     = let [BatchNormParams oldMGamma oldMBeta, BatchNormParams oldVGamma oldVBeta] = getData opt x store
           VectorResultAdam newGamma newMGamma newVGamma                            = descendVector opt (VectorValuesAdam (getStep store) oldGamma dGamma oldMGamma oldVGamma)
           VectorResultAdam newBeta  newMBeta  newVBeta                             = descendVector opt (VectorValuesAdam (getStep store) oldBeta  dBeta  oldMBeta  oldVBeta)
           newStore                                                                 = setData opt x store [BatchNormParams newMGamma newMBeta, BatchNormParams newVGamma newVBeta]
-      in  BatchNorm training (BatchNormParams newGamma newBeta) runningMean runningVar newStore
+      in  BatchNorm training (BatchNormParams newGamma newBeta) runningMean runningVar ε newStore
 
-  runSettingsUpdate NetworkSettings{trainingActive=training} (BatchNorm _ bnparams mean var store) = BatchNorm training bnparams mean var store
+  runSettingsUpdate NetworkSettings{trainingActive=training} (BatchNorm _ bnparams mean var ε store) = BatchNorm training bnparams mean var ε store
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom)
   => LayerOptimizerData (BatchNorm channels rows columns mom) (Optimizer 'SGD) where
@@ -201,19 +204,19 @@ initBatchNorm =
       beta   = vector zeroes :: R channels
       mean   = vector zeroes :: R channels
       var    = vector ones   :: R channels
-  in BatchNorm True (BatchNormParams gamma beta) mean var mkListStore
+      ε      = 0.00001
+  in BatchNorm True (BatchNormParams gamma beta) mean var ε mkListStore
 
 instance (KnownNat columns, KnownNat momentum, KnownNat i, i ~ columns)
   => Layer (BatchNorm 1 1 columns momentum) ('D1 i) ('D1 i) where
 
   type Tape (BatchNorm 1 1 columns momentum) ('D1 i) ('D1 i) = BatchNormTape 1 1 columns
 
-  runForwards (BatchNorm True _ _ _ _) _
+  runForwards (BatchNorm True _ _ _ _ _) _
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
-  runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar _) (S1D x)
-    = let ε      = 0.000001
-          [m]    = vectorToList runningMean
+  runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) (S1D x)
+    = let [m]    = vectorToList runningMean
           [v]    = vectorToList runningVar
           [g]    = vectorToList gamma
           [b]    = vectorToList beta
@@ -222,17 +225,16 @@ instance (KnownNat columns, KnownNat momentum, KnownNat i, i ~ columns)
           out    = dvmap (\a -> g * a + b) x_norm
       in (TestBatchNormTape, S1D out)
 
-  runBatchForwards bn@(BatchNorm False _ _ _ _) xs
+  runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
       in ([TestBatchNormTape], outs)
 
-  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) xs
-    = let ε               = 0.000001
-          [m]             = vectorToList runningMean :: [Double]
+  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar ε _) xs
+    = let [m]             = vectorToList runningMean :: [Double]
           [v]             = vectorToList runningVar  :: [Double]
           [g]             = vectorToList gamma       :: [Double]
           [b]             = vectorToList beta        :: [Double]
-          mom             = fromIntegral $ natVal (Proxy :: Proxy momentum)
+          mom             = (/ fromIntegral 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map extractV xs
 
@@ -254,7 +256,7 @@ instance (KnownNat columns, KnownNat momentum, KnownNat i, i ~ columns)
 
       in ([TrainBatchNormTape x_normalised stdV runningMeanV runningVarV], out)
 
-  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
+  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
     = undefined
 
 instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownNat j, rows ~ i, columns ~ j)
@@ -262,12 +264,11 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownN
 
   type Tape (BatchNorm 1 rows columns momentum) ('D2 i j) ('D2 i j) = BatchNormTape 1 rows columns
 
-  runForwards (BatchNorm True _ _ _ _) _
+  runForwards (BatchNorm True _ _ _ _ _) _
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
-  runForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar _) (S2D x)
-    = let ε      = 0.000001
-          [m]    = vectorToList runningMean
+  runForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) (S2D x)
+    = let [m]    = vectorToList runningMean
           [v]    = vectorToList runningVar
           [g]    = vectorToList gamma
           [b]    = vectorToList beta
@@ -276,17 +277,16 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownN
           out    = dmmap (\a -> g * a + b) x_norm
       in (TestBatchNormTape, S2D out)
 
-  runBatchForwards bn@(BatchNorm False _ _ _ _) xs
+  runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
       in ([TestBatchNormTape], outs)
 
-  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) xs
-    = let ε               = 0.000001
-          [m]             = vectorToList runningMean :: [Double]
+  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar ε _) xs
+    = let [m]             = vectorToList runningMean :: [Double]
           [v]             = vectorToList runningVar  :: [Double]
           [g]             = vectorToList gamma       :: [Double]
           [b]             = vectorToList beta        :: [Double]
-          mom             = fromIntegral $ natVal (Proxy :: Proxy momentum)
+          mom             = (/ fromIntegral 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map (sflatten . extractM2D) xs
 
@@ -309,7 +309,7 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownN
 
       in ([TrainBatchNormTape x_normalised' stdV runningMeanV runningVarV], out)
 
-  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
+  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
     = undefined
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownNat j, KnownNat k, rows ~ i, columns ~ j, channels ~ k)
@@ -317,10 +317,10 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
 
   type Tape (BatchNorm channels rows columns momentum) ('D3 i j k) ('D3 i j k) = BatchNormTape channels rows columns
 
-  runForwards (BatchNorm True _ _ _ _) _
+  runForwards (BatchNorm True _ _ _ _ _) _
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
-  runForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar store) inp@(S3D x)
+  runForwards bn@(BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) inp@(S3D x)
     = let ms     = vectorToList runningMean
           vs     = vectorToList runningVar
           gs     = vectorToList gamma
@@ -332,17 +332,17 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
                             bs' = listToVector [b] :: R 1
                             ms' = listToVector [m] :: R 1
                             vs' = listToVector [v] :: R 1
-                            bn' = BatchNorm False (BatchNormParams gs' bs') ms' vs' undefined :: BatchNorm 1 rows columns momentum
+                            bn' = BatchNorm False (BatchNormParams gs' bs') ms' vs' ε undefined :: BatchNorm 1 rows columns momentum
                         in  runForwards bn' c
 
           (_, outs) = unzip $ zipWith5 f cs gs bs ms vs 
       in (TestBatchNormTape, combineChannels outs)
 
-  runBatchForwards bn@(BatchNorm False _ _ _ _) xs
+  runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
       in ([TestBatchNormTape], outs)
 
-  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar _) xs
+  runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar ε _) xs
     = let ms     = vectorToList runningMean
           vs     = vectorToList runningVar
           gs     = vectorToList gamma
@@ -355,7 +355,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
                             bs' = listToVector [b] :: R 1
                             ms' = listToVector [m] :: R 1
                             vs' = listToVector [v] :: R 1
-                            bn' = BatchNorm True (BatchNormParams gs' bs') ms' vs' undefined :: BatchNorm 1 rows columns momentum
+                            bn' = BatchNorm True (BatchNormParams gs' bs') ms' vs' ε undefined :: BatchNorm 1 rows columns momentum
                         in  runBatchForwards bn' c
 
           (tapes, outs) = unzip $ zipWith5 f cs' gs bs ms vs
@@ -365,6 +365,6 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum,
       combineTapes :: [[BatchNormTape 1 i j]] -> [BatchNormTape k i j]
       combineTapes = undefined
 
-  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
+  runBatchBackwards (BatchNorm True (BatchNormParams gamma _) _ _ _ _) [TrainBatchNormTape x_norm std running_mean' running_var'] douts
     = undefined
 
