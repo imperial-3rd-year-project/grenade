@@ -380,6 +380,18 @@ instance ( KnownNat kernelRows
   runBackwards c tape (S2D grads) =
     runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1))
 
+-- instance (KnownNat i, KnownNat o, KnownNat (i*o)) => OnnxLoadable (FullyConnected i o) where
+--   loadOnnx inits (Node node) = node `hasType` "Geem" >> case (node ^. #input) of
+--     [_, b, c] -> do
+--       loadedB <- readInitializerMatrix inits b
+--       loadedC <- readInitializerVector inits c
+--       return (FullyConnected (FullyConnected' loadedC loadedB) mkListStore, Series [])
+--     _         -> Nothing
+--   loadOnnx inits (Series ((Node node) : ns)) = fmap (Series ns <$) (loadOnnx inits $ Node node)
+--   loadOnnx _ _ = Nothing
+--
+--   size of w is filters x channels x kernelRows x kernelCols
+
 -------------------- DynamicNetwork instance --------------------
 
 instance (KnownNat channels, KnownNat filters, KnownNat kernelRows, KnownNat kernelColumns, KnownNat strideRows, KnownNat strideColumns) =>

@@ -11,6 +11,7 @@
 module Grenade.Onnx.Graph 
   ( readInitializerMatrix
   , readInitializerVector
+  , readIntsAttribute
   )
   where
 
