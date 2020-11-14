@@ -31,7 +31,7 @@ import           Grenade.Layers.Pad
 import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Onnx.Graph
 import           Grenade.Utils.ListStore
-
+import Debug.Trace
 import           Grenade.Onnx.Iso
 
 import qualified Proto.Onnx as P
@@ -101,13 +101,13 @@ instance ( KnownNat kernelRows
    --
  --   size of w is filters x channels x kernelRows x kernelCols
   loadOnnxNode inits node = do
-    doesNotHaveAttribute  node "autoPad"
-    doesNotHaveAttribute  node "group"
+    traceM "pool"
+    doesNotHaveAttribute  node "auto_pad"
+    --doesNotHaveAttribute  node "group"
     hasSupportedDilations node
-    hasMatchingShape  node "kernelShape" kernelShape
+    hasMatchingShape  node "kernel_shape" kernelShape
     hasMatchingShape  node "strides"     strideShape
     hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
-
     return $ PaddedPoolingIso (Pad :~> Pooling :~> NNil)
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
