@@ -158,7 +158,7 @@ randomFullyConnected m gen = do
 
 
 instance OnnxOperator (FullyConnected i o) where
-  onnxOpTypeNames _ = ["Geem"]
+  onnxOpTypeNames _ = ["Gemm"]
 
 -- TODO: Add support for attributes beta, transB
 instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
