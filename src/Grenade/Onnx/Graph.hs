@@ -64,8 +64,8 @@ readInitializerVector :: KnownNat r => Map.Map T.Text P.TensorProto -> T.Text ->
 readInitializerVector inits name = readInitializer inits name >>= readVector
 
 readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
-readMatrix ([rows, cols], vals)
-  | rows == neededRows && cols == neededCols = Just (matrix vals)
+readMatrix (rows : cols, vals)
+  | neededRows == rows && neededCols == product cols = Just (matrix vals)
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
