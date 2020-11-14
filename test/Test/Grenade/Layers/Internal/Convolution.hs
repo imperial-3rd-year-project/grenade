@@ -9,8 +9,10 @@
 module Test.Grenade.Layers.Internal.Convolution where
 
 import           Grenade.Layers.Internal.Convolution
+import           Grenade.Types
 
 import           Numeric.LinearAlgebra hiding (uniformSample, konst, (===))
+import qualified Numeric.LinearAlgebra as LA
 
 import           Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -52,6 +54,19 @@ prop_im2col_col2im_behaves_as_reference =
 
         outFast === outReference
         retFast === retReference
+
+prop_im2col_col2im_crops_valid_pad = withTests 1 $ property $ do 
+  let mat    = matrix 10 [0..99]        :: Matrix RealNum
+      kernel = matrix 1 $ replicate 9 1 :: Matrix RealNum
+
+      col    = vid2col 3 3 3 3 10 10 mat
+
+      res    = col LA.<> kernel
+
+      expected = matrix 1 $ [99, 126, 153, 369, 396, 423, 639, 666, 693]
+  
+  res === expected
+
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

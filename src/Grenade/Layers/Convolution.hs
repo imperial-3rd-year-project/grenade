@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -10,7 +12,6 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-|
 Module      : Grenade.Layers.Convolution
 Description : Convolution layer
@@ -34,8 +35,8 @@ import           Control.DeepSeq                     (NFData (..))
 import           Control.Monad.Primitive             (PrimBase, PrimState)
 import           Data.Constraint                     (Dict (..))
 import           Data.Kind                           (Type)
-import           Data.Maybe
 import           Data.List                           (foldl1')
+import           Data.Maybe
 import           Data.Proxy
 import           Data.Reflection                     (reifyNat)
 import           Data.Serialize
@@ -43,9 +44,11 @@ import           Data.Singletons
 import           Data.Singletons.Prelude.Num         ((%*))
 import           Data.Singletons.TypeLits            hiding (natVal)
 import           GHC.TypeLits
-import           Numeric.LinearAlgebra               hiding (konst, uniformSample)
+import           Numeric.LinearAlgebra               hiding (konst,
+                                                      uniformSample)
 import qualified Numeric.LinearAlgebra               as LA
-import           Numeric.LinearAlgebra.Static        hiding (build, toRows, (|||))
+import           Numeric.LinearAlgebra.Static        hiding (build, toRows,
+                                                      (|||))
 import           System.Random.MWC                   (Gen)
 import           Unsafe.Coerce                       (unsafeCoerce)
 
@@ -260,8 +263,10 @@ instance ( KnownNat kernelRows
          , KnownNat outputRows
          , KnownNat outputCols
          , KnownNat channels
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputCols - 1) * strideCols) ~ (inputCols - kernelCols)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
+         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
          , KnownNat (kernelRows * kernelCols * channels)
          , KnownNat (outputRows * filters)
          ) => Layer (Convolution channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
@@ -321,8 +326,10 @@ instance ( KnownNat kernelRows
          , KnownNat inputCols
          , KnownNat outputRows
          , KnownNat outputCols
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputCols - 1) * strideCols) ~ (inputCols - kernelCols)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
+         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
          , KnownNat (kernelRows * kernelCols * 1)
          , KnownNat (outputRows * filters)
          ) => Layer (Convolution 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) where
@@ -344,8 +351,10 @@ instance ( KnownNat kernelRows
          , KnownNat inputRows
          , KnownNat inputCols
          , KnownNat outputCols
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputCols - 1) * strideCols) ~ (inputCols - kernelCols)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
+         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
          , KnownNat (kernelRows * kernelCols * 1)
          , KnownNat (outputRows * 1)
          ) => Layer (Convolution 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) where
@@ -367,8 +376,10 @@ instance ( KnownNat kernelRows
          , KnownNat inputCols
          , KnownNat outputCols
          , KnownNat channels
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputCols - 1) * strideCols) ~ (inputCols - kernelCols)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
+         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
          , KnownNat (kernelRows * kernelCols * channels)
          , KnownNat (outputRows * 1)
          ) => Layer (Convolution channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) where
@@ -410,7 +421,7 @@ instance (KnownNat channels, KnownNat filters, KnownNat kernelRows, KnownNat ker
 instance ToDynamicLayer SpecConvolution where
   toDynamicLayer = toDynamicLayer'
 
-toDynamicLayer' :: (PrimBase m) => WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
+toDynamicLayer' :: (PrimBase m)=> WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
 toDynamicLayer' _ _ (SpecConvolution inp@(_, 1, 1) _ _ _ _ _ _) = error $ "1D input to a deconvolutional layer is not permited! you specified: " ++ show inp
 toDynamicLayer' wInit gen (SpecConvolution (rows, cols, depth) ch fil kerRows kerCols strRows strCols) =
     reifyNat ch $ \(pxCh :: (KnownNat channels) => Proxy channels) ->
@@ -430,26 +441,25 @@ toDynamicLayer' wInit gen (SpecConvolution (rows, cols, depth) ch fil kerRows ke
          , singByProxy pxRows %* singByProxy pxCh -- 'D3 representation
          ) of
       (SNat, SNat, SNat, SNat) | ch == 1 && fil == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, filters ~ 1, ((outRows - 1) * strideRows) ~ (rows - kernelRows), ((outCols - 1) * strideCols) ~ (cols - kernelCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, filters ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
           Dict -> do
             (layer  :: Convolution 1 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D2 rows cols)) (sing :: Sing ('D2 outRows outCols))
       (SNat, SNat, SNat, SNat) | ch == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, ((outRows - 1) * strideRows) ~ (rows - kernelRows), ((outCols - 1) * strideCols) ~ (cols - kernelCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
           Dict -> do
             (layer  :: Convolution 1 filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D2 rows cols)) (sing :: Sing ('D3 outRows outCols filters))
       (SNat, SNat, SNat, SNat) | fil == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (filters ~ 1,((outRows - 1) * strideRows) ~ (rows - kernelRows), ((outCols - 1) * strideCols) ~ (cols - kernelCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (filters ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
           Dict -> do
             (layer  :: Convolution channels 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D3 rows cols channels)) (sing :: Sing ('D2 outRows outCols))
       (SNat, SNat, SNat, SNat) ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (rows - kernelRows), ((outCols - 1) * strideCols) ~ (cols - kernelCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
           Dict -> do
             (layer  :: Convolution channels filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D3 rows cols channels)) (sing :: Sing ('D3 outRows outCols filters))
-
 
 -- | Creates a specification for a convolutional layer with 2D input to the layer. If channels and filters are both 1 then the output is 2D otherwise it is 3D. The output sizes are `out = (in -
 -- kernel) / stride + 1`, for rows and cols and the depth is filters for 3D output.

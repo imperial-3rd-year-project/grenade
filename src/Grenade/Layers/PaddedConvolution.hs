@@ -86,8 +86,10 @@ instance ( KnownNat kernelRows
          , KnownNat convInputCols
          , (inputRows + padTop + padBottom) ~ convInputRows
          , (inputCols + padLeft + padRight) ~ convInputCols
-         , ((outputRows - 1) * strideRows) ~ (convInputRows - kernelRows)
-         , ((outputCols - 1) * strideCols) ~ (convInputCols - kernelCols)
+         , strideRows * (outputRows - 1) <= (convInputRows - kernelRows + 1) - 1
+         , (convInputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideCols * (outputCols - 1) <= (convInputCols - kernelCols + 1) - 1
+         , (convInputCols - kernelCols + 1) <= (outputCols * strideCols)
          , KnownNat (kernelRows * kernelCols * channels)
          , KnownNat (outputRows * filters)
          , KnownNat padLeft
