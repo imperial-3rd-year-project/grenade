@@ -41,7 +41,6 @@ import           Numeric.LinearAlgebra.Static    as LAS hiding (build, toRows,
 
 import           Grenade.Onnx.ActivationLayer
 import           Grenade.Onnx.OnnxLoadable
-
 -- | A pooling layer for a neural network.
 --
 --   Does a max pooling, looking over a kernel similarly to the convolution network, but returning

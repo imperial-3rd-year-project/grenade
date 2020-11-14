@@ -4,6 +4,8 @@ void im2col_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
     RealNum* data_col) {
+    
+  //printf("im2col_cpu");
 
   const int channel_size = height * width;
 
@@ -26,7 +28,7 @@ void col2im_cpu(const RealNum* data_col, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
     RealNum* data_im) {
-
+  // printf("col2im_cpu");
   memset(data_im, 0, height * width * channels * sizeof(RealNum));
 
   const int channel_size = height * width;
@@ -52,7 +54,7 @@ void pool_forwards_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
     RealNum* data_pooled) {
-
+  //printf("pool_forwards_cpu");
   const int channel_size = height * width;
 
   for (int channel = 0; channel < channels; channel++) {
@@ -89,7 +91,7 @@ void pool_backwards_cpu(const RealNum* data_im, const RealNum* data_pooled,
     const int channels, const int height, const int width, const int kernel_h,
     const int kernel_w, const int stride_h, const int stride_w,
     RealNum* data_backgrad ) {
-
+  //printf("pool_backwards_cpu");
   memset(data_backgrad, 0, height * width * channels * sizeof(RealNum));
 
   const int channel_size = height * width;

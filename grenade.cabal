@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 12fde7a18c18d20c140465b14671e54703d5898431bde88c239bcde5c778552a
+-- hash: f53ea8cdaa3bbb8ff4da9da86ecdff976d800e3a707e6cb10ef162dbb04a07bb
 
 name:           grenade
 version:        0.1.1
@@ -30,6 +30,8 @@ extra-source-files:
     cbits/pad.h
     cbits/pad.c
     cbits/type.h
+    cbits/shrink.h
+    cbits/shrink.c
     proto/onnx.proto
 data-files:
     assets/mnistModel

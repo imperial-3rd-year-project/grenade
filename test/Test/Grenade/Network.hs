@@ -19,12 +19,11 @@ import           Data.Singletons.TypeLits
 import           Data.Typeable
 import qualified Data.Vector.Storable            as VS
 import qualified Data.Vector.Storable.Mutable    as VS (write)
+import           Grenade
 import           Hedgehog
 import qualified Hedgehog.Gen                    as Gen
 import           Hedgehog.Internal.Property      (failWith)
 import           Hedgehog.Internal.Source
-
-import           Grenade
 
 #if MIN_VERSION_base(4,11,0)
 import           GHC.TypeLits                    hiding (natVal)
@@ -130,10 +129,12 @@ genNetwork =
                                   p2 = singByProxy pkc
                               in  case ( p1 %* p2
                                         -- Fake it till you make it.
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (inRows - kernelRows)))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outCols - 1) * strideCols) ~ (inCols - kernelCols)))) of
-                                    (SNat, Dict, Dict, Dict) -> do
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
+                                    (SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
                                         pure (SomeNetwork (conv :~> rest :: Network ( Convolution 1 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D2 inRows inCols) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
@@ -174,10 +175,12 @@ genNetwork =
                               in  case ( p1 %* p2 %* p3
                                         , singByProxy pinr %* singByProxy chan
                                         -- Fake it till you make it.
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (inRows - kernelRows)))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outCols - 1) * strideCols) ~ (inCols - kernelCols)))) of
-                                    (SNat, SNat, Dict, Dict, Dict) -> do
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
+                                    (SNat, SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
                                         pure (SomeNetwork (conv :~> rest :: Network ( Convolution channels 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
@@ -212,10 +215,12 @@ genNetwork =
                                   p2 = singByProxy pkc
                               in  case ( p1 %* p2
                                         -- Fake it till you make it.
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (inRows - kernelRows)))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outCols - 1) * strideCols) ~ (inCols - kernelCols)))) of
-                                    (SNat, Dict, Dict, Dict) ->
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D2 outRows outCols ) ~ h ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
+                                    (SNat, Dict, Dict, Dict, Dict, Dict) ->
                                         pure (SomeNetwork (Pooling :~> rest :: Network ( Pooling kernelRows kernelCols strideRows strideCols ': layers ) ( ('D2 inRows inCols) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
                    , do -- Build a Pad layer
@@ -315,9 +320,11 @@ genNetwork =
                                         , singByProxy pinr %* singByProxy chan
                                         -- Fake it till you make it.
                                         , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D3 outRows outCols filters) ~ h ))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (inRows - kernelRows)))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outCols - 1) * strideCols) ~ (inCols - kernelCols)))) of
-                                    (SNat, SNat, Dict, Dict, Dict) -> do
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
+                                    (SNat, SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
                                         pure (SomeNetwork (conv :~> rest :: Network ( Convolution channels filters kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
@@ -357,11 +364,13 @@ genNetwork =
                                         , singByProxy pinr %* singByProxy chan
                                         -- Fake it till you make it.
                                         , (unsafeCoerce (Dict :: Dict ()) :: Dict ( ( 'D3 outRows outCols filters) ~ h ))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outRows - 1) * strideRows) ~ (inRows - kernelRows)))
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict (((outCols - 1) * strideCols) ~ (inCols - kernelCols)))) of
-                                    (SNat, SNat, Dict, Dict, Dict) ->
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
+                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
+                                    (SNat, SNat, Dict, Dict, Dict, Dict, Dict) ->
                                         pure (SomeNetwork (Pooling :~> rest :: Network ( Pooling kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols filters) ': h ': hs )))
-                          _ -> Gen.discard -- Can't occur
+                          _ -> Gen.discard -- Can't occur 
                    , do -- Build a Pad layer
                         let output_r = fromIntegral $ natVal r
                         let output_c = fromIntegral $ natVal c
