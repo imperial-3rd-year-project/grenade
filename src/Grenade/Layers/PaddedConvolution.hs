@@ -34,7 +34,7 @@ import           Grenade.Utils.ListStore
 
 import           Grenade.Onnx.Iso
 import           Lens.Micro ((^.))
-
+import Debug.Trace
 import qualified Proto.Onnx as P
 
 newtype PaddedConvolutionIso a = PaddedConvolutionIso {fromPaddedConvolutionIso :: a}
@@ -104,13 +104,15 @@ instance ( KnownNat kernelRows
    -- TODO: Check how auto_pad, group and optional bias should be supported.
    --       I don't think we can support group without reshape layers probably.
    --
- --   size of w is filters x channels x kernelRows x kernelCols
+   --   size of w is filters x channels x kernelRows x kernelCols
   loadOnnxNode inits node = do
-    doesNotHaveAttribute  node "autoPad"
-    doesNotHaveAttribute  node "group"
+    doesNotHaveAttribute  node "auto_pad"
+    -- the below line doesnt work because the default value for `group` is 1
+    -- doesNotHaveAttribute  node "group"
     hasSupportedDilations node
-    hasMatchingShape  node "kernelShape" kernelShape
+    hasMatchingShape  node "kernel_shape" kernelShape
     hasMatchingShape  node "strides"     strideShape
+
     hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
 
     (_ : w : _) <- Just (node ^. #input)
