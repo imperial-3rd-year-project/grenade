@@ -91,6 +91,9 @@ executables:
     ghc-options:       -Wall -threaded -O2
     main:              main/mnist-load.hs
 
+  resnet:
+    ghc-options:       -Wall -threaded -O2
+    main:              main/resnet.hs
 
   gan-mnist:
     ghc-options:       -Wall -threaded -O2

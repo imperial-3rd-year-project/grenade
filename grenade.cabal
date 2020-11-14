@@ -1,8 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: 12fde7a18c18d20c140465b14671e54703d5898431bde88c239bcde5c778552a
 
 name:           grenade
 version:        0.1.1
@@ -102,6 +104,7 @@ library
       Grenade.Layers.Merge
       Grenade.Layers.Pad
       Grenade.Layers.PaddedConvolution
+      Grenade.Layers.PaddedPooling
       Grenade.Layers.Pooling
       Grenade.Layers.Relu
       Grenade.Layers.Reshape
@@ -109,6 +112,7 @@ library
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
       Grenade.Layers.Trivial
+      Grenade.Networks
       Grenade.Networks.ResNet18
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer

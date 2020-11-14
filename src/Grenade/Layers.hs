@@ -14,6 +14,8 @@ module Grenade.Layers (
   , module Grenade.Layers.Logit
   , module Grenade.Layers.Merge
   , module Grenade.Layers.Pad
+  , module Grenade.Layers.PaddedConvolution
+  , module Grenade.Layers.PaddedPooling
   , module Grenade.Layers.Pooling
   , module Grenade.Layers.Reshape
   , module Grenade.Layers.Relu
@@ -21,7 +23,6 @@ module Grenade.Layers (
   , module Grenade.Layers.Sinusoid
   , module Grenade.Layers.Tanh
   , module Grenade.Layers.Trivial
-  , module Grenade.Layers.PaddedConvolution
   ) where
 
 import           Grenade.Layers.BatchNormalisation
@@ -39,6 +40,8 @@ import           Grenade.Layers.LeakyRelu
 import           Grenade.Layers.Logit
 import           Grenade.Layers.Merge
 import           Grenade.Layers.Pad
+import           Grenade.Layers.PaddedConvolution
+import           Grenade.Layers.PaddedPooling
 import           Grenade.Layers.Pooling
 import           Grenade.Layers.Relu
 import           Grenade.Layers.Reshape
@@ -46,4 +49,3 @@ import           Grenade.Layers.Sinusoid
 import           Grenade.Layers.Softmax
 import           Grenade.Layers.Tanh
 import           Grenade.Layers.Trivial
-import           Grenade.Layers.PaddedConvolution

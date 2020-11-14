@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
@@ -5,12 +6,12 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE OverloadedStrings     #-}
 {-|
 Module      : Grenade.Core.Pooling
 Description : Max Pooling layer for 2D and 3D images
@@ -35,10 +36,11 @@ import           GHC.TypeLits
 import           Grenade.Core
 import           Grenade.Layers.Internal.Pooling
 
-import           Numeric.LinearAlgebra.Static    as LAS hiding (build, toRows, (|||))
+import           Numeric.LinearAlgebra.Static    as LAS hiding (build, toRows,
+                                                         (|||))
 
-import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Onnx.ActivationLayer
+import           Grenade.Onnx.OnnxLoadable
 
 -- | A pooling layer for a neural network.
 --
@@ -76,8 +78,10 @@ instance ( KnownNat kernelRows
          , KnownNat inputColumns
          , KnownNat outputRows
          , KnownNat outputColumns
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputColumns - 1) * strideColumns) ~ (inputColumns - kernelColumns)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideColumns * (outputColumns - 1) <= (inputColumns - kernelColumns + 1) - 1
+         , (inputColumns - kernelColumns + 1) <= (outputColumns * strideColumns)
          ) => Layer (Pooling kernelRows kernelColumns strideRows strideColumns) ('D2 inputRows inputColumns) ('D2 outputRows outputColumns) where
   type Tape (Pooling kernelRows kernelColumns strideRows strideColumns) ('D2 inputRows inputColumns) ('D2 outputRows outputColumns) = S ('D2 inputRows inputColumns)
   runForwards Pooling (S2D input) =
@@ -115,8 +119,10 @@ instance ( KnownNat kernelRows
          , KnownNat outputColumns
          , KnownNat channels
          , KnownNat (outputRows * channels)
-         , ((outputRows - 1) * strideRows) ~ (inputRows - kernelRows)
-         , ((outputColumns - 1) * strideColumns) ~ (inputColumns - kernelColumns)
+         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
+         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , strideColumns * (outputColumns - 1) <= (inputColumns - kernelColumns + 1) - 1
+         , (inputColumns - kernelColumns + 1) <= (outputColumns * strideColumns)
          ) => Layer (Pooling kernelRows kernelColumns strideRows strideColumns) ('D3 inputRows inputColumns channels) ('D3 outputRows outputColumns channels) where
   type Tape (Pooling kernelRows kernelColumns strideRows strideColumns) ('D3 inputRows inputColumns channels) ('D3 outputRows outputColumns channels) = S ('D3 inputRows inputColumns channels)
   runForwards Pooling (S3D input) =

@@ -10,6 +10,8 @@ module Grenade (
   -- | The neural network layer zoo
   , module Grenade.Layers
 
+  , module Grenade.Networks
+
 
     -- * Overview of the library
     -- $library
@@ -23,17 +25,19 @@ module Grenade (
     -- See @networkToSpecification@ and @networkFromSpecification@ as good starting points.
 
   , module Grenade.Dynamic
-  
+
     -- * Load networks bundled with the library.
-  
+
   , module Grenade.Assets
 
   ) where
+import           Grenade.Assets
 import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Layers
+import           Grenade.Networks
+import           Grenade.Types    (RealNum, fromDoubleToRealNum, nameF)
 import           Grenade.Types
-import           Grenade.Assets
 
 {- $library
 Grenade is a purely functional deep learning library.
