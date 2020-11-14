@@ -6,18 +6,6 @@ author:              "Huw Campbell <huw.campbell@gmail.com>, Manuel Schneckenrei
 maintainer:          "Huw Campbell <huw.campbell@gmail.com>"
 copyright:           "(c) 2016-2020 Huw Campbell."
 
-extra-source-files:
-- README.md
-- cbits/im2col.h
-- cbits/im2col.c
-- cbits/gradient_descent.h
-- cbits/gradient_descent.c
-- cbits/pad.h
-- cbits/pad.c
-- cbits/type.h
-- cbits/shrink.h
-- cbits/shrink.c
-
 # Metadata used when publishing your package
 synopsis:            Practical Deep Learning in Haskell
 category:            AI, Machine Learning
@@ -116,6 +104,8 @@ extra-source-files:
 - cbits/pad.h
 - cbits/pad.c
 - cbits/type.h
+- cbits/shrink.h
+- cbits/shrink.c
 - proto/onnx.proto
 
 library:

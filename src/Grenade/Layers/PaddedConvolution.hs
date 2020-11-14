@@ -8,9 +8,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE OverloadedLabels      #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
@@ -33,6 +33,7 @@ import           Grenade.Onnx.Graph
 import           Grenade.Utils.ListStore
 
 import           Grenade.Onnx.Iso
+import           Lens.Micro ((^.))
 
 import qualified Proto.Onnx as P
 
@@ -68,7 +69,7 @@ type family PaddedConvolutionShapes (padLeft :: Nat) (padTop :: Nat) (padRight :
 
 instance OnnxOperator (PaddedConvolutionIso (Network
    '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
-    ('[ 'D3 rows cols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ]))) where
+    '[ 'D3 rows cols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
   onnxOpTypeNames _ = ["Conv"]
 
 
@@ -87,9 +88,9 @@ instance ( KnownNat kernelRows
          , (inputRows + padTop + padBottom) ~ convInputRows
          , (inputCols + padLeft + padRight) ~ convInputCols
          , strideRows * (outputRows - 1) <= (convInputRows - kernelRows + 1) - 1
-         , (convInputRows - kernelRows + 1) <= (outputRows * strideRows)
+         , (convInputRows - kernelRows + 1) <= outputRows * strideRows
          , strideCols * (outputCols - 1) <= (convInputCols - kernelCols + 1) - 1
-         , (convInputCols - kernelCols + 1) <= (outputCols * strideCols)
+         , (convInputCols - kernelCols + 1) <= outputCols * strideCols
          , KnownNat (kernelRows * kernelCols * channels)
          , KnownNat (outputRows * filters)
          , KnownNat padLeft
@@ -98,7 +99,7 @@ instance ( KnownNat kernelRows
          , KnownNat padBottom
          ) => OnnxLoadable (PaddedConvolutionIso (Network
    '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
-    ('[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ]))) where
+    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
    -- TODO: Check how auto_pad, group and optional bias should be supported.
    --       I don't think we can support group without reshape layers probably.
@@ -112,7 +113,9 @@ instance ( KnownNat kernelRows
     hasMatchingShape  node "strides"     strideShape
     hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
 
-    filterWeights <- tr <$> readInitializerMatrix inits "W"
+    (_ : w : _) <- Just (node ^. #input)
+
+    filterWeights <- tr <$> readInitializerMatrix inits w
     return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
