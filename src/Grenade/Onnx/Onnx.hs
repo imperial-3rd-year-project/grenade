@@ -72,27 +72,29 @@ generateGraph model = (graphProto, graph)
     genGraph :: P.NodeProto -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
     genGraph node = case inputs of
                       (_ : _ : _) -> (Series [], Just node)
-                      _           -> genGraph' outputs
+                      _           -> genGraphNode node
       where
         findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
 
         inputNames = node ^. #input
         inputs = findNodes outputNodes inputNames
 
-        outputNames = node ^. #output
-        outputs = findNodes inputNodes outputNames
-
-        genGraph' :: [P.NodeProto] -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
-        genGraph' []  = (Node node, Nothing)
-
-        genGraph' [x] = (node `graphCons` graph, next)
+        genGraphNode :: P.NodeProto -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
+        genGraphNode node = let (graph, next) = genGraph' outputs
+                             in (node `graphCons` graph, next)
           where
-            (graph, next) = genGraph x
+            outputNames = node ^. #output
+            outputs = findNodes inputNodes outputNames
 
-        genGraph' xs  = (Parallel parGraphs `graphAppend` remGraph, next')
-          where 
-            (parGraphs, Just next : _) = unzip (map genGraph xs)
-            (remGraph, next') = genGraph next
+            genGraph' :: [P.NodeProto] -> (SPG 'S P.NodeProto, Maybe P.NodeProto)
+            genGraph' []  = (Series [], Nothing)
+
+            genGraph' [x] = genGraph x
+
+            genGraph' xs  = (Parallel parGraphs `graphAppend` remGraph, next')
+              where 
+                (parGraphs, Just next : _) = unzip (map genGraph xs)
+                (remGraph, next') = genGraphNode next
 
 readOnnxModel :: FilePath -> IO (Maybe P.ModelProto)
 readOnnxModel path = do
