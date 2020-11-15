@@ -52,6 +52,7 @@ dependencies:
   - terminal-progress-bar
   - gloss
   - convertible
+  - hip
 when:
   condition: flag(use-float)
   then:

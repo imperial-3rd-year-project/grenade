@@ -101,7 +101,6 @@ instance ( KnownNat kernelRows
    --
  --   size of w is filters x channels x kernelRows x kernelCols
   loadOnnxNode inits node = do
-    traceM "pool"
     doesNotHaveAttribute  node "auto_pad"
     --doesNotHaveAttribute  node "group"
     hasSupportedDilations node

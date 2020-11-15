@@ -379,7 +379,6 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
 instance OnnxOperator (BatchNorm channels rows columns momentum) where
   onnxOpTypeNames _ = ["BatchNormalization"]
 
--- TODO: Right now we are ignoring momentum as it is a weird type variable ~~~ oops. Also ignoring spatial.
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) => OnnxLoadable (BatchNorm channels rows columns momentum) where
   loadOnnxNode inits node = case (node ^. #input) of
     [_, scale, b, mean, var] -> do
