@@ -32,6 +32,7 @@ import           System.Random.MWC              hiding (create)
 import           Data.Singletons.TypeLits       (SNat (..))
 #endif
 import           Data.List                      (foldl1')
+import           Data.Maybe                     (fromMaybe)
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -160,13 +161,18 @@ randomFullyConnected m gen = do
 instance OnnxOperator (FullyConnected i o) where
   onnxOpTypeNames _ = ["Gemm"]
 
--- TODO: Add support for attributes beta, transB
 instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
   loadOnnxNode inits node = case (node ^. #input) of
     [_, b, c] -> do
+      node `doesNotHaveAttribute` "alpha"
+      node `doesNotHaveAttribute` "transA"
+      node `doesNotHaveAttribute` "transB"
+
+      let beta = fromMaybe 1 (readDoubleAttribute "beta" node)
       loadedB <- readInitializerMatrix inits b
       loadedC <- readInitializerVector inits c
-      return $ FullyConnected (FullyConnected' loadedC loadedB) mkListStore
+
+      return $ FullyConnected (FullyConnected' loadedC (dmmap (*beta) loadedB)) mkListStore
     _         -> Nothing
       
 -------------------- DynamicNetwork instance --------------------
