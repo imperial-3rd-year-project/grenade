@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d8cc99004696105ca2146679e1076f9a948ed6c4e7fbadae9c6f484b6018fb15
+-- hash: f53ea8cdaa3bbb8ff4da9da86ecdff976d800e3a707e6cb10ef162dbb04a07bb
 
 name:           grenade
 version:        0.1.1
@@ -168,7 +168,6 @@ library
     , deepseq >=1.4 && <1.5
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
-    , hip
     , microlens
     , microlens-platform
     , mtl
@@ -250,7 +249,6 @@ test-suite test
     , ghc-typelits-knownnat
     , grenade
     , hedgehog
-    , hip
     , microlens
     , microlens-platform
     , mtl
@@ -309,7 +307,6 @@ benchmark bench
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
-    , hip
     , microlens
     , microlens-platform
     , mtl
@@ -362,7 +359,6 @@ benchmark bench-layers
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
-    , hip
     , microlens
     , microlens-platform
     , mtl
@@ -415,7 +411,6 @@ benchmark bench-lstm
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
-    , hip
     , microlens
     , microlens-platform
     , mtl
@@ -468,7 +463,6 @@ benchmark bench-util
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
-    , hip
     , microlens
     , microlens-platform
     , mtl

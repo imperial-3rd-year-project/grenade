@@ -74,7 +74,6 @@ dependencies:
   - microlens
   - microlens-platform
   - text
-  - hip
 when:
   condition: flag(use-float)
   then:
