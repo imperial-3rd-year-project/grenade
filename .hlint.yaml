@@ -11,6 +11,9 @@
 - ignore: {name: "Reduce duplication"}
 - ignore: {name: "Redundant bang pattern"}
 - ignore: {name: "Unused LANGUAGE pragma"}
+- ignore: {name: "Use <$>"}
+- ignore: {name: "Move brackets to avoid $"}
+- ignore: {name: "Use head"}
 
 
 # Specify additional command line arguments

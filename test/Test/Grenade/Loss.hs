@@ -29,8 +29,8 @@ prop_quadratic = property $ do
   let costs  = map (uncurry quadratic) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> 0.5 * (sum $ zipWith (\a b -> (a - b) ^ 2) x y)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> 0.5 * (sum $ zipWith (\a b -> (a - b) ^ 2) x y)
+  let costs' = zipWith f xs' ys'
   costs === costs'
   
 prop_quadratic' :: Property
@@ -42,8 +42,8 @@ prop_quadratic' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (-) x y
-  let costs' = map f (zip xs' ys')
+  let f      = zipWith (-)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_crossEntropy :: Property
@@ -54,8 +54,8 @@ prop_crossEntropy = property $ do
   let costs  = map (uncurry crossEntropy) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> -1 * (sum $ zipWith (\a b -> b * (log a) + (1 - b) * (log (1 - a))) x y)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> -1 * (sum $ zipWith (\a b -> b * (log a) + (1 - b) * (log (1 - a))) x y)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_crossEntropy' :: Property
@@ -67,8 +67,8 @@ prop_crossEntropy' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> (a - b) / ((1 - a) * a)) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = (zipWith (\a b -> (a - b) / ((1 - a) * a)))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_exponential :: Property
@@ -80,8 +80,8 @@ prop_exponential = property $ do
   let costs  = map (uncurry (exponential t)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y)))
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y)))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_exponential' :: Property
@@ -94,9 +94,9 @@ prop_exponential' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let g      = \(x, y, u) -> map ((*) (t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y))))) u
-  let f      = \(x, y) -> map ((*) (2 / t)) $ zipWith (-) x y
-  let costs' = map (\(x, y) -> g(x, y, f (x, y))) (zip xs' ys')
+  let g      = \x y -> map ((t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y)))) *)
+  let f      = \x y -> map ((2 / t) *) $ zipWith (-) x y
+  let costs' = zipWith (\x y -> g x y (f x y)) xs' ys'
   costs === costs'
 
 prop_hellinger :: Property
@@ -107,8 +107,8 @@ prop_hellinger = property $ do
   let costs  = map (uncurry hellinger) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> (1 / (sqrt 2)) * (sum $ zipWith (\a b -> (sqrt a - sqrt b) ^ 2) x y)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> (1 / (sqrt 2)) * (sum $ zipWith (\a b -> (sqrt a - sqrt b) ^ 2) x y)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_hellinger' :: Property
@@ -120,8 +120,8 @@ prop_hellinger' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> ((sqrt a) - (sqrt b)) / ((sqrt 2) * (sqrt a))) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = zipWith (\a b -> ((sqrt a) - (sqrt b)) / ((sqrt 2) * (sqrt a)))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_kullbackLeibler :: Property
@@ -132,8 +132,8 @@ prop_kullbackLeibler = property $ do
   let costs  = map (uncurry kullbackLeibler) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> sum $ zipWith (\a b -> b * log (b / a)) x y
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> sum $ zipWith (\a b -> b * log (b / a)) x y
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_kullbackLeibler' :: Property
@@ -145,8 +145,8 @@ prop_kullbackLeibler' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> -(b / a)) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = zipWith (\a b -> -(b / a))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 prop_genKullbackLeibler :: Property
@@ -157,8 +157,8 @@ prop_genKullbackLeibler = property $ do
   let costs  = map (uncurry genKullbackLeibler) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> (sum $ zipWith (\a b -> b * log (b / a)) x y) - (sum y) + (sum x)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> (sum $ zipWith (\a b -> b * log (b / a)) x y) - (sum y) + (sum x)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 
@@ -171,8 +171,8 @@ prop_genKullbackLeibler' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> ((a - b) / a)) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = zipWith (\a b -> ((a - b) / a))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 
@@ -184,8 +184,8 @@ prop_itakuraSaito = property $ do
   let costs  = map (uncurry itakuraSaito) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> (sum $ zipWith (\a b -> (b/a) - (log (b/a)) - 1) x y)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> sum $ zipWith (\a b -> (b/a) - (log (b/a)) - 1) x y
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 
@@ -199,8 +199,8 @@ prop_itakuraSaito' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> ((a - b) / (a * a))) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = zipWith (\a b -> ((a - b) / (a * a)))
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 
@@ -213,8 +213,8 @@ prop_categoricalCrossEntropy = property $ do
   let costs  = map (uncurry categoricalCrossEntropy) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> -1 * (sum $ zipWith (\a b -> b * log a) x y)
-  let costs' = map f (zip xs' ys')
+  let f      = \x y -> -1 * (sum $ zipWith (\a b -> b * log a) x y)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 
@@ -228,8 +228,8 @@ prop_categoricalCrossEntropy' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \(x, y) -> zipWith (\a b -> -b / a) x y
-  let costs' = map (\(u, v) -> f (u, v)) (zip xs' ys')
+  let f      = zipWith (\a b -> -b / a)
+  let costs' = zipWith f xs' ys'
   costs === costs'
 
 exampleShape :: (S ('D1 3), S ('D1 3))

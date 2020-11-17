@@ -28,7 +28,7 @@ calcMean xs = let l = fromIntegral $ length xs :: Double
 calcVariance :: [[Double]] -> [Double]
 calcVariance xs = let l  = fromIntegral $ length xs :: Double
                       ms = calcMean xs 
-                      ys = map (map (^(2 :: Integer))) $ map (\as -> zipWith (-) as ms) xs
+                      ys = map (map (^2) . zipWith (-) ms) xs
                   in  map (/ l) $ foldl1' (zipWith (+)) ys
 
 prop_1D_mean :: Property
@@ -40,7 +40,7 @@ prop_1D_mean = property $ do
   case someNatVal $ fromIntegral vecLength of 
     Just (SomeNat (Proxy :: Proxy v)) -> 
       let xsVer   = calcMean xs
-          xs'      = extractVec $ (bmean $ map (S1D . NLA.fromList) xs :: S ('D1 v))
+          xs'     = extractVec (bmean $ map (S1D . NLA.fromList) xs :: S ('D1 v))
       in xsVer === xs'
 
 prop_2D_mean :: Property

@@ -29,7 +29,6 @@ module Grenade (
   , module Grenade.Assets
 
   ) where
-import Grenade.Types ( RealNum, fromDoubleToRealNum, nameF )
 import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Layers

@@ -104,7 +104,7 @@ instance NFData (BatchNorm channels rows columns momentum) where
 -- | Show instance
 
 instance Show (BatchNorm channels rows columns momentum) where
-  show (BatchNorm _ _ _ _ _ _) = "Batch Normalization"
+  show _ = "Batch Normalization"
 
 -- Serialize instances
 
@@ -234,7 +234,7 @@ instance (KnownNat columns, KnownNat momentum, KnownNat i, i ~ columns)
           [v]             = vectorToList runningVar  :: [Double]
           [g]             = vectorToList gamma       :: [Double]
           [b]             = vectorToList beta        :: [Double]
-          mom             = (/ fromIntegral 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
+          mom             = (/ 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map extractV xs
 
@@ -246,8 +246,8 @@ instance (KnownNat columns, KnownNat momentum, KnownNat i, i ~ columns)
           std             = sqrt $ sample_var + ε             :: Double
 
           x_extracted     = map (\(S1D x) -> x) xs                      :: [R i]
-          x_normalised    = map (\x -> dvmap (\a -> (a - sample_mean) / std) x) x_extracted :: [R i]
-          scaledShifted   = map (\x -> dvmap (\a -> g * a + b) x) x_normalised :: [R i]
+          x_normalised    = map (dvmap (\a -> (a - sample_mean) / std)) x_extracted :: [R i]
+          scaledShifted   = map (dvmap (\a -> g * a + b)) x_normalised :: [R i]
           out             = map S1D scaledShifted  :: [S ('D1 i)]
 
           stdV            = listToVector [std] :: R 1
@@ -286,7 +286,7 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownN
           [v]             = vectorToList runningVar  :: [Double]
           [g]             = vectorToList gamma       :: [Double]
           [b]             = vectorToList beta        :: [Double]
-          mom             = (/ fromIntegral 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
+          mom             = (/ 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map (sflatten . extractM2D) xs
 
@@ -298,8 +298,8 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum, KnownNat i, KnownN
           std             = sqrt $ sample_var + ε             :: Double
 
           x_extracted     = map (\(S2D x) -> x) xs                      :: [L i j]
-          x_normalised    = map (\x -> dmmap (\a -> (a - sample_mean) / std) x) x_extracted :: [L i j]
-          scaledShifted   = map (\x -> dmmap (\a -> g * a + b) x) x_normalised :: [L i j]
+          x_normalised    = map (dmmap (\a -> (a - sample_mean) / std)) x_extracted :: [L i j]
+          scaledShifted   = map (dmmap (\a -> g * a + b)) x_normalised :: [L i j]
           out             = map S2D scaledShifted  :: [S ('D2 i j)]
 
           x_normalised'   = map sflatten x_normalised

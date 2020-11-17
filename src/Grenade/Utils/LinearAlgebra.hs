@@ -99,7 +99,7 @@ batchNormVariance :: forall n. KnownNat n => [R n] -> Double
 batchNormVariance vs 
   = let mu  = batchNormMean vs
         hw  = fromIntegral $ natVal (Proxy :: Proxy n)
-        vs' = map (\x -> sumElements . extract $ dvmap (\a -> (a - mu) ^ 2) x) vs :: [Double] 
+        vs' = map (sumElements . extract . dvmap (\a -> (a - mu) ^ 2)) vs :: [Double] 
         n   = fromIntegral $ length vs 
     in  sum vs' / (hw * n)
 
@@ -110,16 +110,16 @@ extractM2D :: S ('D2 x y) -> L x y
 extractM2D (S2D m) = m
 
 vscale :: KnownNat n => RealNum -> R n -> R n
-vscale x v = dvmap (*x) v
+vscale = dvmap . (*)
 
 vadd :: KnownNat n => RealNum -> R n -> R n
-vadd x v = dvmap (+x) v
+vadd = dvmap . (+)
 
 vsqrt :: KnownNat n => R n -> R n
-vsqrt v = dvmap sqrt v
+vsqrt = dvmap sqrt
 
 msqrt :: (KnownNat n, KnownNat m) => L m n -> L m n
-msqrt m = dmmap sqrt m
+msqrt = dmmap sqrt
 
 vflatten :: (KnownNat m, KnownNat n) => [R n] -> R m
 vflatten xs = fromJust . create . flatten . fromRows $ map extract xs

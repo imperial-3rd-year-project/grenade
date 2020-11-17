@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import           Criterion.Main
+import           Control.Monad  (replicateM)
 
 import           Grenade
 import           Grenade.Utils.LinearAlgebra
@@ -13,17 +14,17 @@ main = do
   let batchBenchSize1 = 32
       batchBenchSize2 = 128
 
-  xs1D :: [S ('D1 5)]   <- sequence $ take batchBenchSize1 $ repeat randomOfShape
-  ys1D :: [S ('D1 250)] <- sequence $ take batchBenchSize1 $ repeat randomOfShape
+  xs1D :: [S ('D1 5)]   <- replicateM batchBenchSize1 randomOfShape
+  ys1D :: [S ('D1 250)] <- replicateM batchBenchSize1 randomOfShape
 
-  xs'1D :: [S ('D1 5)]   <- sequence $ take batchBenchSize2 $ repeat randomOfShape
-  ys'1D :: [S ('D1 250)] <- sequence $ take batchBenchSize2 $ repeat randomOfShape
+  xs'1D :: [S ('D1 5)]   <- replicateM batchBenchSize2 randomOfShape
+  ys'1D :: [S ('D1 250)] <- replicateM batchBenchSize2 randomOfShape
 
-  xs2D :: [S ('D2 3 4)]     <- sequence $ take batchBenchSize1 $ repeat randomOfShape
-  ys2D :: [S ('D2 100 100)] <- sequence $ take batchBenchSize1 $ repeat randomOfShape
+  xs2D :: [S ('D2 3 4)]     <- replicateM batchBenchSize1 randomOfShape
+  ys2D :: [S ('D2 100 100)] <- replicateM batchBenchSize1 randomOfShape
 
-  xs'2D :: [S ('D2 3 4)]     <- sequence $ take batchBenchSize2 $ repeat randomOfShape
-  ys'2D :: [S ('D2 100 100)] <- sequence $ take batchBenchSize2 $ repeat randomOfShape
+  xs'2D :: [S ('D2 3 4)]     <- replicateM batchBenchSize2 randomOfShape
+  ys'2D :: [S ('D2 100 100)] <- replicateM batchBenchSize2 randomOfShape
 
   defaultMain
     [ bgroup

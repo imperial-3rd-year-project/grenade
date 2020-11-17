@@ -114,7 +114,7 @@ netTrain net0 op n = do
             then S1D $ fromRational 1
             else S1D $ fromRational 0
   let trained = foldl' trainEach net0 (zip inps outs)
-  return $ trained
+  return trained
   where
     trainEach !network (i, o) = fst $ train op network i o quadratic'
     inCircle :: KnownNat n => SA.R n -> (SA.R n, RealNum) -> Bool

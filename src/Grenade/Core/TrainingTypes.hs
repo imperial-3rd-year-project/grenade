@@ -51,4 +51,4 @@ defaultAdamOptions = TrainingOptions { optimizer      = OptAdam 0.001 0.9 0.999 
                                      , metrics        = [Quadratic]
                                      }
 
-data LossFunction shape = LossFunction (shape -> shape -> shape)
+newtype LossFunction shape = LossFunction (shape -> shape -> shape)

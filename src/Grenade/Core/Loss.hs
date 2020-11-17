@@ -45,7 +45,7 @@ crossEntropy :: SingI s => S s -> S s -> Double
 crossEntropy x y = - (nsum $ y * (log x) + ((nk 1) - y) * (log ((nk 1) - x)))
 
 crossEntropy' :: SingI s => LossFunction (S s)
-crossEntropy' = LossFunction $ \x y -> (x - y) / ( ((fromInteger 1) - x) * x )
+crossEntropy' = LossFunction $ \x y -> (x - y) / ( (1 - x) * x )
 
 exponential :: SingI s => Double -> S s -> S s -> Double
 exponential t x y = t * (exp (1/t * total))

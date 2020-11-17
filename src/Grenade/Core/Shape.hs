@@ -52,11 +52,8 @@ import           Data.Vector.Storable         (Vector)
 import qualified Data.Vector.Storable         as V
 import           GHC.TypeLits                 hiding (natVal)
 import qualified Numeric.LinearAlgebra        as NLA
-import qualified Numeric.LinearAlgebra        as D
 import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
-import           Numeric.LinearAlgebra.Static (L, R)
-import qualified Numeric.LinearAlgebra.Static as H
 import qualified Numeric.LinearAlgebra.Static as H
 
 import           System.Random.MWC

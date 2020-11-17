@@ -45,11 +45,11 @@ main = do
   bn5   :: BatchNorm 1 1 5   90 <- randomBatchNormLayer True 
   bn250 :: BatchNorm 1 1 250 90 <- randomBatchNormLayer True 
 
-  xs1D :: [S ('D1 5)]   <- sequence $ take batchBenchSize1 $ repeat randomOfShape
-  ys1D :: [S ('D1 250)] <- sequence $ take batchBenchSize1 $ repeat randomOfShape
+  xs1D :: [S ('D1 5)]   <- replicateM batchBenchSize1 randomOfShape
+  ys1D :: [S ('D1 250)] <- replicateM batchBenchSize1 randomOfShape
 
-  xs'1D :: [S ('D1 5)]   <- sequence $ take batchBenchSize2 $ repeat randomOfShape
-  ys'1D :: [S ('D1 250)] <- sequence $ take batchBenchSize2 $ repeat randomOfShape
+  xs'1D :: [S ('D1 5)]   <- replicateM batchBenchSize2 randomOfShape
+  ys'1D :: [S ('D1 250)] <- replicateM batchBenchSize2 randomOfShape
 
   let f5 = runBatchForwards bn5     :: [S ('D1 5)] -> ([Tape (BatchNorm 1 1 5 90) ('D1 5) ('D1 5)], [S ('D1 5)])
   let f250 = runBatchForwards bn250 :: [S ('D1 250)] -> ([Tape (BatchNorm 1 1 250 90) ('D1 250) ('D1 250)], [S ('D1 250)])
