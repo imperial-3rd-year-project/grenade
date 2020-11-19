@@ -40,8 +40,6 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Control.DeepSeq              (NFData (..))
-import           Data.Array.Repa              hiding (Shape (..), map)
-import           Data.List                    (foldl1')
 import           Data.List.Split              (chunksOf)
 import           Data.Maybe                   (fromJust)
 import           Data.Proxy
@@ -250,7 +248,7 @@ visualise2D (S2D mm) max =
   in unlines px
 
 splitChannels :: forall rows columns channels.
-                 (KnownNat rows, KnownNat columns, KnownNat channels)
+                 (KnownNat rows, KnownNat columns)
                  => S ('D3 rows columns channels) -> [S ('D2 rows columns)]
 splitChannels (S3D x)
   = let r   = fromIntegral $ natVal (Proxy :: Proxy rows)

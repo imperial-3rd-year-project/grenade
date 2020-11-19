@@ -71,6 +71,7 @@ instance (KnownNat i, KnownNat o, KnownNat (i + o)) => UpdateLayer (BasicRecurre
         newActivations  = oldActivations + newMomentum - regulariser
     in BasicRecurrent newBias newBiasMomentum newActivations newMomentum
   runUpdate _ l d = runUpdate defOptimizer l d
+  reduceGradient = error "Attempt to reduce gradient of batch in BasicRecurrent instance" 
 
 instance (KnownNat i, KnownNat o, KnownNat x, KnownNat (x*o), x ~ (i+o)) => RandomLayer (BasicRecurrent i o) where
   createRandomWith m gen = do

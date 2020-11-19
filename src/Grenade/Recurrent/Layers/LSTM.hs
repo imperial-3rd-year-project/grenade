@@ -145,6 +145,8 @@ instance (KnownNat i, KnownNat o) => UpdateLayer (LSTM i o) where
   --   v :: forall x ix. (x -> (R ix)) -> x -> x -> R ix
   --   v e (e -> a) (e -> b) = a + b
 
+  reduceGradient = error "Attempt to reduce gradient of batch in LSTM instance" 
+
 instance (KnownNat i, KnownNat o, KnownNat (i*o), KnownNat (o*o)) => RandomLayer (LSTM i o) where
   createRandomWith = randomLSTM
 

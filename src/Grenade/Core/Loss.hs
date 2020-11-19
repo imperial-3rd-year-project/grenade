@@ -28,12 +28,11 @@ module Grenade.Core.Loss (
   , categoricalCrossEntropy'
   ) where
 
-import           Data.Singletons               (SingI)
+import           Data.Singletons              (SingI)
+
 import           Grenade.Core.Shape
 import           Grenade.Core.TrainingTypes
 import           Grenade.Utils.LinearAlgebra
-import           Numeric.LinearAlgebra.HMatrix
-import           Numeric.LinearAlgebra.Static
 
 quadratic :: SingI s => S s -> S s -> Double
 quadratic x y = 0.5 * nsum ((x - y) ^ (2 :: Integer))

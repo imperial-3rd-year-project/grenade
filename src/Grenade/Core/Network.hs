@@ -343,7 +343,8 @@ instance UpdateLayer (Network sublayers subshapes) where
       buildBatchGradients :: [Gradients sublayers] -> BatchGradients sublayers
       -- We don't have an [] base case because we need an instance of Gradients
       -- in order to analyse the number of layers and create the corresponding lists.
-      buildBatchGradients [gs] = buildSingletonBatches gs
+      buildBatchGradients []       = error "Attempting to infer structure from empty network in buildBatchGradients"
+      buildBatchGradients [gs]     = buildSingletonBatches gs
       buildBatchGradients (gs:gss) = buildBatchGradients' gs (buildBatchGradients gss)
 
       -- We use this to initialize the BatchGradients

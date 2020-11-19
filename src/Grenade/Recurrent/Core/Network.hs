@@ -322,7 +322,8 @@ instance (Fractional (RecurrentShape x), RecurrentUpdateLayer x, Fractional (Rec
 --   This allows a complete network to be treated as a layer in a larger network.
 instance CreatableRecurrent sublayers subshapes => UpdateLayer (RecurrentNetwork sublayers subshapes) where
   type Gradient (RecurrentNetwork sublayers subshapes) = RecurrentGradient sublayers
-  runUpdate    = applyRecurrentUpdate
+  runUpdate      = applyRecurrentUpdate
+  reduceGradient = error "Attempt to reduce gradient of batch in RecurrentNetwork instance" 
 
 instance CreatableRecurrent sublayers subshapes => RandomLayer (RecurrentNetwork sublayers subshapes) where
   createRandomWith = randomRecurrentWith

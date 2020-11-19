@@ -11,19 +11,14 @@
 module Grenade.Layers.GlobalAvgPool where
 
 import           Control.DeepSeq                (NFData (..))
-import           Data.Constraint                (Dict (..))
-import           Data.Maybe                     (fromJust)
-import           Data.Reflection                (reifyNat)
 import           Data.Serialize
 import           Data.Singletons
 import           GHC.Generics                   (Generic)
 import           GHC.TypeLits
-import           Numeric.LinearAlgebra.Static   (L, R)
-import qualified Numeric.LinearAlgebra.Static   as LAS
+
+import qualified Numeric.LinearAlgebra.Static   as H
 
 import           Grenade.Core
-import           Grenade.Dynamic
-import           Grenade.Dynamic.Internal.Build
 import           Grenade.Utils.LinearAlgebra
 
 data GlobalAvgPool = GlobalAvgPool
@@ -59,7 +54,7 @@ instance (KnownNat i, KnownNat j) => Layer GlobalAvgPool ('D2 i j) ('D2 1 1) whe
     let n   = fromIntegral $ natVal (Proxy :: Proxy i)
         m   = fromIntegral $ natVal (Proxy :: Proxy j)
         avg = nsum x / (n * m)
-        mat = LAS.fromList [avg] :: L 1 1
+        mat = H.fromList [avg]
     in  (x, S2D mat)
 
   runBackwards = undefined
@@ -73,7 +68,7 @@ instance (KnownNat i, KnownNat j, KnownNat k) => Layer GlobalAvgPool ('D3 i j k)
         m   = fromIntegral $ natVal (Proxy :: Proxy j)
         cs  = splitChannels x
         ys  = map (\c -> nsum c / (n * m)) cs
-        mat = LAS.fromList ys :: L k 1
+        mat = H.fromList ys 
     in  (x, S3D mat)
 
   runBackwards = undefined

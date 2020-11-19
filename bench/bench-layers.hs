@@ -6,16 +6,13 @@
 import           Criterion.Main
 
 import           Control.Monad
-import           Data.Proxy
 import           GHC.TypeLits
 import           System.Random
 
 import           Grenade
-import           Grenade.Layers.BatchNormalisation
-import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
-import           Numeric.LinearAlgebra.Static      (L, R)
+import           Numeric.LinearAlgebra.Static      (R)
 import qualified Numeric.LinearAlgebra.Static      as H
 
 randomList :: (Double, Double) -> Int -> IO [Double]
@@ -23,27 +20,28 @@ randomList (a, b) n = replicateM n $ randomRIO (a, b)
 
 randomBatchNormLayer :: forall n. KnownNat n => Bool -> IO (BatchNorm 1 1 n 90)
 randomBatchNormLayer training = do
-  let l = fromIntegral $ natVal (Proxy :: Proxy n)
+  let (a, b) = (-2, 2)
 
-  gamma'        <- randomList (-2, 2) l
-  beta'         <- randomList (-2, 2) l
-  running_mean' <- randomList (-2, 2) l
-  running_var'  <- randomList (-2, 2) l
+  gamma'        <- randomList (a, b) 1
+  beta'         <- randomList (a, b) 1
+  running_mean' <- randomList (a, b) 1
+  running_var'  <- randomList (a, b) 1
 
-  let gamma        = H.fromList gamma'        :: R n
-      beta         = H.fromList beta'         :: R n
-      running_mean = H.fromList running_mean' :: R n
-      running_var  = H.fromList running_var'  :: R n
+  let gamma        = H.fromList gamma'        :: R 1
+      beta         = H.fromList beta'         :: R 1
+      running_mean = H.fromList running_mean' :: R 1
+      running_var  = H.fromList running_var'  :: R 1
+      ε            = 0.00001
 
-  return $ BatchNorm training (BatchNormParams gamma beta) running_mean running_var mkListStore
+  return $ BatchNorm training (BatchNormParams gamma beta) running_mean running_var ε mkListStore
 
 main :: IO ()
 main = do
   let batchBenchSize1 = 32
       batchBenchSize2 = 128
 
-  bn5   :: BatchNorm 1 1 5   90 <- randomBatchNormLayer True 
-  bn250 :: BatchNorm 1 1 250 90 <- randomBatchNormLayer True 
+  bn5   :: BatchNorm 1 1 5   90 <- randomBatchNormLayer True
+  bn250 :: BatchNorm 1 1 250 90 <- randomBatchNormLayer True
 
   xs1D :: [S ('D1 5)]   <- replicateM batchBenchSize1 randomOfShape
   ys1D :: [S ('D1 250)] <- replicateM batchBenchSize1 randomOfShape

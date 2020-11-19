@@ -64,6 +64,7 @@ instance (RecurrentUpdateLayer x, UpdateLayer y) => UpdateLayer (ConcatRecurrent
   type Gradient (ConcatRecurrent m (Recurrent x) n (FeedForward y)) = (Gradient x, Gradient y)
   runUpdate lr (ConcatRecLeft x y) (x', y')
     = ConcatRecLeft (runUpdate lr x x') (runUpdate lr y y')
+  reduceGradient = error "Attempt to reduce gradient of batch in ConcatRecurrent instance"
 
 instance (RandomLayer x, RandomLayer y) => RandomLayer (ConcatRecurrent m (Recurrent x) n (FeedForward y)) where
   createRandomWith m gen
@@ -73,6 +74,7 @@ instance (UpdateLayer x, RecurrentUpdateLayer y) => UpdateLayer (ConcatRecurrent
   type Gradient (ConcatRecurrent m (FeedForward x) n (Recurrent y)) = (Gradient x, Gradient y)
   runUpdate lr (ConcatRecRight x y) (x', y')
     = ConcatRecRight (runUpdate lr x x') (runUpdate lr y y')
+  reduceGradient = error "Attempt to reduce gradient of batch in ConcatRecurrent instance"
 
 instance (RandomLayer x, RandomLayer y) => RandomLayer (ConcatRecurrent m (FeedForward x) n (Recurrent y)) where
   createRandomWith m gen
@@ -82,6 +84,7 @@ instance (RecurrentUpdateLayer x, RecurrentUpdateLayer y) => UpdateLayer (Concat
   type Gradient (ConcatRecurrent m (Recurrent x) n (Recurrent y)) = (Gradient x, Gradient y)
   runUpdate lr (ConcatRecBoth x y) (x', y')
     = ConcatRecBoth (runUpdate lr x x') (runUpdate lr y y')
+  reduceGradient = error "Attempt to reduce gradient of batch in ConcatRecurrent instance"
 
 instance (RandomLayer x, RandomLayer y) => RandomLayer (ConcatRecurrent m (Recurrent x) n (Recurrent y)) where
   createRandomWith m gen

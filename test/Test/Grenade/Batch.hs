@@ -22,20 +22,10 @@ import           Grenade.Utils.ListStore
 
 import           Numeric.LinearAlgebra hiding (uniformSample, konst, (===))
 import           Numeric.LinearAlgebra.Static as H hiding ((===))
-import           Numeric.LinearAlgebra.Devel as U 
 import           Numeric.LinearAlgebra.Data as D hiding ((===))
 
-import           Data.Maybe (fromJust)
-
 import           Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
 import           GHC.TypeLits
-import           Data.Proxy
-
-import Debug.Trace
-
-import           Test.Hedgehog.Compat
 
 type FFNetwork = Network '[ FullyConnected 3 5, FullyConnected 5 4 ] '[ 'D1 3, 'D1 5, 'D1 4 ]
 
@@ -72,8 +62,8 @@ prop_networkBackpropCalculatesGradients = property $ do
       (grad', v'   :: S ('D1 3))   = runBackwards net (tapes!!1) (outs!!1)
       grads'                       = map extractFCGrads grads
       grads''                      = map extractFCGrads [grad, grad']
-      vs'                          = map (\(S1D v) -> (D.toList . H.extract) v) vs
-      vs''                         = map (\(S1D v) -> (D.toList . H.extract) v) [v, v']
+      vs'                          = map (\(S1D vec) -> (D.toList . H.extract) vec) vs
+      vs''                         = map (\(S1D vec) -> (D.toList . H.extract) vec) [v, v']
 
   grads' === grads''
   vs'    === vs''
@@ -171,8 +161,8 @@ prop_fullyConnectedBackprop = property $ do
       unwrapGrad                   = \(FullyConnected' wB wN) -> (H.extract wB, H.extract wN)
       grads'                       = map unwrapGrad grads
       grads''                      = map unwrapGrad [grad, grad']
-      vs'                          = map (\(S1D v) -> (D.toList . H.extract) v) vs
-      vs''                         = map (\(S1D v) -> (D.toList . H.extract) v) [v, v']
+      vs'                          = map (\(S1D vec) -> (D.toList . H.extract) vec) vs
+      vs''                         = map (\(S1D vec) -> (D.toList . H.extract) vec) [v, v']
 
   grads' === grads''
   vs'    === vs''
@@ -186,7 +176,7 @@ prop_fullyConnectedAveragesGradients = property $ do
       (grads, _    :: [S ('D1 3)]) = runBatchBackwards fc tapes outs
       (grad,  _    :: S ('D1 3))   = runBackwards fc (tapes!!0) (outs!!0)
       (grad', _    :: S ('D1 3))   = runBackwards fc (tapes!!1) (outs!!1)
-      f                            = \(FullyConnected' wB wN) -> (H.extract wB, H.extract wN)
+      f                            = \(FullyConnected' bs ns) -> (H.extract bs, H.extract ns)
       rgrad                        = f (reduceGradient @(FullyConnected 3 5) grads)
       (wB, wN)                     = f grad
       (wB', wN')                   = f grad'

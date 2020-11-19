@@ -1,23 +1,21 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 
 module Test.Grenade.Loss where
 
 import           Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
+import qualified Hedgehog.Gen                 as Gen
+import qualified Hedgehog.Range               as Range
 
-import GHC.TypeLits
-import Numeric.LinearAlgebra.Data hiding ((===))
 import qualified Numeric.LinearAlgebra.Static as NLA
 
-import Grenade
-import Test.Hedgehog.Hmatrix
+import           Grenade
+import           Test.Hedgehog.Hmatrix
 
 genShapes :: Gen [S ('D1 10)]
-genShapes = 
+genShapes =
   let len = Range.linear 0 10
   in  Gen.list len (S1D <$> randomVectorNormalised)
 
@@ -29,10 +27,10 @@ prop_quadratic = property $ do
   let costs  = map (uncurry quadratic) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \x y -> 0.5 * (sum $ zipWith (\a b -> (a - b) ^ 2) x y)
+  let f      = \x y -> 0.5 * (sum $ zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)
   let costs' = zipWith f xs' ys'
   costs === costs'
-  
+
 prop_quadratic' :: Property
 prop_quadratic' = property $ do
   xs <- forAll genShapes
@@ -80,7 +78,7 @@ prop_exponential = property $ do
   let costs  = map (uncurry (exponential t)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \x y -> t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y)))
+  let f      = \x y -> t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)))
   let costs' = zipWith f xs' ys'
   costs === costs'
 
@@ -94,7 +92,7 @@ prop_exponential' = property $ do
   let costs  = map (extractVec . (uncurry l)) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let g      = \x y -> map ((t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ 2) x y)))) *)
+  let g      = \x y -> map ((t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)))) *)
   let f      = \x y -> map ((2 / t) *) $ zipWith (-) x y
   let costs' = zipWith (\x y -> g x y (f x y)) xs' ys'
   costs === costs'
@@ -107,7 +105,7 @@ prop_hellinger = property $ do
   let costs  = map (uncurry hellinger) zs
   let xs'    = map extractVec xs
   let ys'    = map extractVec ys
-  let f      = \x y -> (1 / (sqrt 2)) * (sum $ zipWith (\a b -> (sqrt a - sqrt b) ^ 2) x y)
+  let f      = \x y -> (1 / (sqrt 2)) * (sum $ zipWith (\a b -> (sqrt a - sqrt b) ^ (2 :: Int)) x y)
   let costs' = zipWith f xs' ys'
   costs === costs'
 
@@ -245,7 +243,7 @@ prop_categoricalCrossEntropy_matchesActualValues = property $ do
     diff (abs (calculated - expectedResult)) (<) 0.01
     where
       expectedResult = 2.303
-    
+
 
 
 tests :: IO Bool

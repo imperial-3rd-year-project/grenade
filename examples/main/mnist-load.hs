@@ -3,46 +3,29 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 {-# LANGUAGE TypeFamilies        #-}
 
-
-import           Control.Applicative
-import           Control.DeepSeq
-import           Control.Monad
-import           Control.Monad.Random
-import           Control.Monad.Trans.Except
-
-import           Data.Serialize
-import qualified Data.ByteString              as B
-import qualified Data.Attoparsec.Text         as A
-import           Data.List                    (foldl', maximumBy)
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T
-import qualified Data.Vector.Storable         as V
-import           Data.Ord
-import           Data.Maybe                   (fromMaybe)
-import           Data.Word
 import           Data.Bits
 import           Data.Convertible
+import           Data.List                            (maximumBy)
+import           Data.Maybe                           (fromMaybe)
+import           Data.Ord
+import qualified Data.Vector.Storable                 as V
+import           Data.Word
 
 import           Debug.Trace
 
-import           Numeric.LinearAlgebra.Data   (toLists, cmap, flatten)
-import           Numeric.LinearAlgebra        (maxIndex)
-import qualified Numeric.LinearAlgebra.Static as SA
-import qualified Numeric.LinearAlgebra.Devel  as U
+import           Numeric.LinearAlgebra.Data           (flatten)
+import qualified Numeric.LinearAlgebra.Devel          as U
+import qualified Numeric.LinearAlgebra.Static         as SA
 
 import           Graphics.Gloss
 import qualified Graphics.Gloss.Interface.IO.Interact as GI
 
-import           Options.Applicative
-
 import           Unsafe.Coerce
 
 import           Grenade
-import           Grenade.Demos.MNIST hiding (runNet')
-import           Grenade.Utils.OneHot
+import           Grenade.Demos.MNIST                  hiding (runNet')
 import           Grenade.Layers.Internal.Shrink
 
 runNet' :: MNIST -> S ('D2 28 28) -> String
@@ -72,7 +55,7 @@ renderCanvas (Canvas (S2D !arr) _ _)
     (ptr, _, _) = U.unsafeToForeignPtr m''
 
 handleInput :: GI.Event -> Canvas -> Canvas
-handleInput e@(GI.EventKey (GI.MouseButton GI.LeftButton) ks _ _) (Canvas arr'@(S2D !arr) mb net) =
+handleInput (GI.EventKey (GI.MouseButton GI.LeftButton) ks _ _) (Canvas arr'@(S2D !arr) _ net) =
   case ks of
     GI.Down -> Canvas arr' MouseDown net
     GI.Up   -> trace (runNet' net shrunk) $ Canvas arr' MouseUp net
@@ -80,7 +63,7 @@ handleInput e@(GI.EventKey (GI.MouseButton GI.LeftButton) ks _ _) (Canvas arr'@(
     shrunk :: S ('D2 28 28)
     shrunk = S2D $ fromMaybe (error "") $ SA.create $ shrink_2d 224 224 28 28 (SA.extract arr)
 
-handleInput e@(GI.EventKey (GI.Char 'c') ks _ _) (Canvas arr'@(S2D !arr) mb net) =
+handleInput (GI.EventKey (GI.Char 'c') ks _ _) (Canvas arr'@(S2D !arr) mb net) =
   case ks of
     GI.Down -> Canvas arr'   mb net
     GI.Up   -> Canvas arrNew mb net
@@ -88,7 +71,7 @@ handleInput e@(GI.EventKey (GI.Char 'c') ks _ _) (Canvas arr'@(S2D !arr) mb net)
     arrNew = S2D $ fromMaybe (error "") $ SA.create clean
     clean  = U.mapMatrixWithIndex (const (const 255)) (SA.extract arr)
 
-handleInput e@(GI.EventMotion (y, x)) cvs@(Canvas arr mb net) = case mb of
+handleInput (GI.EventMotion (y, x)) cvs@(Canvas arr mb net) = case mb of
   MouseDown -> Canvas (draw arr (convert x + 112) (convert y + 112)) mb net
   MouseUp   -> cvs
 
@@ -99,10 +82,10 @@ draw (S2D arr) x y = S2D $ fromMaybe (error "") $ SA.create m
   where
     m = U.mapMatrixWithIndex f (SA.extract arr)
 
-    f (x', y') p = if (x - x') ^ 2 + (y - y') ^ 2 <= 50 then 0 else p
+    f (x', y') p = if (x - x') ^ (2 :: Int) + (y - y') ^ (2 :: Int) <= 50 then 0 else p
 
 main :: IO ()
-main = do 
+main = do
     mnistPath <- getPathForNetwork MNIST
     net <- (loadNetwork mnistPath :: IO MNIST)
     putStrLn "Successfully loaded model"

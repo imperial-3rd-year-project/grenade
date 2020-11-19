@@ -60,7 +60,6 @@ import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
 import           Grenade.Core.WeightInitialization
 import           Grenade.Types
-import           Grenade.Utils.Parallel
 
 -- | Class for updating a layer. All layers implement this, as it
 --   describes how to create and update the layer.
