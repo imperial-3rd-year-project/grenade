@@ -1,15 +1,16 @@
 stages:
   - build
   - test
+  - lint
 
 default:
 # image: thchar/grenade_ci:latest
   before_script:
     - cabal update
 
-# lint:
-#   stage: lint
-#   script: hlint .
+lint:
+  stage: lint
+  script: hlint lint src/ test/ bench/ examples/
 
 build:
   stage: build
