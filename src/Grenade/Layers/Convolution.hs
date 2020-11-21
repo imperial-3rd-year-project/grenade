@@ -11,6 +11,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE PolyKinds             #-}
 
 {-|
 Module      : Grenade.Layers.Convolution
@@ -34,6 +37,7 @@ module Grenade.Layers.Convolution (
 import           Control.DeepSeq                     (NFData (..))
 import           Control.Monad.Primitive             (PrimBase, PrimState)
 import           Data.Constraint                     (Dict (..))
+import           Data.Function                       ((&))
 import           Data.Kind                           (Type)
 import           Data.List                           (foldl1')
 import           Data.Maybe
@@ -44,11 +48,10 @@ import           Data.Singletons
 import           Data.Singletons.Prelude.Num         ((%*))
 import           Data.Singletons.TypeLits            hiding (natVal)
 import           GHC.TypeLits
-import           Numeric.LinearAlgebra               hiding (konst,
-                                                      uniformSample)
+import           Lens.Micro                          ((^.))
+import           Numeric.LinearAlgebra               hiding (konst, uniformSample)
 import qualified Numeric.LinearAlgebra               as LA
-import           Numeric.LinearAlgebra.Static        hiding (build, toRows,
-                                                      (|||))
+import           Numeric.LinearAlgebra.Static        hiding ((&), build, toRows, (|||))
 import           System.Random.MWC                   (Gen)
 import           Unsafe.Coerce                       (unsafeCoerce)
 
@@ -57,6 +60,9 @@ import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Update
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.Graph
+import           Grenade.Onnx.Utils
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
@@ -390,17 +396,35 @@ instance ( KnownNat kernelRows
   runBackwards c tape (S2D grads) =
     runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1))
 
--- instance (KnownNat i, KnownNat o, KnownNat (i*o)) => OnnxLoadable (FullyConnected i o) where
---   loadOnnx inits (Node node) = node `hasType` "Geem" >> case (node ^. #input) of
---     [_, b, c] -> do
---       loadedB <- readInitializerMatrix inits b
---       loadedC <- readInitializerVector inits c
---       return (FullyConnected (FullyConnected' loadedC loadedB) mkListStore, Series [])
---     _         -> Nothing
---   loadOnnx inits (Series ((Node node) : ns)) = fmap (Series ns <$) (loadOnnx inits $ Node node)
---   loadOnnx _ _ = Nothing
---
---   size of w is filters x channels x kernelRows x kernelCols
+instance OnnxOperator (Convolution channels filters kernelRows kernelCols strideRows strideCols) where
+  onnxOpTypeNames _ = ["Conv"]
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat channels
+         , KnownNat (kernelRows * kernelCols * channels)
+         ) => OnnxLoadable (Convolution channels filters kernelRows kernelCols strideRows strideCols) where
+  loadOnnxNode inits node = do
+    node `doesNotHaveAttribute` "auto_pad"
+
+    node & hasSupportedDilations
+    node & hasSupportedGroup
+
+    (node `hasMatchingShape` "kernelShape") kernelShape
+    (node `hasMatchingShape` "strides"    ) strideShape
+    (node `hasCorrectPadding`) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0)
+
+    case node ^. #input of
+      [_, w] -> do
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
+        return (Convolution filterWeights mkListStore)
+      _ -> Nothing
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
 
 -------------------- DynamicNetwork instance --------------------
 

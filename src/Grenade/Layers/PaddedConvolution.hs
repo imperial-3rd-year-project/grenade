@@ -18,9 +18,10 @@ module Grenade.Layers.PaddedConvolution (
     PaddedConvolution
   ) where
 
-import           Data.Function           ((&))
+import           Data.Function                ((&))
 import           Data.Proxy
 import           GHC.TypeLits
+import           Lens.Micro                   ((^.))
 import           Numeric.LinearAlgebra.Static (tr)
 
 import           Grenade.Core.Network
@@ -28,12 +29,10 @@ import           Grenade.Core.Shape
 import           Grenade.Layers.Convolution
 import           Grenade.Layers.Pad
 import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.Iso
 import           Grenade.Onnx.Graph
 import           Grenade.Onnx.Utils
 import           Grenade.Utils.ListStore
-
-import           Grenade.Onnx.Iso
-import           Lens.Micro ((^.))
 
 newtype PaddedConvolutionIso a = PaddedConvolutionIso {fromPaddedConvolutionIso :: a}
 
