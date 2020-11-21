@@ -19,6 +19,7 @@ module Grenade.Layers.PaddedConvolution (
   ) where
 
 import           Control.Monad           (guard)
+import           Data.Function           ((&))
 import           Data.Proxy
 import qualified Data.Text               as T
 import           GHC.TypeLits
@@ -99,29 +100,31 @@ instance ( KnownNat kernelRows
          , KnownNat padBottom
          ) => OnnxLoadable (PaddedConvolutionIso (Network
    '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
-    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
+   '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
-   -- TODO: Check how auto_pad, group and optional bias should be supported.
-   --       I don't think we can support group without reshape layers probably.
-   --
-   --   size of w is filters x channels x kernelRows x kernelCols
   loadOnnxNode inits node = do
-    doesNotHaveAttribute  node "auto_pad"
-    -- the below line doesnt work because the default value for `group` is 1
-    -- doesNotHaveAttribute  node "group"
-    hasSupportedDilations node
-    hasMatchingShape  node "kernel_shape" kernelShape
-    hasMatchingShape  node "strides"     strideShape
+    node `doesNotHaveAttribute` "auto_pad"
 
-    hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+    node & hasSupportedDilations
+    node & hasSupportedGroup
 
-    (_ : w : _) <- Just (node ^. #input)
+    (node `hasMatchingShape` "kernelShape") kernelShape
+    (node `hasMatchingShape` "strides"    ) strideShape
+    (node `hasCorrectPadding`) (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
 
-    filterWeights <- tr <$> readInitializerMatrix inits w
-    return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
+    case node ^. #input of
+      [_, w] -> do
+        filterWeights <- tr <$> readInitializerMatrix inits w
+        return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
+      _ -> Nothing -- If we switch from maybe, add new case to explain we don't support bias.
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
+
+hasSupportedGroup :: P.NodeProto -> Maybe ()
+hasSupportedGroup node = case readIntAttribute "group" node of
+  Just group -> guard $ group == 1
+  Nothing    -> return ()
 
 hasSupportedDilations :: P.NodeProto -> Maybe ()
 hasSupportedDilations node = case readIntsAttribute "dilations" node of
@@ -130,10 +133,9 @@ hasSupportedDilations node = case readIntsAttribute "dilations" node of
 
 hasMatchingShape :: P.NodeProto -> T.Text -> [Integer] -> Maybe ()
 hasMatchingShape node attribute dims = case readIntsAttribute attribute node of
-                                          Just xs -> guard $ xs == map fromIntegral dims
-                                          _       -> return ()
+  Just xs -> guard $ xs == map fromIntegral dims
+  _       -> return ()
 
--- TODO: Add support for auto_pad
 hasCorrectPadding :: (KnownNat padLeft, KnownNat padRight, KnownNat padTop, KnownNat padBottom)
                   => P.NodeProto -> Proxy padLeft -> Proxy padRight -> Proxy padTop -> Proxy padBottom -> Maybe ()
 hasCorrectPadding node ppl ppr ppt ppb 
