@@ -13,8 +13,11 @@ module Grenade.Onnx.Graph
   , readInitializerVector
   , readInitializerTensorIntoMatrix
   , readIntAttribute
+  , filterIntAttribute
   , readIntsAttribute
+  , filterIntsAttribute
   , readDoubleAttribute
+  , filterDoubleAttribute
   , doesNotHaveAttribute
   , hasCorrectPadding
   )
@@ -43,6 +46,9 @@ readIntAttribute attribute node = readAttribute attribute node >>= retrieve
                            P.AttributeProto'INT -> Just $ fromIntegral $ attribute ^. #i
                            _                      -> Nothing
 
+filterIntAttribute :: T.Text -> (Int -> Bool) -> P.NodeProto -> Maybe ()
+filterIntAttribute attribute pred node = readIntAttribute attribute node >>= guard . pred
+
 readDoubleAttribute :: T.Text -> P.NodeProto -> Maybe Double
 readDoubleAttribute attribute node = readAttribute attribute node >>= retrieve
   where
@@ -50,12 +56,18 @@ readDoubleAttribute attribute node = readAttribute attribute node >>= retrieve
                            P.AttributeProto'FLOAT -> Just $ float2Double $ attribute ^. #f
                            _                      -> Nothing
 
+filterDoubleAttribute :: T.Text -> (Double -> Bool) -> P.NodeProto -> Maybe ()
+filterDoubleAttribute attribute pred node = readDoubleAttribute attribute node >>= guard . pred
+
 readIntsAttribute :: T.Text -> P.NodeProto -> Maybe [Int]
 readIntsAttribute attribute node = readAttribute attribute node >>= retrieve
   where
     retrieve attribute = case (attribute ^. #type') of
                            P.AttributeProto'INTS -> Just $ map fromIntegral $ attribute ^. #ints
                            _                     -> Nothing
+
+filterIntsAttribute :: T.Text -> ([Int] -> Bool) -> P.NodeProto -> Maybe ()
+filterIntsAttribute attribute pred node = readIntsAttribute attribute node >>= guard . pred
 
 doesNotHaveAttribute :: P.NodeProto -> T.Text -> Maybe ()
 doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribute node

@@ -122,16 +122,10 @@ instance ( KnownNat kernelRows
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
 
 hasSupportedGroup :: P.NodeProto -> Maybe ()
-hasSupportedGroup node = case readIntAttribute "group" node of
-  Just group -> guard $ group == 1
-  Nothing    -> return ()
+hasSupportedGroup = filterIntAttribute "group" (== 1)
 
 hasSupportedDilations :: P.NodeProto -> Maybe ()
-hasSupportedDilations node = case readIntsAttribute "dilations" node of
-  Just ds -> guard $ all (==1) ds
-  Nothing -> return ()
+hasSupportedDilations = filterIntsAttribute "dilations" (all (==1))
 
 hasMatchingShape :: P.NodeProto -> T.Text -> [Integer] -> Maybe ()
-hasMatchingShape node attribute dims = case readIntsAttribute attribute node of
-  Just xs -> guard $ xs == map fromIntegral dims
-  _       -> return ()
+hasMatchingShape node attribute dims = filterIntsAttribute attribute (== map fromIntegral dims) node
