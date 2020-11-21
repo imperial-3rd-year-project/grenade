@@ -11,10 +11,12 @@
 module Grenade.Onnx.Graph 
   ( readInitializerMatrix
   , readInitializerVector
+  , readInitializerTensorIntoMatrix
   , readIntAttribute
   , readIntsAttribute
   , readDoubleAttribute
   , doesNotHaveAttribute
+  , hasCorrectPadding
   )
   where
 
@@ -68,16 +70,27 @@ readInitializer inits name = Map.lookup name inits >>= retrieve
 readInitializerMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (L r c)
 readInitializerMatrix inits name = readInitializer inits name >>= readMatrix
 
+readInitializerTensorIntoMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (L r c)
+readInitializerTensorIntoMatrix inits name = readInitializer inits name >>= readTensorIntoMatrix
+
 readInitializerVector :: KnownNat r => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (R r)
 readInitializerVector inits name = readInitializer inits name >>= readVector
 
 readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
-readMatrix (rows : cols, vals)
-  | neededRows == rows && neededCols == product cols = Just (matrix vals)
+readMatrix ([rows, cols], vals)
+  | neededRows == rows && neededCols == cols = Just (matrix vals)
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
 readMatrix _ = Nothing
+
+readTensorIntoMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
+readTensorIntoMatrix (rows : cols, vals)
+  | neededRows == rows && neededCols == product cols = Just (matrix vals)
+  where
+    neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
+    neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
+readTensorIntoMatrix _ = Nothing
 
 readVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
 readVector ([rows], vals)
@@ -85,3 +98,15 @@ readVector ([rows], vals)
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
 readVector _ = Nothing
+
+hasCorrectPadding :: (KnownNat padLeft, KnownNat padRight, KnownNat padTop, KnownNat padBottom)
+                  => P.NodeProto -> Proxy padLeft -> Proxy padRight -> Proxy padTop -> Proxy padBottom -> Maybe ()
+hasCorrectPadding node ppl ppr ppt ppb 
+  = let left   = fromIntegral $ natVal ppl
+        right  = fromIntegral $ natVal ppr
+        top    = fromIntegral $ natVal ppt
+        bottom = fromIntegral $ natVal ppb
+     in case readIntsAttribute "pads" node of
+          Just [left', top', right', bottom'] -> guard (left == left' && top == top' && right == right' && bottom == bottom')
+          Nothing                             -> guard (left == 0     && top == 0    && right == 0      && bottom == 0)
+          _                                   -> Nothing

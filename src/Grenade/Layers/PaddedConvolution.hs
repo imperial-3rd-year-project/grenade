@@ -114,9 +114,9 @@ instance ( KnownNat kernelRows
 
     case node ^. #input of
       [_, w] -> do
-        filterWeights <- tr <$> readInitializerMatrix inits w
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
         return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
-      _ -> Nothing -- If we switch from maybe, add new case to explain we don't support bias.
+      _ -> Nothing
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
@@ -135,15 +135,3 @@ hasMatchingShape :: P.NodeProto -> T.Text -> [Integer] -> Maybe ()
 hasMatchingShape node attribute dims = case readIntsAttribute attribute node of
   Just xs -> guard $ xs == map fromIntegral dims
   _       -> return ()
-
-hasCorrectPadding :: (KnownNat padLeft, KnownNat padRight, KnownNat padTop, KnownNat padBottom)
-                  => P.NodeProto -> Proxy padLeft -> Proxy padRight -> Proxy padTop -> Proxy padBottom -> Maybe ()
-hasCorrectPadding node ppl ppr ppt ppb 
-  = let left   = fromIntegral $ natVal ppl
-        right  = fromIntegral $ natVal ppr
-        top    = fromIntegral $ natVal ppt
-        bottom = fromIntegral $ natVal ppb
-     in case readIntsAttribute "pads" node of
-          Just [left', top', right', bottom'] -> guard (left == left' && top == top' && right == right' && bottom == bottom')
-          Nothing                             -> guard (left == 0     && top == 0    && right == 0      && bottom == 0)
-          _                                   -> Nothing
