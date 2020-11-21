@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f53ea8cdaa3bbb8ff4da9da86ecdff976d800e3a707e6cb10ef162dbb04a07bb
+-- hash: f3416fbddd1702747d4e702c6c972a0dc86d114020eda0ddf5cf17dce32df1ca
 
 name:           grenade
 version:        0.1.1
@@ -124,6 +124,7 @@ library
       Grenade.Onnx.Onnx
       Grenade.Onnx.OnnxLoadable
       Grenade.Onnx.ParallelLayer
+      Grenade.Onnx.Utils
       Grenade.Recurrent
       Grenade.Recurrent.Core
       Grenade.Recurrent.Core.Layer

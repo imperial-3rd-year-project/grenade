@@ -18,10 +18,8 @@ module Grenade.Layers.PaddedConvolution (
     PaddedConvolution
   ) where
 
-import           Control.Monad           (guard)
 import           Data.Function           ((&))
 import           Data.Proxy
-import qualified Data.Text               as T
 import           GHC.TypeLits
 import           Numeric.LinearAlgebra.Static (tr)
 
@@ -31,12 +29,11 @@ import           Grenade.Layers.Convolution
 import           Grenade.Layers.Pad
 import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Onnx.Graph
+import           Grenade.Onnx.Utils
 import           Grenade.Utils.ListStore
 
 import           Grenade.Onnx.Iso
 import           Lens.Micro ((^.))
-import Debug.Trace
-import qualified Proto.Onnx as P
 
 newtype PaddedConvolutionIso a = PaddedConvolutionIso {fromPaddedConvolutionIso :: a}
 
@@ -120,12 +117,3 @@ instance ( KnownNat kernelRows
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
-
-hasSupportedGroup :: P.NodeProto -> Maybe ()
-hasSupportedGroup = filterIntAttribute "group" (== 1)
-
-hasSupportedDilations :: P.NodeProto -> Maybe ()
-hasSupportedDilations = filterIntsAttribute "dilations" (all (==1))
-
-hasMatchingShape :: P.NodeProto -> T.Text -> [Integer] -> Maybe ()
-hasMatchingShape node attribute dims = filterIntsAttribute attribute (== map fromIntegral dims) node

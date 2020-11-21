@@ -1,12 +1,13 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module Grenade.Onnx.Graph 
   ( readInitializerMatrix
@@ -19,22 +20,20 @@ module Grenade.Onnx.Graph
   , readDoubleAttribute
   , filterDoubleAttribute
   , doesNotHaveAttribute
-  , hasCorrectPadding
   )
   where
 
-import Data.ProtoLens.Labels ()
-import qualified Proto.Onnx as P
-import Lens.Micro
-import qualified Data.Text as T
-import Data.Maybe (isNothing, listToMaybe)
-
-import           Control.Monad (guard)
-import qualified Data.Map.Strict                as Map
+import           Control.Monad                (guard)
+import qualified Data.Map.Strict              as Map
+import           Data.Maybe                   (isNothing, listToMaybe)
+import           Data.ProtoLens.Labels        ()
 import           Data.Proxy
+import qualified Data.Text                    as T
 import           GHC.TypeLits
-import           GHC.Float (float2Double)
+import           GHC.Float                    (float2Double)
 import           Numeric.LinearAlgebra.Static
+import           Lens.Micro
+import qualified Proto.Onnx                   as P
 
 readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
 readAttribute attribute node = listToMaybe $ filter ((== attribute) . (^. #name)) $ node ^. #attribute
@@ -110,15 +109,3 @@ readVector ([rows], vals)
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
 readVector _ = Nothing
-
-hasCorrectPadding :: (KnownNat padLeft, KnownNat padRight, KnownNat padTop, KnownNat padBottom)
-                  => P.NodeProto -> Proxy padLeft -> Proxy padRight -> Proxy padTop -> Proxy padBottom -> Maybe ()
-hasCorrectPadding node ppl ppr ppt ppb 
-  = let left   = fromIntegral $ natVal ppl
-        right  = fromIntegral $ natVal ppr
-        top    = fromIntegral $ natVal ppt
-        bottom = fromIntegral $ natVal ppb
-     in case readIntsAttribute "pads" node of
-          Just [left', top', right', bottom'] -> guard (left == left' && top == top' && right == right' && bottom == bottom')
-          Nothing                             -> guard (left == 0     && top == 0    && right == 0      && bottom == 0)
-          _                                   -> Nothing
