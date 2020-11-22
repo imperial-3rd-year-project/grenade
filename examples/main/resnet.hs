@@ -36,7 +36,7 @@ loadResNetImage path = do
   return $ do
     guard $ dims img == (224, 224)
     let [img_red, img_green, img_blue] = toImagesX img
-        [reds, greens, blues]          = map (map (\(PixelX y) -> y) . concat . toLists) $ [img_red, img_green, img_blue]
+        [reds, greens, blues]          = map (map (\(PixelX y) -> y) . concat . toLists) [img_red, img_green, img_blue]
 
         redM   = H.dmmap (\a -> (a - 0.485) / 0.229) $ H.fromList reds   :: L 224 224
         greenM = H.dmmap (\a -> (a - 0.456) / 0.224) $ H.fromList greens :: L 224 224
@@ -54,10 +54,10 @@ main = do
     inputM <- loadResNetImage imgPath
 
     case (res, inputM) of
-      (Just net, Just input)  -> do
+      (Just net, Just input) -> do
         let S1D y = runNet net input
             tops  = getTop 5 $ LA.toList $ H.extract y
-        putStrLn $ show tops
+        print tops
       _ -> putStrLn "fail"
   where
     getTop :: Ord a => Int -> [a] -> [Int]

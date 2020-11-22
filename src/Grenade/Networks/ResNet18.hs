@@ -119,4 +119,4 @@ type ResNet18
       ]
 
 loadResNet :: FilePath -> IO (Maybe ResNet18)
-loadResNet path = loadOnnxModel path
+loadResNet = loadOnnxModel
