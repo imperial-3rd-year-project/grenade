@@ -1,15 +1,15 @@
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE OverloadedLabels    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module Grenade.Onnx.Graph 
+module Grenade.Onnx.Graph
   ( readInitializerMatrix
   , readInitializerVector
   , readInitializerTensorIntoMatrix
@@ -24,19 +24,24 @@ module Grenade.Onnx.Graph
   where
 
 import           Control.Monad                (guard)
+
+import           Data.List                    (find)
 import qualified Data.Map.Strict              as Map
-import           Data.Maybe                   (isNothing, listToMaybe)
+import           Data.Maybe                   (isNothing)
 import           Data.ProtoLens.Labels        ()
 import           Data.Proxy
 import qualified Data.Text                    as T
-import           GHC.TypeLits
+
 import           GHC.Float                    (float2Double)
+import           GHC.TypeLits
+
 import           Numeric.LinearAlgebra.Static
+
 import           Lens.Micro
 import qualified Proto.Onnx                   as P
 
 readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
-readAttribute attribute node = listToMaybe $ filter ((== attribute) . (^. #name)) $ node ^. #attribute
+readAttribute attribute node = find ((== attribute) . (^. #name)) (node ^. #attribute)
 
 readIntAttribute :: T.Text -> P.NodeProto -> Maybe Int
 readIntAttribute attribute node = readAttribute attribute node >>= retrieve
@@ -73,7 +78,7 @@ doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribut
 
 readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Maybe ([Int], [Double])
 readInitializer inits name = Map.lookup name inits >>= retrieve
-  where 
+  where
     retrieve tensor = case toEnum (fromIntegral (tensor ^. #dataType)) of
                         P.TensorProto'FLOAT -> Just (map fromIntegral (tensor ^. #dims), map float2Double (tensor ^. #floatData))
                         _                   -> Nothing

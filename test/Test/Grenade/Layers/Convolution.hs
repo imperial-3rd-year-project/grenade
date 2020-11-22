@@ -78,9 +78,7 @@ prop_conv_net_witness = property $
 
 
 prop_conv_net = property $
-  blindForAll genOpaqueOpaqueConvolution >>= \onet ->
-    case onet of
-       (OpaqueConvolution (convLayer@(Convolution _ _) :: Convolution channels filters kernelRows kernelCols strideRows strideCols)) ->
+  blindForAll genOpaqueOpaqueConvolution >>= \(OpaqueConvolution (convLayer@(Convolution _ _) :: Convolution channels filters kernelRows kernelCols strideRows strideCols)) ->
           let ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
               kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
               kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)

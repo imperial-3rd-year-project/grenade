@@ -63,7 +63,7 @@ prop_im2col_col2im_crops_valid_pad = withTests 1 $ property $ do
 
       res    = col LA.<> kernel
 
-      expected = matrix 1 $ [99, 126, 153, 369, 396, 423, 639, 666, 693]
+      expected = matrix 1 [99, 126, 153, 369, 396, 423, 639, 666, 693]
   
   res === expected
 

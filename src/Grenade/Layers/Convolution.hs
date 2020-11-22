@@ -415,7 +415,7 @@ instance ( KnownNat kernelRows
 
     (node `hasMatchingShape` "kernelShape") kernelShape
     (node `hasMatchingShape` "strides"    ) strideShape
-    (node `hasCorrectPadding`) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0)
+    hasCorrectPadding node (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0)
 
     case node ^. #input of
       [_, w] -> do
@@ -444,7 +444,7 @@ instance (KnownNat channels, KnownNat filters, KnownNat kernelRows, KnownNat ker
 instance ToDynamicLayer SpecConvolution where
   toDynamicLayer = toDynamicLayer'
 
-toDynamicLayer' :: (PrimBase m)=> WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
+toDynamicLayer' :: (PrimBase m) => WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
 toDynamicLayer' _ _ (SpecConvolution inp@(_, 1, 1) _ _ _ _ _ _) = error $ "1D input to a deconvolutional layer is not permited! you specified: " ++ show inp
 toDynamicLayer' wInit gen (SpecConvolution (rows, cols, depth) ch fil kerRows kerCols strRows strCols) =
     reifyNat ch $ \(pxCh :: (KnownNat channels) => Proxy channels) ->

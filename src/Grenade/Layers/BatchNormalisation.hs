@@ -24,7 +24,6 @@ import           Data.List                      (transpose, zipWith5)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
-import Debug.Trace
 
 import qualified Numeric.LinearAlgebra          as LA
 import           Numeric.LinearAlgebra.Static   hiding (Seed)

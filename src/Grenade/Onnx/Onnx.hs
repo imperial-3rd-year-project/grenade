@@ -62,7 +62,7 @@ generateGraph model = (graphProto, graph)
         input = node ^. #input
         output = node ^. #output
 
-        updateMap = foldl' (\m k -> insert k m)
+        updateMap = foldl' (flip insert)
 
         insert = Map.alter (Just . (\case
           Just xs -> node : xs
@@ -102,4 +102,4 @@ readOnnxModel path = do
   let (model :: Either String P.ModelProto) = decodeMessage modelContent
   case model of
     Left err -> error err
-    Right modelProto -> return (Just $ modelProto)
+    Right modelProto -> return (Just modelProto)

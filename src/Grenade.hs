@@ -36,7 +36,6 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Layers
 import           Grenade.Networks
-import           Grenade.Types    (RealNum, fromDoubleToRealNum, nameF)
 import           Grenade.Types
 
 {- $library

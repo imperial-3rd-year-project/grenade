@@ -9,29 +9,18 @@
 
 import           Control.Applicative
 import           Control.Monad.Random
-import           Control.Monad.Trans.Except
 
-import qualified Data.Attoparsec.Text         as A
 import           Data.Function                (on)
 import           Data.List
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T
-import qualified Data.Vector.Storable         as V
-import Debug.Trace
 import           Options.Applicative
 
 import           Graphics.Image               hiding (map, on)
-import           Graphics.Image.Interface     (toDouble)
-import           Graphics.Image.IO
 
 import qualified Numeric.LinearAlgebra        as LA
-import           Numeric.LinearAlgebra.Static (L, R)
+import           Numeric.LinearAlgebra.Static (L)
 import qualified Numeric.LinearAlgebra.Static as H
 
-
 import           Grenade
-import           Grenade.Networks.ResNet18
-
 
 data ResNetOptions = ResNetOptions FilePath         -- onnx file
                                    FilePath         -- input image

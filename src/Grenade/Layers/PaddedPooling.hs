@@ -98,7 +98,7 @@ instance ( KnownNat kernelRows
 
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides")      strideShape
-    (node `hasCorrectPadding`) (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+    hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
 
     return $ PaddedPoolingIso (Pad :~> Pooling :~> NNil)
       where

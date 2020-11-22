@@ -7,6 +7,7 @@
 module Grenade.Onnx.Iso where
 
 import Data.Proxy
+import Data.Bifunctor (first)
 
 import Grenade.Core.Layer
 import Grenade.Onnx.OnnxLoadable
@@ -38,4 +39,4 @@ instance OnnxOperator x => OnnxOperator (Lift x) where
   onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
 
 instance OnnxLoadable x => OnnxLoadable (Lift x) where
-  loadOnnx tensors graph = (\(x, graph') -> (Lift x, graph')) <$> loadOnnx tensors graph
+  loadOnnx tensors graph = (first Lift) <$> loadOnnx tensors graph

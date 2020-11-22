@@ -10,15 +10,13 @@
 
 module Grenade.Networks.ResNet18 where
 
-import           GHC.TypeLits
-
 import           Grenade.Core
 import           Grenade.Layers
 
 import           Grenade.Onnx.ActivationLayer
 import           Grenade.Onnx.BypassLayer
 import           Grenade.Onnx.Iso
-import           Grenade.Onnx.LoadNetwork
+import           Grenade.Onnx.LoadNetwork()
 import           Grenade.Onnx.OnnxLoadable
 import           Grenade.Onnx.ParallelLayer
 
