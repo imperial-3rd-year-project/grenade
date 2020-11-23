@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 094294c12c3e13d1a48aab7320a5a989915246e9f980e5e92ddaecd0cb690d28
+-- hash: f765b10e5ccdea5305f73bae10b19920b216704566fc813e57f0d5176f88fade
 
 name:           grenade
 version:        0.1.1
@@ -32,6 +32,8 @@ extra-source-files:
     cbits/type.h
     cbits/shrink.h
     cbits/shrink.c
+    cbits/add.h
+    cbits/add.c
     proto/onnx.proto
 data-files:
     assets/mnistModel
@@ -85,6 +87,7 @@ library
       Grenade.Dynamic.Network
       Grenade.Dynamic.Specification
       Grenade.Layers
+      Grenade.Layers.Add
       Grenade.Layers.BatchNormalisation
       Grenade.Layers.Concat
       Grenade.Layers.Convolution
@@ -96,6 +99,7 @@ library
       Grenade.Layers.Gelu
       Grenade.Layers.GlobalAvgPool
       Grenade.Layers.Inception
+      Grenade.Layers.Internal.Add
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
@@ -160,6 +164,7 @@ library
       cbits/gradient_descent.c
       cbits/pad.c
       cbits/shrink.c
+      cbits/add.c
   build-tool-depends:
       proto-lens-protoc:proto-lens-protoc
   build-depends:
@@ -223,6 +228,7 @@ test-suite test
   main-is: test.hs
   other-modules:
       Test.Grenade.Batch
+      Test.Grenade.Layers.Add
       Test.Grenade.Layers.Convolution
       Test.Grenade.Layers.FullyConnected
       Test.Grenade.Layers.Internal.Convolution

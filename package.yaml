@@ -111,6 +111,8 @@ extra-source-files:
 - cbits/type.h
 - cbits/shrink.h
 - cbits/shrink.c
+- cbits/add.h
+- cbits/add.c
 - proto/onnx.proto
 
 library:
@@ -150,6 +152,7 @@ library:
     - cbits/gradient_descent.c
     - cbits/pad.c
     - cbits/shrink.c
+    - cbits/add.c
   cc-options:
     - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
 
