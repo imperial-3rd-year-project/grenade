@@ -109,6 +109,7 @@ library
       Grenade.Layers.Logit
       Grenade.Layers.LRN
       Grenade.Layers.Merge
+      Grenade.Layers.Mul
       Grenade.Layers.Pad
       Grenade.Layers.PaddedConvolution
       Grenade.Layers.PaddedPooling
@@ -235,6 +236,7 @@ test-suite test
       Test.Grenade.Layers.Internal.Pooling
       Test.Grenade.Layers.Internal.Reference
       Test.Grenade.Layers.LRN
+      Test.Grenade.Layers.Mul
       Test.Grenade.Layers.Nonlinear
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling

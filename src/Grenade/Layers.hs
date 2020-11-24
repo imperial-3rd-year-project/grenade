@@ -15,6 +15,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Logit
   , module Grenade.Layers.LRN
   , module Grenade.Layers.Merge
+  , module Grenade.Layers.Mul
   , module Grenade.Layers.Pad
   , module Grenade.Layers.PaddedConvolution
   , module Grenade.Layers.PaddedPooling
@@ -43,6 +44,7 @@ import           Grenade.Layers.LeakyRelu
 import           Grenade.Layers.Logit
 import           Grenade.Layers.LRN
 import           Grenade.Layers.Merge
+import           Grenade.Layers.Mul
 import           Grenade.Layers.Pad
 import           Grenade.Layers.PaddedConvolution
 import           Grenade.Layers.PaddedPooling
