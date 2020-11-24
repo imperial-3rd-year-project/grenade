@@ -32,7 +32,7 @@ import           System.Random.MWC              hiding (create)
 import           Data.Singletons.TypeLits       (SNat (..))
 #endif
 import           Data.List                      (foldl1')
-import           Data.Maybe                     (fromMaybe)
+import           Data.Either                    (fromRight)
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons
@@ -45,8 +45,7 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Update
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
@@ -164,16 +163,17 @@ instance OnnxOperator (FullyConnected i o) where
 instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
   loadOnnxNode inits node = case (node ^. #input) of
     [_, b, c] -> do
-      node `doesNotHaveAttribute` "alpha"
-      node `doesNotHaveAttribute` "transA"
-      node `doesNotHaveAttribute` "transB"
+      -- FIXME: Proper attribute checking
+      -- node `doesNotHaveAttribute` "alpha"
+      -- node `doesNotHaveAttribute` "transA"
+      -- node `doesNotHaveAttribute` "transB"
 
-      let beta = fromMaybe 1 (readDoubleAttribute "beta" node)
+      let beta = fromRight 1 (readDoubleAttribute "beta" node)
       loadedB <- readInitializerMatrix inits b
       loadedC <- readInitializerVector inits c
 
       return $ FullyConnected (FullyConnected' loadedC (dmmap (*beta) loadedB)) mkListStore
-    _         -> Nothing
+    _         -> onnxIncorrectNumberOfInputs
       
 -------------------- DynamicNetwork instance --------------------
 

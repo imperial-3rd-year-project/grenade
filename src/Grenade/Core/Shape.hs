@@ -235,8 +235,8 @@ nk x = case (sing :: Sing x) of
   D3Sing SNat SNat SNat ->
     S3D (H.konst x)
 
-visualise2D :: S ('D2 a b) -> Double -> String
-visualise2D (S2D mm) max =
+visualise2D :: S ('D2 a b) -> RealNum -> String
+visualise2D (S2D mm) max = 
   let m  = H.extract mm
       ms = NLAD.toLists m
       render n' | n' <= 0.2 * max  = ' '

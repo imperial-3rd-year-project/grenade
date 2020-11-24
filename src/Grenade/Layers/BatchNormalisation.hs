@@ -30,8 +30,7 @@ import           Numeric.LinearAlgebra.Static   hiding (Seed)
 
 import           Grenade.Core
 import           Grenade.Layers.Internal.Update
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
@@ -379,7 +378,7 @@ instance OnnxOperator (BatchNorm channels rows columns momentum) where
   onnxOpTypeNames _ = ["BatchNormalization"]
 
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) => OnnxLoadable (BatchNorm channels rows columns momentum) where
-  loadOnnxNode inits node = case (node ^. #input) of
+  loadOnnxNode inits node = case node ^. #input of
     [_, scale, b, mean, var] -> do
       epsilon     <- readDoubleAttribute "epsilon" node
       loadedScale <- readInitializerVector inits scale
@@ -388,6 +387,6 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
       loadedVar   <- readInitializerVector inits var
 
       return $ BatchNorm False (BatchNormParams loadedScale loadedB) loadedMean loadedVar epsilon mkListStore
-    _               -> Nothing
+    _               -> onnxIncorrectNumberOfInputs
     
 

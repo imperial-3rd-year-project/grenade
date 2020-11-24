@@ -18,18 +18,15 @@ module Grenade.Layers.PaddedPooling (
     PaddedPooling
   ) where
 
-import           Data.Function ((&))
 import           Data.Proxy
+import           Data.Function ((&))
 import           GHC.TypeLits
 
 import           Grenade.Core.Network
 import           Grenade.Core.Shape
 import           Grenade.Layers.Pooling
 import           Grenade.Layers.Pad
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.Iso
-import           Grenade.Onnx.Utils
+import           Grenade.Onnx
 
 newtype PaddedPoolingIso a = PaddedPoolingIso {fromPaddedPoolingIso :: a}
 
@@ -41,8 +38,8 @@ type PaddedPooling' (input      :: Shape)
                     (output     :: Shape)
                     (kernelRows :: Nat) 
                     (kernelCols :: Nat) 
-                    (strideRows  :: Nat) 
-                    (strideCols  :: Nat) 
+                    (strideRows :: Nat) 
+                    (strideCols :: Nat) 
                     (padLeft    :: Nat) 
                     (padTop     :: Nat) 
                     (padRight   :: Nat) 
@@ -99,7 +96,6 @@ instance ( KnownNat kernelRows
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides")      strideShape
     hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
-
     return $ PaddedPoolingIso (Pad :~> Pooling :~> NNil)
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]

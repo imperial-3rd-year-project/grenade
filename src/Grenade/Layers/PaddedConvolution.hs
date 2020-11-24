@@ -28,11 +28,9 @@ import           Grenade.Core.Network
 import           Grenade.Core.Shape
 import           Grenade.Layers.Convolution
 import           Grenade.Layers.Pad
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.Iso
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.Utils
 import           Grenade.Utils.ListStore
+
+import           Grenade.Onnx
 
 newtype PaddedConvolutionIso a = PaddedConvolutionIso {fromPaddedConvolutionIso :: a}
 
@@ -104,15 +102,15 @@ instance ( KnownNat kernelRows
     node & hasSupportedDilations
     node & hasSupportedGroup
 
-    (node `hasMatchingShape` "kernelShape") kernelShape
-    (node `hasMatchingShape` "strides"    ) strideShape
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides"     ) strideShape
     hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
 
     case node ^. #input of
       [_, w] -> do
         filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
         return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
-      _ -> Nothing
+      _ -> onnxIncorrectNumberOfInputs
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]

@@ -37,8 +37,7 @@ import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 
-import           Grenade.Onnx.ActivationLayer
-import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx
 
 
 -- | A rectifying linear unit.

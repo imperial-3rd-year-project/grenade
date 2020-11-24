@@ -58,7 +58,7 @@ squareM :: (KnownNat m, KnownNat n) => L m n ->  L m n
 squareM = H.dmmap (^ (2 :: Int))
 
 -- | Helper function that sums the elements of a matrix
-nsum :: S s -> Double
+nsum :: S s -> RealNum
 nsum (S1D x) = sumElements $ H.extract x
 nsum (S2D x) = sumElements $ H.extract x
 nsum (S3D x) = sumElements $ H.extract x
@@ -91,19 +91,19 @@ bvar' m xs
           (S2D x, _) -> S2D $ H.dmmap (/ fromIntegral l) x
           (S3D x, _) -> S3D $ H.dmmap (/ fromIntegral l) x
 
-batchNormMean :: forall n. KnownNat n => [R n] -> Double
-batchNormMean vs
+batchNormMean :: forall n. KnownNat n => [R n] -> RealNum
+batchNormMean vs 
   = let hw  = fromIntegral $ natVal (Proxy :: Proxy n)
-        vs' = map (sumElements . H.extract) vs :: [Double]
-        n   = fromIntegral $ length vs
+        vs' = map (sumElements . H.extract) vs :: [RealNum]
+        n   = fromIntegral $ length vs 
     in  sum vs' / (hw * n)
 
 batchNormVariance :: forall n. KnownNat n => [R n] -> RealNum
-batchNormVariance vs
+batchNormVariance vs 
   = let mu  = batchNormMean vs
         hw  = fromIntegral $ natVal (Proxy :: Proxy n)
-        vs' = map (sumElements . H.extract . H.dvmap (\a -> (a - mu) ^ (2 :: Int))) vs :: [RealNum]
-        n   = fromIntegral $ length vs
+        vs' = map (sumElements . H.extract . H.dvmap (\a -> (a - mu) ^ 2)) vs :: [RealNum] 
+        n   = fromIntegral $ length vs 
     in  sum vs' / (hw * n)
 
 extractV :: S ('D1 x) -> R x

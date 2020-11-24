@@ -40,8 +40,7 @@ import           Data.Kind                    (Type)
 #endif
 
 import           Grenade.Core
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.ParallelLayer
+import           Grenade.Onnx
 
 
 -- | A Concatenating Layer.

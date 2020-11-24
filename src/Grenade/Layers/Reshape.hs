@@ -54,8 +54,7 @@ import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Trivial
 
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.ActivationLayer
+import           Grenade.Onnx
 
 -- | Reshape Layer
 --

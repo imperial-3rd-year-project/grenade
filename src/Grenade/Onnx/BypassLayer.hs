@@ -1,9 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module Grenade.Onnx.BypassLayer where
+module Grenade.Onnx.BypassLayer (OnnxLoadableBypass (..), LoadBypass) where
 
 import Data.Proxy
 
+import Grenade.Onnx.OnnxOperator
 import Grenade.Onnx.OnnxLoadable
 import Grenade.Onnx.Iso
 
@@ -20,4 +21,4 @@ instance OnnxOperator x => OnnxOperator (LoadBypass x) where
   onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
 
 instance OnnxLoadableBypass x => OnnxLoadable (LoadBypass x) where
-  loadOnnx _ graph = Just (LoadBypass bypassLayer, graph)
+  loadOnnx _ graph = Right (LoadBypass bypassLayer, Nothing, graph)

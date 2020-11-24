@@ -16,8 +16,8 @@ import           Grenade.Layers
 import           Grenade.Onnx.ActivationLayer
 import           Grenade.Onnx.BypassLayer
 import           Grenade.Onnx.Iso
-import           Grenade.Onnx.LoadNetwork()
-import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.Model
+import           Grenade.Onnx.OnnxLoadFailure
 import           Grenade.Onnx.ParallelLayer
 
 type ResNet18BranchRight size channels
@@ -118,5 +118,5 @@ type ResNet18
       , 'D1 1000
       ]
 
-loadResNet :: FilePath -> IO (Maybe ResNet18)
+loadResNet :: FilePath -> IO (Either OnnxLoadFailure ResNet18)
 loadResNet = loadOnnxModel

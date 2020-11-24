@@ -1,20 +1,24 @@
-{-# LANGUAGE OverloadedLabels     #-}
-{-# LANGUAGE TupleSections        #-}
+{-# LANGUAGE OverloadedLabels       #-}
+{-# LANGUAGE TupleSections          #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
 
-module Grenade.Onnx.ParallelLayer where
+module Grenade.Onnx.ParallelLayer (LoadParallel, OnnxLoadableParallel (..)) where
 
+import           Control.Applicative         ((<|>))
+import           Data.List                   (foldl1')
+import           Data.Either.Combinators     (rightToMaybe)
 import           Data.Proxy
-import           Data.Maybe (listToMaybe, catMaybes)
 
-import Grenade.Onnx.OnnxLoadable
-import Grenade.Onnx.Iso
-import Grenade.Onnx.Onnx
+import           Grenade.Onnx.Graph
+import           Grenade.Onnx.OnnxOperator
+import           Grenade.Onnx.OnnxLoadable
+import           Grenade.Onnx.Utils
+import           Grenade.Onnx.Iso
 
 newtype LoadParallel a = LoadParallel a
 
@@ -32,11 +36,15 @@ instance (OnnxLoadableParallel a x y, OnnxLoadable x, OnnxLoadable y)
          => OnnxLoadable (LoadParallel a) where
   loadOnnx tensors (Series (Parallel [x, y] : Node combineNode : nodes)) =
     combineNode `hasType` (Proxy :: Proxy a) >>
-      (, Series nodes) <$> (listToMaybe . catMaybes) (loadPair <$> [(x, y), (y, x)])
+      case foldl1' (<|>) (loadPair <$> [(x, y), (y, x)]) of
+        Just layer -> Right (layer, Just combineNode, Series nodes)
+        Nothing    -> loadFailureAttr "Failed to load parallel layer" combineNode
     where
       loadPair (x', y') = do
-        (layerX, Series []) <- loadOnnx tensors x'
-        (layerY, Series []) <- loadOnnx tensors y'
+        (layerX, _, Series []) <- rightToMaybe (loadOnnx tensors x')
+        (layerY, _, Series []) <- rightToMaybe (loadOnnx tensors y')
         return (to (mkParallelLayer layerX layerY))
 
-  loadOnnx _ _ = Nothing
+  loadOnnx _ (Series [Parallel _]) = loadFailureReason "Combine node missing"
+  loadOnnx _ (Series []) = loadFailureReason "Graph unexpectedly ended"
+  loadOnnx _ _ = loadFailureReason "Expecting parallel node"

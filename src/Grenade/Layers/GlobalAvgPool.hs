@@ -22,8 +22,7 @@ import qualified Numeric.LinearAlgebra.Static   as H
 import           Grenade.Core
 import           Grenade.Utils.LinearAlgebra
 
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.ActivationLayer
+import           Grenade.Onnx
 
 data GlobalAvgPool = GlobalAvgPool
   deriving (Generic, NFData, Show)

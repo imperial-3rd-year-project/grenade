@@ -8,109 +8,122 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Grenade.Onnx.Graph
-  ( readInitializerMatrix
-  , readInitializerVector
-  , readInitializerTensorIntoMatrix
-  , readIntAttribute
-  , filterIntAttribute
-  , readIntsAttribute
-  , filterIntsAttribute
-  , readDoubleAttribute
-  , filterDoubleAttribute
-  , doesNotHaveAttribute
+  ( Composition (..)
+  , SPG (..)
+  , generateGraph
+  , generateInitializerMap
   )
   where
 
-import           Control.Monad                (guard)
-
-import           Data.List                    (find)
+import           Control.Applicative          ((<|>))
+import           Data.Bifunctor               (bimap)
+import           Data.Either                  (partitionEithers)
+import           Data.List                    (foldl')
 import qualified Data.Map.Strict              as Map
-import           Data.Maybe                   (isNothing)
 import           Data.ProtoLens.Labels        ()
-import           Data.Proxy
 import qualified Data.Text                    as T
 
-import           GHC.Float                    (float2Double)
-import           GHC.TypeLits
-
-import           Numeric.LinearAlgebra.Static
+import           Grenade.Onnx.OnnxLoadFailure
+import           Grenade.Onnx.Utils
 
 import           Lens.Micro
 import qualified Proto.Onnx                   as P
 
-readAttribute :: T.Text -> P.NodeProto -> Maybe P.AttributeProto
-readAttribute attribute node = find ((== attribute) . (^. #name)) (node ^. #attribute)
 
-readIntAttribute :: T.Text -> P.NodeProto -> Maybe Int
-readIntAttribute attribute node = readAttribute attribute node >>= retrieve
+data Composition = S | P
+
+data SPG (s :: Composition) a where
+  Node     :: a -> SPG s a
+  Series   :: [SPG 'P a] -> SPG 'S a
+  Parallel :: [SPG 'S a] -> SPG 'P a
+
+deriving instance Functor (SPG s)
+
+graphCons :: a -> SPG s a -> SPG 'S a
+graphCons x (Node x') = Series [Node x, Node x']
+graphCons x (Series xs) = Series (Node x : xs)
+graphCons x x'@(Parallel _) = Series [Node x, x']
+
+wrapSeries :: SPG s a -> SPG 'S a
+wrapSeries (Node x) = Node x
+wrapSeries x@(Parallel _) = Series [x]
+wrapSeries xs@(Series _) = xs
+
+graphAppend :: SPG s a -> SPG s' a -> SPG 'S a
+graphAppend (Node x) graph = x `graphCons` graph
+graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
+graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
+graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
+
+graphHead :: SPG s a -> SPG s a
+graphHead (Node x) = Node x
+graphHead (Series xs) = case xs of
+                          (x : _) -> Series [graphHead x]
+                          _       -> error "Graph is empty"
+graphHead (Parallel xs) = Parallel (graphHead <$> xs)
+
+generateInitializerMap :: P.GraphProto -> Map.Map T.Text P.TensorProto
+generateInitializerMap graph = foldl' (\map node -> Map.insert (node ^. #name) node map) Map.empty
+                             $ graph ^. #initializer
+
+generateGraph :: P.ModelProto -> Either OnnxLoadFailure (P.GraphProto, SPG 'S P.NodeProto)
+generateGraph model = case graphProto ^. #node of
+                        nodes@(node:_) -> (graphProto, ) <$> generateGraph' node nodes
+                        _              -> loadFailureReason "Model is empty"
   where
-    retrieve attribute = case (attribute ^. #type') of
-                           P.AttributeProto'INT -> Just $ fromIntegral $ attribute ^. #i
-                           _                      -> Nothing
+    graphProto     = model ^. #graph
 
-filterIntAttribute :: T.Text -> (Int -> Bool) -> P.NodeProto -> Maybe ()
-filterIntAttribute attribute pred node = readIntAttribute attribute node >>= guard . pred
-
-readDoubleAttribute :: T.Text -> P.NodeProto -> Maybe Double
-readDoubleAttribute attribute node = readAttribute attribute node >>= retrieve
+generateGraph' :: P.NodeProto -> [P.NodeProto] -> Either OnnxLoadFailure (SPG 'S P.NodeProto)
+generateGraph' node nodes = fst <$> genGraph node
   where
-    retrieve attribute = case (attribute ^. #type') of
-                           P.AttributeProto'FLOAT -> Just $ float2Double $ attribute ^. #f
-                           _                      -> Nothing
+    (inputNodes, outputNodes) = foldl' classifyNode (Map.empty, Map.empty) nodes
 
-filterDoubleAttribute :: T.Text -> (Double -> Bool) -> P.NodeProto -> Maybe ()
-filterDoubleAttribute attribute pred node = readDoubleAttribute attribute node >>= guard . pred
+    classifyNode :: (Map.Map T.Text [P.NodeProto], Map.Map T.Text [P.NodeProto])
+                 -> P.NodeProto
+                 -> (Map.Map T.Text [P.NodeProto], Map.Map T.Text [P.NodeProto])
+    classifyNode (inputNodes, outputNodes) node =
+      (updateMap inputNodes input, updateMap outputNodes output)
+      where
+        input = node ^. #input
+        output = node ^. #output
 
-readIntsAttribute :: T.Text -> P.NodeProto -> Maybe [Int]
-readIntsAttribute attribute node = readAttribute attribute node >>= retrieve
-  where
-    retrieve attribute = case (attribute ^. #type') of
-                           P.AttributeProto'INTS -> Just $ map fromIntegral $ attribute ^. #ints
-                           _                     -> Nothing
+        updateMap = foldl' (flip insert)
 
-filterIntsAttribute :: T.Text -> ([Int] -> Bool) -> P.NodeProto -> Maybe ()
-filterIntsAttribute attribute pred node = readIntsAttribute attribute node >>= guard . pred
+        insert = Map.alter (Just . (\case
+          Just xs -> node : xs
+          Nothing -> [node]))
 
-doesNotHaveAttribute :: P.NodeProto -> T.Text -> Maybe ()
-doesNotHaveAttribute node attribute = guard $ isNothing $ readAttribute attribute node
 
-readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Maybe ([Int], [Double])
-readInitializer inits name = Map.lookup name inits >>= retrieve
-  where
-    retrieve tensor = case toEnum (fromIntegral (tensor ^. #dataType)) of
-                        P.TensorProto'FLOAT -> Just (map fromIntegral (tensor ^. #dims), map float2Double (tensor ^. #floatData))
-                        _                   -> Nothing
+    genGraph :: P.NodeProto -> Either OnnxLoadFailure (SPG 'S P.NodeProto, Maybe P.NodeProto)
+    genGraph node = case inputs of
+                      (_ : _ : _) -> Right (Series [], Just node)
+                      _           -> genGraphNode node
+      where
+        findNodes nodes = concatMap (\name -> Map.findWithDefault [] name nodes)
 
-readInitializerMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (L r c)
-readInitializerMatrix inits name = readInitializer inits name >>= readMatrix
+        inputNames = node ^. #input
+        inputs = findNodes outputNodes inputNames
 
-readInitializerTensorIntoMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (L r c)
-readInitializerTensorIntoMatrix inits name = readInitializer inits name >>= readTensorIntoMatrix
+        genGraphNode :: P.NodeProto -> Either OnnxLoadFailure (SPG 'S P.NodeProto, Maybe P.NodeProto)
+        genGraphNode node = bimap (over lastSuccessfulNode (<|> Just node)) (over _1 (node `graphCons`)) (genGraph' outputs)
+          where
+            outputNames = node ^. #output
+            outputs = findNodes inputNodes outputNames
 
-readInitializerVector :: KnownNat r => Map.Map T.Text P.TensorProto -> T.Text -> Maybe (R r)
-readInitializerVector inits name = readInitializer inits name >>= readVector
+            genGraph' :: [P.NodeProto] -> Either OnnxLoadFailure (SPG 'S P.NodeProto, Maybe P.NodeProto)
+            genGraph' []  = Right (Series [], Nothing)
 
-readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
-readMatrix ([rows, cols], vals)
-  | neededRows == rows && neededCols == cols = Just (matrix vals)
-  where
-    neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
-    neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
-readMatrix _ = Nothing
+            genGraph' [x] = genGraph x
 
-readTensorIntoMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
-readTensorIntoMatrix (rows : cols, vals)
-  | neededRows == rows && neededCols == product cols = Just (matrix vals)
-  where
-    neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
-    neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
-readTensorIntoMatrix _ = Nothing
 
-readVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
-readVector ([rows], vals)
-  | rows == neededRows = Just (vector vals)
-  where
-    neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
-readVector _ = Nothing
+            genGraph' xs = case partitionEithers (map genGraph xs) of
+                             ([], rs) -> case unzip rs of
+                               (parGraphs, Just next : _) -> over _1 (Parallel parGraphs `graphAppend`) <$> genGraphNode next
+                               (_        , Nothing   : _) -> loadFailure "Missing combine node" (Just node) Nothing []
+                               (_        , []           ) -> error "Unexpected empty parallel layer"
+                             (err : _, _) -> Left err
+

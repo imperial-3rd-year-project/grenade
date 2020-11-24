@@ -34,8 +34,7 @@ import           Data.Kind       (Type)
 
 import           Data.ProtoLens.Labels ()
 import           Grenade.Core
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.ParallelLayer
+import           Grenade.Onnx
 
 
 -- | A Merging layer.

@@ -1,16 +1,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 
-module Grenade.Onnx.Iso where
+module Grenade.Onnx.Iso (Lift, Iso (..)) where
 
 import Data.Proxy
-import Data.Bifunctor (first)
 
 import Grenade.Core.Layer
+import Grenade.Onnx.OnnxOperator
 import Grenade.Onnx.OnnxLoadable
+
+import Lens.Micro (over, _1)
 
 class Iso f where
   to   :: a -> f a
@@ -39,4 +41,4 @@ instance OnnxOperator x => OnnxOperator (Lift x) where
   onnxOpTypeNames _ = onnxOpTypeNames (Proxy :: Proxy x)
 
 instance OnnxLoadable x => OnnxLoadable (Lift x) where
-  loadOnnx tensors graph = (first Lift) <$> loadOnnx tensors graph
+  loadOnnx tensors graph = over _1 Lift <$> loadOnnx tensors graph

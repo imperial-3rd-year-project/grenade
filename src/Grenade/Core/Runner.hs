@@ -40,7 +40,7 @@ backPropagate network input target (LossFunction l) =
 validate :: Network layers shapes
          -> S (Head shapes)
          -> S (Last shapes)
-         -> (S (Last shapes) -> S (Last shapes) -> Double)
+         -> (S (Last shapes) -> S (Last shapes) -> RealNum)
          -> RealNum
 validate network input target l
   = let (_, output) = runNetwork network input

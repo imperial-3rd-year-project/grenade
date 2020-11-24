@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f3416fbddd1702747d4e702c6c972a0dc86d114020eda0ddf5cf17dce32df1ca
+-- hash: 4eb71374a26d8b62b29eaa7456e757d1558d1c5d174b8e5082222e47d40b1f15
 
 name:           grenade
 version:        0.1.1
@@ -116,13 +116,15 @@ library
       Grenade.Layers.Trivial
       Grenade.Networks
       Grenade.Networks.ResNet18
+      Grenade.Onnx
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer
       Grenade.Onnx.Graph
       Grenade.Onnx.Iso
-      Grenade.Onnx.LoadNetwork
-      Grenade.Onnx.Onnx
+      Grenade.Onnx.Model
       Grenade.Onnx.OnnxLoadable
+      Grenade.Onnx.OnnxLoadFailure
+      Grenade.Onnx.OnnxOperator
       Grenade.Onnx.ParallelLayer
       Grenade.Onnx.Utils
       Grenade.Recurrent
@@ -135,6 +137,7 @@ library
       Grenade.Recurrent.Layers.ConcatRecurrent
       Grenade.Recurrent.Layers.LSTM
       Grenade.Types
+      Grenade.Utils.ImageNet
       Grenade.Utils.LinearAlgebra
       Grenade.Utils.ListStore
       Grenade.Utils.OneHot
@@ -159,7 +162,9 @@ library
       proto-lens-protoc:proto-lens-protoc
   build-depends:
       MonadRandom >=0.4 && <0.6
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -167,10 +172,12 @@ library
     , containers >=0.5 && <0.7
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -238,7 +245,9 @@ test-suite test
   build-depends:
       MonadRandom >=0.4 && <0.6
     , ad
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -246,12 +255,14 @@ test-suite test
     , containers >=0.5 && <0.7
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
     , hedgehog
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -296,7 +307,9 @@ benchmark bench
       proto-lens-protoc:proto-lens-protoc
   build-depends:
       MonadRandom >=0.4 && <0.6
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -305,11 +318,13 @@ benchmark bench
     , criterion >=1.1 && <1.6
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -348,7 +363,9 @@ benchmark bench-layers
       proto-lens-protoc:proto-lens-protoc
   build-depends:
       MonadRandom >=0.4 && <0.6
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -357,11 +374,13 @@ benchmark bench-layers
     , criterion >=1.1 && <1.6
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -400,7 +419,9 @@ benchmark bench-lstm
       proto-lens-protoc:proto-lens-protoc
   build-depends:
       MonadRandom >=0.4 && <0.6
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -409,11 +430,13 @@ benchmark bench-lstm
     , criterion >=1.1 && <1.6
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel
@@ -452,7 +475,9 @@ benchmark bench-util
       proto-lens-protoc:proto-lens-protoc
   build-depends:
       MonadRandom >=0.4 && <0.6
+    , array
     , base >=4.7 && <5
+    , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
     , cereal >=0.5 && <0.6
@@ -461,11 +486,13 @@ benchmark bench-util
     , criterion >=1.1 && <1.6
     , data-default
     , deepseq >=1.4 && <1.5
+    , either
     , ghc-prim >=0.5.3
     , ghc-typelits-knownnat
     , grenade
     , microlens
     , microlens-platform
+    , microlens-th
     , mtl
     , mwc-random >=0.13
     , parallel

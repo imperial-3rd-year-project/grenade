@@ -73,7 +73,11 @@ dependencies:
   - proto-lens
   - microlens
   - microlens-platform
+  - microlens-th
   - text
+  - either
+  - bifunctors
+  - array
 when:
   condition: flag(use-float)
   then:

@@ -4,6 +4,8 @@ void im2col_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
     RealNum* data_col) {
+    
+  //printf("im2col_cpu");
 
   const int channel_size = height * width;
 

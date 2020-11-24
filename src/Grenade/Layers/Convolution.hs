@@ -60,9 +60,7 @@ import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Update
-import           Grenade.Onnx.OnnxLoadable
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.Utils
+import           Grenade.Onnx
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
@@ -421,7 +419,7 @@ instance ( KnownNat kernelRows
       [_, w] -> do
         filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
         return (Convolution filterWeights mkListStore)
-      _ -> Nothing
+      _ -> onnxIncorrectNumberOfInputs
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
@@ -444,7 +442,7 @@ instance (KnownNat channels, KnownNat filters, KnownNat kernelRows, KnownNat ker
 instance ToDynamicLayer SpecConvolution where
   toDynamicLayer = toDynamicLayer'
 
-toDynamicLayer' :: (PrimBase m) => WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
+toDynamicLayer' :: (PrimBase m)=> WeightInitMethod -> Gen (PrimState m) -> SpecConvolution -> m SpecNetwork
 toDynamicLayer' _ _ (SpecConvolution inp@(_, 1, 1) _ _ _ _ _ _) = error $ "1D input to a deconvolutional layer is not permited! you specified: " ++ show inp
 toDynamicLayer' wInit gen (SpecConvolution (rows, cols, depth) ch fil kerRows kerCols strRows strCols) =
     reifyNat ch $ \(pxCh :: (KnownNat channels) => Proxy channels) ->

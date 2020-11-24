@@ -26,6 +26,9 @@ import           Numeric.LinearAlgebra.Data as D hiding ((===))
 
 import           Hedgehog
 import           GHC.TypeLits
+import           Data.Proxy
+
+import           Test.Hedgehog.Compat
 
 type FFNetwork = Network '[ FullyConnected 3 5, FullyConnected 5 4 ] '[ 'D1 3, 'D1 5, 'D1 4 ]
 
