@@ -78,6 +78,7 @@ dependencies:
   - either
   - bifunctors
   - array
+  - symbols
 when:
   condition: flag(use-float)
   then:

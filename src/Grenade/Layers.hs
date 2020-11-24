@@ -12,6 +12,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Inception
   , module Grenade.Layers.LeakyRelu
   , module Grenade.Layers.Logit
+  , module Grenade.Layers.LRN
   , module Grenade.Layers.Merge
   , module Grenade.Layers.Pad
   , module Grenade.Layers.PaddedConvolution
@@ -38,6 +39,7 @@ import           Grenade.Layers.GlobalAvgPool
 import           Grenade.Layers.Inception
 import           Grenade.Layers.LeakyRelu
 import           Grenade.Layers.Logit
+import           Grenade.Layers.LRN
 import           Grenade.Layers.Merge
 import           Grenade.Layers.Pad
 import           Grenade.Layers.PaddedConvolution

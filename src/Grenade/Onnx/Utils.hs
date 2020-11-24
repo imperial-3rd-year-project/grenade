@@ -25,6 +25,8 @@ module Grenade.Onnx.Utils
   , hasSupportedGroup
   , hasSupportedDilations
   , hasMatchingShape
+  , hasMatchingInt
+  , hasMatchingDouble
   , hasCorrectPadding
   , onnxIncorrectNumberOfInputs
   ) where
@@ -194,6 +196,20 @@ hasCorrectPadding node ppl ppr ppt ppb
      in case paddings of
           [left', top', right', bottom'] -> guardOnnx "Padding dimensions mismatch" (left == left' && top == top' && right == right' && bottom == bottom')
           _                              -> loadFailureReason "Incorrect padding dimensions"
+
+
+hasMatchingDouble :: KnownSymbol a => P.NodeProto -> Proxy a -> T.Text -> Either OnnxLoadFailure ()
+hasMatchingDouble node a x = do 
+  let a' = (read $ symbolVal a) :: Double
+  x' <- readDoubleAttribute x node
+  guardOnnx ("Value mismatch for attribute " ++ T.unpack x ++ " of type double") (x' == a')
+
+hasMatchingInt :: KnownNat a => P.NodeProto -> Proxy a -> T.Text -> Either OnnxLoadFailure ()
+hasMatchingInt node a x = do
+  let a' = fromIntegral $ natVal a
+  x' <- readIntAttribute x node
+  guardOnnx ("Value mismatch for attribute " ++ T.unpack x ++ " of type int") (x' == a')
+
 
 onnxIncorrectNumberOfInputs :: Either OnnxLoadFailure a
 onnxIncorrectNumberOfInputs = loadFailureReason "Incorrect number of inputs"

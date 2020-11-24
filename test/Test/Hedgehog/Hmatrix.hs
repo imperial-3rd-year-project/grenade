@@ -54,6 +54,12 @@ allClose xs ys = case xs - ys of
   (S2D x) -> H.norm_Inf x < 0.0001
   (S3D x) -> H.norm_Inf x < 0.0001 
 
+allCloseP :: SingI shape => S shape -> S shape -> Double -> Bool 
+allCloseP xs ys p = case xs - ys of
+  (S1D x) -> H.norm_Inf x < p
+  (S2D x) -> H.norm_Inf x < p
+  (S3D x) -> H.norm_Inf x < p
+
 allCloseV :: KnownNat n => H.R n -> H.R n -> Bool 
 allCloseV xs ys = H.norm_Inf (xs - ys) < 0.0001
 
