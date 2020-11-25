@@ -411,7 +411,7 @@ instance ( KnownNat kernelRows
     node & hasSupportedDilations
     node & hasSupportedGroup
 
-    (node `hasMatchingShape` "kernelShape") kernelShape
+    (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides"    ) strideShape
     hasCorrectPadding node (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0)
 

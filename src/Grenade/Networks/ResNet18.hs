@@ -22,10 +22,10 @@ import           Grenade.Onnx.ParallelLayer
 
 type ResNet18BranchRight size channels
   = Network
-      '[ PaddedConvolution ('D3 size size channels) ('D3 size size channels) channels channels 3 3 1 1 1 1 1 1
+      '[ PaddedConvolution ('D3 size size channels) ('D3 size size channels) 'False channels channels 3 3 1 1 1 1 1 1
        , BatchNorm channels size size 90
        , Lift (LoadActivation Relu)
-       , PaddedConvolution ('D3 size size channels) ('D3 size size channels) channels channels 3 3 1 1 1 1 1 1
+       , PaddedConvolution ('D3 size size channels) ('D3 size size channels) 'False channels channels 3 3 1 1 1 1 1 1
        , BatchNorm channels size size 90
        ]
       '[ 'D3 size size channels
@@ -38,10 +38,10 @@ type ResNet18BranchRight size channels
 
 type ResNet18BranchShrinkRight inSize outSize inChannels outChannels
   = Network
-      '[ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) inChannels outChannels 3 3 2 2 1 1 1 1
+      '[ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) 'False inChannels outChannels 3 3 2 2 1 1 1 1
        , BatchNorm outChannels outSize outSize 90
        , Lift (LoadActivation Relu)
-       , PaddedConvolution ('D3 outSize outSize outChannels)('D3 outSize outSize outChannels) outChannels outChannels 3 3 1 1 1 1 1 1
+       , PaddedConvolution ('D3 outSize outSize outChannels)('D3 outSize outSize outChannels) 'False outChannels outChannels 3 3 1 1 1 1 1 1
        , BatchNorm outChannels outSize outSize 90
        ]
       '[ 'D3 inSize inSize inChannels
@@ -54,7 +54,7 @@ type ResNet18BranchShrinkRight inSize outSize inChannels outChannels
 
 type ResNet18BranchShrinkLeft inSize outSize inChannels outChannels
   = Network
-      '[ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) inChannels outChannels 1 1 2 2 0 0 0 0
+      '[ PaddedConvolution ('D3 inSize inSize inChannels) ('D3 outSize outSize outChannels) 'False inChannels outChannels 1 1 2 2 0 0 0 0
        , BatchNorm outChannels outSize outSize 90
        ]
       '[ 'D3 inSize inSize inChannels
@@ -74,7 +74,7 @@ type ResNet18ShrinkBlock inSize outSize inChannels outChannels
 
 type ResNetTest
   = Network
-      '[ PaddedConvolution ('D3 224 224 3) ('D3 112 112 64 ) 3 64 7 7 2 2 3 3 3 3
+      '[ PaddedConvolution ('D3 224 224 3) ('D3 112 112 64 ) 'False 3 64 7 7 2 2 3 3 3 3
        , Lift (LoadActivation Relu)
        ]
       '[ 'D3 224 224 3
@@ -84,7 +84,7 @@ type ResNetTest
 
 type ResNet18
   = Network
-     '[ PaddedConvolution ('D3 224 224 3) ('D3 112 112 64 ) 3 64 7 7 2 2 3 3 3 3
+     '[ PaddedConvolution ('D3 224 224 3) ('D3 112 112 64 ) 'False 3 64 7 7 2 2 3 3 3 3
       , BatchNorm 64 112 112 90
       , Lift (LoadActivation Relu)
       , PaddedPooling ('D3 112 112 64) ('D3 56 56 64) 3 3 2 2 1 1 1 1

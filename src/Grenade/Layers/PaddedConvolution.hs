@@ -26,7 +26,7 @@ import           Numeric.LinearAlgebra.Static (tr)
 
 import           Grenade.Core.Network
 import           Grenade.Core.Shape
-import           Grenade.Layers.Convolution
+import           Grenade.Layers.BiasConvolution
 import           Grenade.Layers.Pad
 import           Grenade.Utils.ListStore
 
@@ -39,22 +39,23 @@ instance Iso PaddedConvolutionIso where
   from = fromPaddedConvolutionIso
 
 type PaddedConvolution' (input      :: Shape)
-                       (output     :: Shape)
-                       (channels   :: Nat) 
-                       (filters    :: Nat)
-                       (kernelRows :: Nat) 
-                       (kernelCols :: Nat) 
-                       (strideRows  :: Nat) 
-                       (strideCols  :: Nat) 
-                       (padLeft    :: Nat) 
-                       (padTop     :: Nat) 
-                       (padRight   :: Nat) 
-                       (padBottom  :: Nat)
+                        (output     :: Shape)
+                        (hasBias    :: Bool)
+                        (channels   :: Nat) 
+                        (filters    :: Nat)
+                        (kernelRows :: Nat) 
+                        (kernelCols :: Nat) 
+                        (strideRows :: Nat) 
+                        (strideCols :: Nat) 
+                        (padLeft    :: Nat) 
+                        (padTop     :: Nat) 
+                        (padRight   :: Nat) 
+                        (padBottom  :: Nat)
   = Network
-   '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , BiasConvolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
     (PaddedConvolutionShapes padLeft padTop padRight padBottom input output)
 
-type PaddedConvolution input output channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom = Lift (PaddedConvolutionIso (PaddedConvolution' input output channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom))
+type PaddedConvolution input output hasBias channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom = Lift (PaddedConvolutionIso (PaddedConvolution' input output hasBias channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom))
 
 type family PaddedConvolutionShapes (padLeft :: Nat) (padTop :: Nat) (padRight :: Nat) (padBottom :: Nat) (i :: Shape) (o :: Shape) :: [Shape] where
   PaddedConvolutionShapes pl pt pr pb ('D2 rows cols) output
@@ -63,7 +64,7 @@ type family PaddedConvolutionShapes (padLeft :: Nat) (padTop :: Nat) (padRight :
     = '[ 'D3 rows cols channels, 'D3 (pt + rows + pb) (pl + cols + pr) channels, output ]
 
 instance OnnxOperator (PaddedConvolutionIso (Network
-   '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , BiasConvolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
     '[ 'D3 rows cols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
   onnxOpTypeNames _ = ["Conv"]
 
@@ -93,7 +94,7 @@ instance ( KnownNat kernelRows
          , KnownNat padTop
          , KnownNat padBottom
          ) => OnnxLoadable (PaddedConvolutionIso (Network
-   '[ Pad padLeft padTop padRight padBottom , Convolution channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , BiasConvolution 'False channels filters kernelRows kernelCols strideRows strideCols ] 
    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
   loadOnnxNode inits node = do
@@ -109,7 +110,56 @@ instance ( KnownNat kernelRows
     case node ^. #input of
       [_, w] -> do
         filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
-        return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
+        return $ PaddedConvolutionIso (Pad :~> NoBiasConvolution filterWeights mkListStore :~> NNil)
+      _ -> onnxIncorrectNumberOfInputs
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
+
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat outputRows
+         , KnownNat outputCols
+         , KnownNat channels
+         , KnownNat convInputRows
+         , KnownNat convInputCols
+         , (inputRows + padTop + padBottom) ~ convInputRows
+         , (inputCols + padLeft + padRight) ~ convInputCols
+         , strideRows * (outputRows - 1) <= (convInputRows - kernelRows + 1) - 1
+         , (convInputRows - kernelRows + 1) <= outputRows * strideRows
+         , strideCols * (outputCols - 1) <= (convInputCols - kernelCols + 1) - 1
+         , (convInputCols - kernelCols + 1) <= outputCols * strideCols
+         , KnownNat (kernelRows * kernelCols * channels)
+         , KnownNat (outputRows * filters)
+         , KnownNat padLeft
+         , KnownNat padRight
+         , KnownNat padTop
+         , KnownNat padBottom
+         ) => OnnxLoadable (PaddedConvolutionIso (Network
+   '[ Pad padLeft padTop padRight padBottom , BiasConvolution 'True channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
+
+  loadOnnxNode inits node = do
+    node `doesNotHaveAttribute` "auto_pad"
+
+    node & hasSupportedDilations
+    node & hasSupportedGroup
+
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides"     ) strideShape
+    hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+
+    case node ^. #input of
+      [_, w, b] -> do
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
+        filterBiases  <- readInitializerVector inits b
+        return $ PaddedConvolutionIso (Pad :~> BiasConvolution filterWeights filterBiases mkListStore :~> NNil)
       _ -> onnxIncorrectNumberOfInputs
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]

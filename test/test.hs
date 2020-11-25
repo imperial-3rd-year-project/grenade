@@ -5,6 +5,7 @@ import qualified Test.Grenade.Loss
 import qualified Test.Grenade.Batch
 
 import qualified Test.Grenade.Layers.Pooling
+import qualified Test.Grenade.Layers.BiasConvolution
 import qualified Test.Grenade.Layers.Convolution
 import qualified Test.Grenade.Layers.FullyConnected
 import qualified Test.Grenade.Layers.Mul
@@ -31,6 +32,7 @@ main = disorderMain [
     
     , Test.Grenade.Layers.Add.tests
     , Test.Grenade.Layers.Pooling.tests
+    , Test.Grenade.Layers.BiasConvolution.tests
     , Test.Grenade.Layers.Convolution.tests
     , Test.Grenade.Layers.FullyConnected.tests
     , Test.Grenade.Layers.Mul.tests
