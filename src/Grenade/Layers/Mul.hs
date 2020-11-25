@@ -8,6 +8,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -17,21 +18,19 @@
 
 module Grenade.Layers.Mul where
 
-import           Control.DeepSeq
-import           Data.Kind                      (Type)
-import           Data.Maybe                     (fromJust)
+import           Data.Kind                    (Type)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
 
-import qualified Numeric.LinearAlgebra          as LA
-import           Numeric.LinearAlgebra.Static   (R)
-import qualified Numeric.LinearAlgebra.Static   as H
+import qualified Numeric.LinearAlgebra        as LA
+import           Numeric.LinearAlgebra.Static (R)
+import qualified Numeric.LinearAlgebra.Static as H
+
+import           Lens.Micro                   ((^.))
 
 import           Grenade.Core
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.OnnxLoadable
-
+import           Grenade.Onnx
 
 data Mul :: Nat -- The number of channels of the bias
          -> Nat -- The number of rows of the bias
@@ -75,3 +74,15 @@ instance ( KnownNat i, KnownNat j, KnownNat k ) => Layer (Mul 1 1 1) ('D3 i j k)
       in  ((), S3D $  H.dmmap (s *) m)
 
   runBackwards = undefined
+
+instance OnnxOperator (Mul c h w) where
+  onnxOpTypeNames _ = ["Mul"]
+
+instance (KnownNat c, KnownNat h, KnownNat w) => OnnxLoadable (Mul c h w) where
+  loadOnnxNode inits node = case node ^. #input of
+    [_, scale] -> do
+      loadedScale <- readInitializerVector inits scale
+
+      return $ Mul loadedScale
+    _               -> onnxIncorrectNumberOfInputs
+

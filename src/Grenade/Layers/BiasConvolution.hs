@@ -435,7 +435,6 @@ instance ( KnownNat kernelRows
 
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides"     ) strideShape
-    (node & hasCorrectPadding) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0) (Proxy :: Proxy 0)
 
     case node ^. #input of
       [_, w, b] -> do

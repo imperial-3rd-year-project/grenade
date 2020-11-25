@@ -8,6 +8,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -17,21 +18,20 @@
 
 module Grenade.Layers.Add where
 
-import           Control.DeepSeq
-import           Data.Kind                      (Type)
-import           Data.Maybe                     (fromJust)
+import           Data.Kind                    (Type)
+import           Data.Maybe                   (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
 
-import qualified Numeric.LinearAlgebra          as LA
-import           Numeric.LinearAlgebra.Static   (R)
-import qualified Numeric.LinearAlgebra.Static   as H
+import qualified Numeric.LinearAlgebra        as LA
+import           Numeric.LinearAlgebra.Static (R)
+import qualified Numeric.LinearAlgebra.Static as H
+
+import           Lens.Micro                   ((^.))
 
 import           Grenade.Core
-import           Grenade.Onnx.Graph
-import           Grenade.Onnx.OnnxLoadable
-
+import           Grenade.Onnx
 import           Grenade.Layers.Internal.Add
 
 data Add :: Nat -- The number of channels of the bias
@@ -82,3 +82,12 @@ instance ( KnownNat i, KnownNat j, KnownNat k ) => Layer (Add k 1 1) ('D3 i j k)
 
   runBackwards = undefined
 
+instance OnnxOperator (Add c h w) where
+  onnxOpTypeNames _ = ["Add"]
+
+instance (KnownNat c, KnownNat h, KnownNat w) => OnnxLoadable (Add c h w) where
+  loadOnnxNode inits node = case node ^. #input of
+    [bias, _] -> do
+      loadedBias <- readInitializerTensorIntoVector inits bias
+      return $ Add loadedBias
+    _ -> onnxIncorrectNumberOfInputs

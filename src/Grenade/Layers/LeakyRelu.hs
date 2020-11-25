@@ -140,7 +140,7 @@ instance OnnxOperator LeakyRelu where
   onnxOpTypeNames _ = ["LeakyRelu"]
 
 instance OnnxLoadable LeakyRelu where
-  loadOnnxNode inits node = do
+  loadOnnxNode _ node = do
     alpha <- readDoubleAttribute "alpha" node
 
     return $ LeakyRelu alpha

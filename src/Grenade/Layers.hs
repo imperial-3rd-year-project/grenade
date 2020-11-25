@@ -22,6 +22,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Pooling
   , module Grenade.Layers.Reshape
   , module Grenade.Layers.Relu
+  , module Grenade.Layers.SamePadPooling
   , module Grenade.Layers.Softmax
   , module Grenade.Layers.Sinusoid
   , module Grenade.Layers.Tanh
@@ -51,6 +52,7 @@ import           Grenade.Layers.PaddedPooling
 import           Grenade.Layers.Pooling
 import           Grenade.Layers.Relu
 import           Grenade.Layers.Reshape
+import           Grenade.Layers.SamePadPooling
 import           Grenade.Layers.Sinusoid
 import           Grenade.Layers.Softmax
 import           Grenade.Layers.Tanh

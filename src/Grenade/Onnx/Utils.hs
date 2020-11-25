@@ -15,6 +15,7 @@ module Grenade.Onnx.Utils
   , readInitializerMatrix
   , readInitializerVector
   , readInitializerTensorIntoMatrix
+  , readInitializerTensorIntoVector
   , readIntAttribute
   , filterIntAttribute
   , readIntsAttribute
@@ -143,6 +144,11 @@ readInitializerTensorIntoMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.
 readInitializerTensorIntoMatrix inits name = do
   initializer <- readInitializer inits name
   maybeLoadFailureReason ("Failed to read initializer tensor '" ++ show name ++ "' as matrix") (readTensorIntoMatrix initializer)
+
+readInitializerTensorIntoVector :: (KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (R c)
+readInitializerTensorIntoVector inits name = do
+  initializer <- readInitializer inits name
+  maybeLoadFailureReason ("Failed to read initializer tensor '" ++ show name ++ "' as vector") (readVector initializer)
 
 readInitializerVector :: KnownNat r => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (R r)
 readInitializerVector inits name = do

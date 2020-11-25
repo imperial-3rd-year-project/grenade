@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
@@ -5,6 +8,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -15,18 +19,19 @@ module Grenade.Layers.SamePadPooling (
   ) where
 
 import           Control.DeepSeq
-import           Data.Kind                    (Type)
+import           Data.Function                   ((&))
+import           Data.Kind                       (Type)
 import           Data.Maybe
 import           Data.Proxy
 import           Data.Serialize
-import           Data.Singletons.TypeLits     hiding (natVal)
+import           Data.Singletons.TypeLits        hiding (natVal)
 import           GHC.Generics
 import           GHC.TypeLits
-import           Numeric.LinearAlgebra        (diagBlock, konst, subMatrix)
-import           Numeric.LinearAlgebra.Static (create, extract)
+import           Numeric.LinearAlgebra.Static    (create, extract)
 
 import           Grenade.Core
 import           Grenade.Layers.Internal.Pooling
+import           Grenade.Onnx
 
 -- | A pooling layer for a neural network, for when auto_pad is SAME_UPPER or SAME_LOWER
 --
@@ -125,3 +130,29 @@ instance ( KnownNat padLeft
     in  ((), S3D . fromJust . create $ r)
 
   runBackwards _ _ _ = error "backward pass for SamePadPooling not implemented"
+
+instance OnnxOperator (SamePadPooling kernelRows kernelColumns strideRows strideColumns padLeft padTop padRight padBottom) where
+  onnxOpTypeNames _ = ["MaxPool"]
+
+instance ( KnownNat padLeft
+         , KnownNat padTop
+         , KnownNat padRight
+         , KnownNat padBottom
+         , KnownNat strideRows
+         , KnownNat strideColumns
+         , KnownNat kernelRows
+         , KnownNat kernelColumns
+         ) => OnnxLoadable (SamePadPooling kernelRows kernelColumns strideRows strideColumns padLeft padTop padRight padBottom) where
+
+  loadOnnxNode _ node = do
+    node & hasSupportedDilations
+
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides")      strideShape
+
+    -- todo: check that attribute is one of: SAME_UPPER or SAME_LOWER
+
+    return SamePadPooling
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelColumns)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideColumns)]

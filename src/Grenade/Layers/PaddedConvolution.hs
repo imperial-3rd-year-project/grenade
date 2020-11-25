@@ -98,14 +98,15 @@ instance ( KnownNat kernelRows
    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
   loadOnnxNode inits node = do
-    node `doesNotHaveAttribute` "auto_pad"
-
     node & hasSupportedDilations
     node & hasSupportedGroup
 
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides"     ) strideShape
-    hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+    
+    case node `doesNotHaveAttribute` "auto_pad" of 
+      Right () -> hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+      Left _   -> pure () -- todo: check the value of the attribute
 
     case node ^. #input of
       [_, w] -> do

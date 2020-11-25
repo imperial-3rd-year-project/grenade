@@ -89,13 +89,15 @@ instance ( KnownNat kernelRows
     ('[ 'D3 inputRows inputCols channels, 'D3 poolInputRows poolInputCols channels, 'D3 outputRows outputCols channels ]))) where
 
   loadOnnxNode _ node = do
-    node `doesNotHaveAttribute` "auto_pad"
-
     node & hasSupportedDilations
 
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides")      strideShape
-    hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+
+    case node `doesNotHaveAttribute` "auto_pad" of 
+      Right () -> hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
+      err      -> err
+    
     return $ PaddedPoolingIso (Pad :~> Pooling :~> NNil)
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
