@@ -1,11 +1,12 @@
 #include "im2col.h"
+#include <float.h>
+#include <math.h>
+#include <stdbool.h>
 
 void im2col_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
     RealNum* data_col) {
-    
-  //printf("im2col_cpu");
 
   const int channel_size = height * width;
 
@@ -48,6 +49,8 @@ void col2im_cpu(const RealNum* data_col, const int channels,
 }
 
 inline RealNum max ( RealNum a, RealNum b ) { return a > b ? a : b; }
+
+inline int ceil_divison ( int x, int y) { return (x + y - 1) / y; }
 
 void pool_forwards_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
@@ -122,6 +125,60 @@ void pool_backwards_cpu(const RealNum* data_im, const RealNum* data_pooled,
         }
         data_backgrad[max_index] += *(data_pooled++);
       }
+    }
+  }
+}
+
+void same_pad_pool_forwards_cpu(const RealNum* data_im, const int channels,
+    const int in_height, const int in_width, const int kernel_h, const int kernel_w,
+    const int stride_h, const int stride_w, const int pad_l, const int pad_t, const int pad_r, const int pad_b,
+    RealNum* data_pooled) {
+  
+  const int out_height = ceil_divison(in_height, stride_h);
+  const int out_width = ceil_divison(in_width, stride_w);
+
+  const int in_channel_size = in_height * in_width;
+  const int out_channel_size = out_height * out_width;
+
+  for (int c = 0; c < channels; ++c) {
+    for (int y = 0; y < out_height; ++y) {
+      for (int x = 0; x < out_width; ++x) {
+        // (x, y) of the pixel in the input channel that corresponds to the 
+        // top left of the kernel that will produce this pixel in the output
+        int effective_x = (x * stride_w) - pad_l;
+        int effective_y = (y * stride_h) - pad_t;
+
+        bool found_nonnan = false;
+        RealNum max_value;
+
+        for (int kernel_col = 0; kernel_col < kernel_w; kernel_col++) {
+          for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {
+            int curr_x = effective_x + kernel_col;
+            int curr_y = effective_y + kernel_row;
+
+            if (curr_x < 0 || curr_x >= in_width || curr_y < 0 || curr_y >= in_height) {
+              continue;
+            } else {
+              RealNum curr_pixel = data_im[in_channel_size * c + curr_y * in_width + curr_x];
+
+              if (!found_nonnan) {
+                max_value = curr_pixel;
+                found_nonnan = true;
+              } else {
+                max_value = max( max_value, curr_pixel );
+              }
+            }
+          }
+        }
+
+        int output_index = out_channel_size * c + y * out_width + x;
+
+        if (found_nonnan) {
+          data_pooled[output_index] = max_value;
+        } else {
+          data_pooled[output_index] = 0;
+        }
+      } 
     }
   }
 }

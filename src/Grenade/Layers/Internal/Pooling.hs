@@ -2,12 +2,14 @@
 module Grenade.Layers.Internal.Pooling (
     poolForward
   , poolBackward
+  , validPadPoolForwards
   ) where
 
 import qualified Data.Vector.Storable        as U (unsafeFromForeignPtr0,
                                                    unsafeToForeignPtr0)
 
-import           Foreign                     (mallocForeignPtrArray, withForeignPtr)
+import           Foreign                     (mallocForeignPtrArray,
+                                              withForeignPtr)
 import           Foreign.Ptr                 (Ptr)
 
 import           Numeric.LinearAlgebra       (Matrix, flatten)
@@ -15,8 +17,8 @@ import qualified Numeric.LinearAlgebra.Devel as U
 
 import           System.IO.Unsafe            (unsafePerformIO)
 
+import           Debug.Trace
 import           Grenade.Types
-
 poolForward :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 poolForward channels height width kernelRows kernelColumns strideRows strideColumns dataIm =
   let vec             = flatten dataIm
@@ -58,3 +60,22 @@ poolBackward channels height width kernelRows kernelColumns strideRows strideCol
 foreign import ccall unsafe
     pool_backwards_cpu
       :: Ptr RealNum -> Ptr RealNum -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Ptr RealNum -> IO ()
+
+validPadPoolForwards :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+validPadPoolForwards channels height width kernelRows kernelColumns strideRows strideCols padLeft padTop padRight padBottom dataIm
+  = let vec     = flatten dataIm
+        outRows = ceiling $ fromIntegral height / fromIntegral strideRows
+        outCols = ceiling $ fromIntegral width / fromIntegral strideCols  -- todo: this is calculated both here and in C
+    in unsafePerformIO $ do
+      outPtr <- mallocForeignPtrArray (outRows * outCols * channels)
+      let (inPtr, _) = U.unsafeToForeignPtr0 vec
+      withForeignPtr inPtr $ \inPtr' ->
+        withForeignPtr outPtr $ \outPtr' ->
+          same_pad_pool_forwards_cpu inPtr' channels height width kernelRows kernelColumns strideRows strideCols padLeft padTop padRight padBottom outPtr'
+
+      let matVec = U.unsafeFromForeignPtr0 outPtr (outRows * outCols * channels)
+      return $ U.matrixFromVector U.RowMajor (outRows * channels) outCols matVec
+
+foreign import ccall unsafe
+    same_pad_pool_forwards_cpu
+      :: Ptr RealNum -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Ptr RealNum -> IO ()

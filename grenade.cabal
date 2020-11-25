@@ -120,6 +120,7 @@ library
       Grenade.Layers.Pooling
       Grenade.Layers.Relu
       Grenade.Layers.Reshape
+      Grenade.Layers.SamePadPooling
       Grenade.Layers.Sinusoid
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
