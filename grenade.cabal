@@ -1,6 +1,6 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 --
@@ -193,6 +193,7 @@ library
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens
@@ -284,6 +285,7 @@ test-suite test
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens
@@ -347,6 +349,7 @@ benchmark bench
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens
@@ -461,6 +464,7 @@ benchmark bench-lstm
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens

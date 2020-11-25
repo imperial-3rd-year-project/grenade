@@ -21,6 +21,8 @@ import           Grenade.Core.Shape
 import           Grenade.Core.TrainingTypes
 import           Grenade.Types
 
+import           Numeric.Limits             (infinity)
+
 import           System.ProgressBar
 
 fit :: (CreatableNetwork layers shapes
@@ -32,12 +34,11 @@ fit :: (CreatableNetwork layers shapes
        -> LossFunction (S (Last shapes))
        -> IO (Network layers shapes)
 fit trainRows validateRows TrainingOptions{ optimizer=opt, batchSize=bs, metrics=ms } epochs lossFnc = do
-    -- initialise the network with random weights
-    net0 <- randomNetwork
-    -- then train it over the epochs
     let !trainData = trainingData trainRows
         !valData   = trainingData validateRows
-    foldM (runEpoch opt trainData valData lossFnc ms bs) net0 [1..epochs]
+    net0        <- randomNetwork
+    (_, net, _) <- foldM (runEpoch opt trainData valData lossFnc ms bs) (net0, net0, infinity)  [1..epochs]
+    return net
 
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
@@ -46,10 +47,10 @@ runEpoch :: SingI (Last shapes)
          -> LossFunction (S (Last shapes))
          -> [LossMetric]
          -> Int
-         -> Network layers shapes
+         -> (Network layers shapes, Network layers shapes, RealNum)
          -> Int
-         -> IO (Network layers shapes)
-runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize net epoch = do
+         -> IO (Network layers shapes, Network layers shapes, RealNum)
+runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize (net, minNet, minLoss) epoch = do
   putStrLn $ "Training epoch " ++ show epoch
   pb <- newProgressBar defStyle 10 (Progress 0 t ())
 
@@ -62,14 +63,13 @@ runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize net epoch = do
                                   f       = (combineBatchTraining pb updates lossFnc batchSize)
                                in foldM f (net, 0) bs
 
-  -- validate trained model
-  let !val_losses  = map (\m -> (m, validate' trained valData m)) ms
-
+  -- Validating data and printing losses.
   putStrLn $ "Loss:     " ++ show (loss / fromIntegral t)
-  -- print the validation losses
-  mapM_ (\(m, x) -> putStrLn $ "Val " ++ show m ++ ": " ++ show x) val_losses
+  mapM_ (\m -> putStrLn $ "Val " ++ show m ++ ": " ++ show (validate' trained valData m)) ms
   putStrLn ""
-  return trained
+
+  let (newMinNet, newMinLoss) = if loss <= minLoss then (trained, loss) else (minNet, minLoss)
+  return (trained, newMinNet, newMinLoss)
 
 sgdUpdateLearningParameters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParameters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)

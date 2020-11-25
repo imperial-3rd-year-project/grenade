@@ -79,8 +79,9 @@ dependencies:
   - bifunctors
   - array
   - symbols
+  - numeric-limits
 when:
-  condition: flag(use-float)
+condition: flag(use-float)
   then:
     dependencies:
       - hmatrix-float
