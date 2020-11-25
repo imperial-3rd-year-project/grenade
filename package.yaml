@@ -114,6 +114,8 @@ extra-source-files:
 - cbits/add.h
 - cbits/add.c
 - proto/onnx.proto
+- cbits/batchnorm.h
+- cbits/batchnorm.c
 
 library:
   source-dirs:
@@ -153,6 +155,7 @@ library:
     - cbits/pad.c
     - cbits/shrink.c
     - cbits/add.c
+    - cbits/batchnorm.c
   cc-options:
     - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
 

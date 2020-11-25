@@ -19,16 +19,18 @@
 module Grenade.Layers.BatchNormalisation where
 
 import           Control.DeepSeq
-import           Data.Kind                      (Type)
-import           Data.List                      (transpose, zipWith5)
+import           Data.Kind                         (Type)
+import           Data.List                         (transpose, zipWith5)
+import           Data.Maybe                        (fromJust)
 import           Data.Proxy
 import           Data.Serialize
 import           GHC.TypeLits
 
-import qualified Numeric.LinearAlgebra          as LA
-import           Numeric.LinearAlgebra.Static   hiding (Seed)
+import qualified Numeric.LinearAlgebra             as LA
+import           Numeric.LinearAlgebra.Static      hiding (Seed)
 
 import           Grenade.Core
+import           Grenade.Layers.Internal.BatchNorm
 import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx
 import           Grenade.Utils.LinearAlgebra
@@ -214,14 +216,16 @@ instance (KnownNat rows, KnownNat momentum)
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
   runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) (S1D x)
-    = let [m]    = vectorToList runningMean
-          [v]    = vectorToList runningVar
-          [g]    = vectorToList gamma
-          [b]    = vectorToList beta
-          std    = sqrt $ v + ε
-          x_norm = dvmap (\a -> (a - m) / std) x
-          out    = dvmap (\a -> g * a + b) x_norm
-      in (TestBatchNormTape, S1D out)
+    = let gamma'       = extract gamma LA.! 0
+          beta'        = extract beta LA.! 0
+          runningMean' = extract runningMean LA.! 0
+          runningVar'  = extract runningVar LA.! 0
+
+          std = sqrt $ runningVar' + ε
+
+          y = dvmap (\x -> ((x - runningMean') / std ) * gamma' + beta') x
+
+      in (TestBatchNormTape, S1D y)
 
   runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
@@ -243,10 +247,10 @@ instance (KnownNat rows, KnownNat momentum)
           v'              = mom * v + (1 - mom) * sample_var  :: Double
           std             = sqrt $ sample_var + ε             :: Double
 
-          x_extracted     = map (\(S1D x) -> x) xs                  
-          x_normalised    = map (dvmap (\a -> (a - sample_mean) / std)) x_extracted 
+          x_extracted     = map (\(S1D x) -> x) xs
+          x_normalised    = map (dvmap (\a -> (a - sample_mean) / std)) x_extracted
           scaledShifted   = map (dvmap (\a -> g * a + b)) x_normalised
-          out             = map S1D scaledShifted 
+          out             = map S1D scaledShifted
 
           stdV            = listToVector [std] :: R 1
           runningMeanV    = listToVector [m']  :: R 1
@@ -256,7 +260,7 @@ instance (KnownNat rows, KnownNat momentum)
 
   runBatchBackwards (BatchNorm True (BatchNormParams _ _) _ _ _ _) _ _
     = undefined
-  
+
   runBatchBackwards _ _ _
     = undefined
 
@@ -269,14 +273,19 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum)
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
   runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) (S2D x)
-    = let [m]    = vectorToList runningMean
-          [v]    = vectorToList runningVar
-          [g]    = vectorToList gamma
-          [b]    = vectorToList beta
-          std    = sqrt $ v + ε
-          x_norm = dmmap (\a -> (a - m) / std) x
-          out    = dmmap (\a -> g * a + b) x_norm
-      in (TestBatchNormTape, S2D out)
+    = let rows     = fromIntegral $ natVal (Proxy :: Proxy rows)
+          columns  = fromIntegral $ natVal (Proxy :: Proxy columns)
+
+          gamma'       = extract gamma
+          beta'        = extract beta
+          runningMean' = extract runningMean
+          runningVar'  = extract runningVar
+          mat          = extract x
+
+          y  = batchnorm 1 rows columns ε mat gamma' beta' runningMean' runningVar'
+          y' = fromJust . create $ y
+
+      in (TestBatchNormTape, S2D y')
 
   runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
@@ -298,10 +307,10 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum)
           v'              = mom * v + (1 - mom) * sample_var  :: Double
           std             = sqrt $ sample_var + ε             :: Double
 
-          x_extracted     = map (\(S2D x) -> x) xs                     
-          x_normalised    = map (dmmap (\a -> (a - sample_mean) / std)) x_extracted 
+          x_extracted     = map (\(S2D x) -> x) xs
+          x_normalised    = map (dmmap (\a -> (a - sample_mean) / std)) x_extracted
           scaledShifted   = map (dmmap (\a -> g * a + b)) x_normalised
-          out             = map S2D scaledShifted 
+          out             = map S2D scaledShifted
 
           x_normalised'   = map sflatten x_normalised
           stdV            = listToVector [std] :: R 1
@@ -312,7 +321,7 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum)
 
   runBatchBackwards (BatchNorm True (BatchNormParams _ _) _ _ _ _) _ _
     = undefined
-  
+
   runBatchBackwards _ _ _
     = undefined
 
@@ -324,23 +333,21 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   runForwards (BatchNorm True _ _ _ _ _) _
     = error "Cannot train use batch size of 1 with BatchNorm layer during training"
 
-  runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) inp
-    = let ms     = vectorToList runningMean
-          vs     = vectorToList runningVar
-          gs     = vectorToList gamma
-          bs     = vectorToList beta
+  runForwards (BatchNorm False (BatchNormParams gamma beta) runningMean runningVar ε _) (S3D x)
+    = let rows     = fromIntegral $ natVal (Proxy :: Proxy rows)
+          columns  = fromIntegral $ natVal (Proxy :: Proxy columns)
+          channels = fromIntegral $ natVal (Proxy :: Proxy channels)
 
-          cs     = splitChannels inp :: [S ('D2 rows columns)]
+          gamma'       = extract gamma
+          beta'        = extract beta
+          runningMean' = extract runningMean
+          runningVar'  = extract runningVar
+          mat          = extract x
 
-          f c g b m v = let gs' = listToVector [g] :: R 1
-                            bs' = listToVector [b] :: R 1
-                            ms' = listToVector [m] :: R 1
-                            vs' = listToVector [v] :: R 1
-                            bn' = BatchNorm False (BatchNormParams gs' bs') ms' vs' ε undefined :: BatchNorm 1 rows columns momentum
-                        in  runForwards bn' c
+          y  = batchnorm channels rows columns ε mat gamma' beta' runningMean' runningVar'
+          y' = fromJust . create $ y
 
-          (_, outs) = unzip $ zipWith5 f cs gs bs ms vs
-      in (TestBatchNormTape, combineChannels outs)
+      in (TestBatchNormTape, S3D y')
 
   runBatchForwards bn@(BatchNorm False _ _ _ _ _) xs
     = let outs = map (snd . runForwards bn) xs
@@ -371,7 +378,7 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
 
   runBatchBackwards (BatchNorm True (BatchNormParams _ _) _ _ _ _) _ _
     = undefined
-  
+
   runBatchBackwards _ _ _ = undefined
 
 instance OnnxOperator (BatchNorm channels rows columns momentum) where

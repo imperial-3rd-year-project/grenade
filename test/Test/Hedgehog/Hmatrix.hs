@@ -20,6 +20,9 @@ import           Numeric.LinearAlgebra.Data   hiding ((===))
 randomVector :: forall n. ( KnownNat n ) =>  Gen (H.R n)
 randomVector = (\s -> H.randomVector s H.Uniform * 2 - 1) <$> Gen.int Range.linearBounded
 
+randomPositiveVector :: forall n. ( KnownNat n ) =>  Gen (H.R n)
+randomPositiveVector = (\s -> H.randomVector s H.Uniform) <$> Gen.int Range.linearBounded
+
 randomVectorNormalised :: forall n. ( KnownNat n ) =>  Gen (H.R n)
 randomVectorNormalised = (\s -> sigmoid ((H.randomVector s H.Uniform) * 2 - 1)) <$> Gen.int Range.linearBounded
   where
@@ -72,3 +75,16 @@ extractVec (S1D vec) = toList $ H.extract vec
 
 extractMat :: (KnownNat a, KnownNat b) => S ('D2 a b) -> [[Double]]
 extractMat (S2D mat) = toLists $ H.extract mat
+
+elementsEqual :: SingI shape => S shape -> Bool 
+elementsEqual m = case m of 
+  S1D x -> listSameElements . toList $ H.extract x
+  S2D x -> listSameElements . concat . toLists $ H.extract x
+  S3D x -> listSameElements . concat . toLists $ H.extract x
+
+listSameElements :: Eq a => [a] -> Bool
+listSameElements []  = True 
+listSameElements [_] = True
+listSameElements (x:x':xs) 
+  | x == x'   = listSameElements (x':xs)
+  | otherwise = False

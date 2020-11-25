@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f765b10e5ccdea5305f73bae10b19920b216704566fc813e57f0d5176f88fade
+-- hash: 500c23fcdf5b884d65e016a5382a04db0be2a88ceb8c434f67828e496e869c83
 
 name:           grenade
 version:        0.1.1
@@ -35,6 +35,8 @@ extra-source-files:
     cbits/add.h
     cbits/add.c
     proto/onnx.proto
+    cbits/batchnorm.h
+    cbits/batchnorm.c
 data-files:
     assets/mnistModel
 
@@ -101,6 +103,7 @@ library
       Grenade.Layers.GlobalAvgPool
       Grenade.Layers.Inception
       Grenade.Layers.Internal.Add
+      Grenade.Layers.Internal.BatchNorm
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
@@ -167,6 +170,7 @@ library
       cbits/pad.c
       cbits/shrink.c
       cbits/add.c
+      cbits/batchnorm.c
   build-tool-depends:
       proto-lens-protoc:proto-lens-protoc
   build-depends:
@@ -231,6 +235,7 @@ test-suite test
   other-modules:
       Test.Grenade.Batch
       Test.Grenade.Layers.Add
+      Test.Grenade.Layers.BatchNorm
       Test.Grenade.Layers.BiasConvolution
       Test.Grenade.Layers.Convolution
       Test.Grenade.Layers.FullyConnected

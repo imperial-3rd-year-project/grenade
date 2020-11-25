@@ -35,7 +35,7 @@ import           Test.Hedgehog.TypeLits
 
 import           Grenade.Core
 import           Grenade.Layers.Convolution
-import Grenade.Utils.ListStore
+import           Grenade.Utils.ListStore
 
 
 data OpaqueConvolution :: Type where
