@@ -4,6 +4,7 @@ import qualified Test.Grenade.Network
 import qualified Test.Grenade.Loss
 import qualified Test.Grenade.Batch
 
+import qualified Test.Grenade.Layers.Add
 import qualified Test.Grenade.Layers.BatchNorm
 import qualified Test.Grenade.Layers.Pooling
 import qualified Test.Grenade.Layers.BiasConvolution
@@ -12,15 +13,13 @@ import qualified Test.Grenade.Layers.FullyConnected
 import qualified Test.Grenade.Layers.Mul
 import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
+import qualified Test.Grenade.Layers.LeakyRelu
 import qualified Test.Grenade.Layers.LRN
-import qualified Test.Grenade.Layers.Add
 
 import qualified Test.Grenade.Layers.Internal.Convolution
 import qualified Test.Grenade.Layers.Internal.Pooling
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM
-
-import qualified Test.Grenade.Utils.LinearAlgebra
 
 import           System.Exit
 import           System.IO
@@ -41,6 +40,7 @@ main = disorderMain [
     , Test.Grenade.Layers.Nonlinear.tests
     , Test.Grenade.Layers.PadCrop.tests
     , Test.Grenade.Layers.LRN.tests
+    , Test.Grenade.Layers.LeakyRelu.tests
 
     , Test.Grenade.Layers.Internal.Convolution.tests
     , Test.Grenade.Layers.Internal.Pooling.tests

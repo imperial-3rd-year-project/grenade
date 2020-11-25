@@ -119,7 +119,7 @@ newtype SpecElu = SpecElu (Integer, Integer, Integer)
 
 newtype SpecGelu = SpecGelu (Integer, Integer, Integer)
 
-newtype SpecLeakyRelu = SpecLeakyRelu (Integer, Integer, Integer)
+data SpecLeakyRelu = SpecLeakyRelu (Integer, Integer, Integer) RealNum
 
 newtype SpecLogit = SpecLogit (Integer, Integer, Integer)
 

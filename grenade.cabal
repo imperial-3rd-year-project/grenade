@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 500c23fcdf5b884d65e016a5382a04db0be2a88ceb8c434f67828e496e869c83
+-- hash: d7c7c946b01415cb6fcca361e976a83df3fbd25b08dfa9c3c8f9d54b06c1cfd9
 
 name:           grenade
 version:        0.1.1
@@ -243,6 +243,7 @@ test-suite test
       Test.Grenade.Layers.Internal.Convolution
       Test.Grenade.Layers.Internal.Pooling
       Test.Grenade.Layers.Internal.Reference
+      Test.Grenade.Layers.LeakyRelu
       Test.Grenade.Layers.LRN
       Test.Grenade.Layers.Mul
       Test.Grenade.Layers.Nonlinear
@@ -407,6 +408,7 @@ benchmark bench-layers
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens
@@ -522,6 +524,7 @@ benchmark bench-util
     , microlens-th
     , mtl
     , mwc-random >=0.13
+    , numeric-limits
     , parallel
     , primitive >=0.6 && <0.8
     , proto-lens

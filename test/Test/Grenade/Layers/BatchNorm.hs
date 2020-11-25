@@ -39,8 +39,8 @@ batchnorm training gamma beta mean var =
 
 prop_batchnorm_train_behaves_as_reference :: Property
 prop_batchnorm_train_behaves_as_reference = property $ do
-  height   :: Int  <- forAll $ choose 2 100
-  width    :: Int  <- forAll $ choose 2 100
+  height   :: Int <- forAll $ choose 2 100
+  width    :: Int <- forAll $ choose 2 100
   channels :: Int <- forAll $ choose 1 100
 
   case (someNatVal (fromIntegral height), someNatVal (fromIntegral width), someNatVal (fromIntegral channels), channels) of
@@ -52,7 +52,7 @@ prop_batchnorm_train_behaves_as_reference = property $ do
       m :: R 1 <- forAll randomVector
       v :: R 1 <- forAll randomPositiveVector
 
-      let layer              = batchnorm False g b m v :: BatchNorm 1 h w 90
+      let layer   = batchnorm False g b m v :: BatchNorm 1 h w 90
           S2D out = snd $ runForwards layer inp :: S ('D2 h w)
           S2D ref = run2DBatchNorm layer inp :: S ('D2 h w)
       H.extract out === H.extract ref
@@ -64,7 +64,7 @@ prop_batchnorm_train_behaves_as_reference = property $ do
       m :: R c <- forAll randomVector
       v :: R c <- forAll randomPositiveVector
 
-      let layer    = batchnorm False g b m v :: BatchNorm c h w 90
+      let layer   = batchnorm False g b m v :: BatchNorm c h w 90
           S3D out = snd $ runForwards layer inp :: S ('D3 h w c)
           S3D ref = run3DBatchNorm layer inp    :: S ('D3 h w c)
       H.extract out === H.extract ref

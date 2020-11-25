@@ -327,8 +327,8 @@ newtype SpecElu = SpecElu Dimensions
 newtype SpecGelu = SpecGelu Dimensions
   deriving (Show, Read, Eq, Ord, Serialize, Generic, NFData)
 
--- | Specification of Leaky Relu (with 0.01), saves input dimensions as triple, where every element >= 1.
-newtype SpecLeakyRelu = SpecLeakyRelu Dimensions
+-- | Specification of Leaky Relu, saves alpha input dimensions as triple, where every element >= 1.
+data SpecLeakyRelu = SpecLeakyRelu Dimensions RealNum
   deriving (Show, Read, Eq, Ord, Serialize, Generic, NFData)
 
 -- | Specification of Logit, saves input dimensions as triple, where every element >= 1.
