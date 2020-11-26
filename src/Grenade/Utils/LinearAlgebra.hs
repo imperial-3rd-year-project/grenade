@@ -62,6 +62,7 @@ nsum :: S s -> RealNum
 nsum (S1D x) = sumElements $ H.extract x
 nsum (S2D x) = sumElements $ H.extract x
 nsum (S3D x) = sumElements $ H.extract x
+nsum (S4D x) = sumElements $ H.extract x
 
 -- | Calculate elementwise mean of list of matrices
 bmean :: forall s. SingI s => [S s] -> S s
@@ -71,6 +72,7 @@ bmean xs
           (S1D x, _) -> S1D $ H.dvmap (/ fromIntegral l) x
           (S2D x, _) -> S2D $ H.dmmap (/ fromIntegral l) x
           (S3D x, _) -> S3D $ H.dmmap (/ fromIntegral l) x
+          (S4D x, _) -> S4D $ H.dmmap (/ fromIntegral l) x
 
 -- | Calculate element wise variance
 bvar :: forall s. SingI s => [S s] -> S s
@@ -81,6 +83,7 @@ bvar xs
           (S1D x, _) -> S1D $ H.dvmap (/ fromIntegral l) x
           (S2D x, _) -> S2D $ H.dmmap (/ fromIntegral l) x
           (S3D x, _) -> S3D $ H.dmmap (/ fromIntegral l) x
+          (S4D x, _) -> S4D $ H.dmmap (/ fromIntegral l) x
 
 -- | Calculate element wise variance, with the mean precalculated
 bvar' :: forall s. SingI s => S s -> [S s] -> S s
@@ -90,6 +93,7 @@ bvar' m xs
           (S1D x, _) -> S1D $ H.dvmap (/ fromIntegral l) x
           (S2D x, _) -> S2D $ H.dmmap (/ fromIntegral l) x
           (S3D x, _) -> S3D $ H.dmmap (/ fromIntegral l) x
+          (S4D x, _) -> S4D $ H.dmmap (/ fromIntegral l) x
 
 batchNormMean :: forall n. KnownNat n => [R n] -> RealNum
 batchNormMean vs 

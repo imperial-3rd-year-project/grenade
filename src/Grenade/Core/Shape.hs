@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
 {-# LANGUAGE CPP                  #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE FlexibleContexts     #-}
@@ -7,7 +9,6 @@
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# LANGUAGE TypeOperators        #-}
 {-|
 Module      : Grenade.Core.Shape
@@ -70,6 +71,8 @@ data Shape
   -- ^ Two dimensional matrix. Row, Column.
   | D3 Nat Nat Nat
   -- ^ Three dimensional matrix. Row, Column, Channels.
+  | D4 Nat Nat Nat Nat 
+  -- ^ Four dimensional matrix. Row, Column, Channels, Depth
 
 -- | Concrete data structures for a Shape.
 --
@@ -86,10 +89,17 @@ data S (n :: Shape) where
 
   S3D :: ( KnownNat rows
          , KnownNat columns
-         , KnownNat depth
-         , KnownNat (rows * depth))
-      => L (rows * depth) columns
-      -> S ('D3 rows columns depth)
+         , KnownNat channels
+         , KnownNat (rows * channels) )
+      => L (rows * channels) columns
+      -> S ('D3 rows columns channels)
+  
+  S4D :: ( KnownNat rows
+         , KnownNat columns
+         , KnownNat channels
+         , KnownNat depth)
+      => L (rows * channels * depth) columns
+      -> S ('D4 rows columns channels depth)
 
 deriving instance Show (S n)
 
@@ -106,11 +116,13 @@ data SShape :: Shape -> Type where
   D1Sing :: Sing a -> SShape ('D1 a)
   D2Sing :: Sing a -> Sing b -> SShape ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> SShape ('D3 a b c)
+  D4Sing :: KnownNat (a * c * d) => Sing a -> Sing b -> Sing c -> Sing d -> SShape ('D4 a b c d)
 #else
 data instance Sing (n :: Shape) where
   D1Sing :: Sing a -> Sing ('D1 a)
   D2Sing :: Sing a -> Sing b -> Sing ('D2 a b)
   D3Sing :: KnownNat (a * c) => Sing a -> Sing b -> Sing c -> Sing ('D3 a b c)
+  D4Sing :: KnownNat (a * c * d) => Sing a -> Sing b -> Sing c -> Sing d -> Sing ('D4 a b c d)
 #endif
 
 instance KnownNat a => SingI ('D1 a) where
@@ -161,6 +173,7 @@ instance NFData (S x) where
   rnf (S1D x) = rnf x
   rnf (S2D x) = rnf x
   rnf (S3D x) = rnf x
+  rnf (S4D x) = rnf x
 
 -- | Generate random data of the desired shape
 randomOfShape :: forall x . (SingI x) => IO (S x)
@@ -175,6 +188,9 @@ randomOfShape = do
 
     D3Sing SNat SNat SNat ->
         S3D (H.uniformSample seed (-1) 1)
+    
+    D4Sing SNat SNat SNat SNat ->
+        S4D (H.uniformSample seed (-1) 1)
 
 -- | Generate a shape from a Storable Vector.
 --
@@ -189,6 +205,9 @@ fromStorable xs = case sing :: Sing x of
 
     D3Sing SNat SNat SNat ->
       S3D <$> mkL xs
+
+    D4Sing SNat SNat SNat SNat ->
+      S4D <$> mkL xs
   where
     mkL :: forall rows columns. (KnownNat rows, KnownNat columns)
         => Vector RealNum -> Maybe (L rows columns)
@@ -205,6 +224,7 @@ instance SingI x => Serialize (S x) where
             (S1D x) -> putListOf put . NLA.toList . H.extract $ x
             (S2D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
             (S3D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
+            (S4D x) -> putListOf put . NLA.toList . NLA.flatten . H.extract $ x
           ) :: PutM ()
 
   get = do
@@ -216,12 +236,14 @@ n1 :: ( forall a. Floating a => a -> a ) -> S x -> S x
 n1 f (S1D x) = S1D (f x)
 n1 f (S2D x) = S2D (f x)
 n1 f (S3D x) = S3D (f x)
+n1 f (S4D x) = S4D (f x)
 
 -- Helper function for creating the number instances
 n2 :: ( forall a. Floating a => a -> a -> a ) -> S x -> S x -> S x
 n2 f (S1D x) (S1D y) = S1D (f x y)
 n2 f (S2D x) (S2D y) = S2D (f x y)
 n2 f (S3D x) (S3D y) = S3D (f x y)
+n2 f (S4D x) (S4D y) = S4D (f x y)
 
 -- Helper function for creating the number instances
 nk :: forall x. SingI x => RealNum -> S x
@@ -234,6 +256,9 @@ nk x = case (sing :: Sing x) of
 
   D3Sing SNat SNat SNat ->
     S3D (H.konst x)
+  
+  D4Sing SNat SNat SNat SNat ->
+    S4D (H.konst x)
 
 visualise2D :: S ('D2 a b) -> RealNum -> String
 visualise2D (S2D mm) max = 
