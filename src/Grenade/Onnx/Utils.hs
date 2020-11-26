@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Grenade.Onnx.Utils 
   ( hasType
@@ -33,7 +34,9 @@ module Grenade.Onnx.Utils
   ) where
 
 
-import           Control.Monad                (void)
+import           Control.Monad                (void, liftM2)
+import           Data.Serialize.Get
+import           Data.Serialize.IEEE754       (getFloat32le)
 import           Data.Either.Combinators
 import qualified Data.Map.Strict              as Map
 import           Data.List                    (find)
@@ -130,10 +133,22 @@ readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFail
 readInitializer inits name = maybeLoadFailureReason ("Initializer '" ++ show name ++ "' does not exist")
                                (Map.lookup name inits) >>= retrieve
   where
+    readFloatData :: P.TensorProto-> [Double]
+    readFloatData = map float2Double . (^. #floatData)
+
+    readRawData :: P.TensorProto -> Either OnnxLoadFailure [Double]
+    readRawData tensor = mapLeft (const $ OnnxLoadFailure ("Failed reading raw_data field of initializer " ++ show name) Nothing Nothing [])
+                       $ runGet listDouble (tensor ^. #rawData)
+      where
+        listDouble :: Get [Double]
+        listDouble = do
+          finish <- isEmpty
+          if finish then return []
+                    else liftM2 (\f ds -> float2Double f : ds) getFloat32le listDouble
+
     retrieve tensor = case toEnum (fromIntegral (tensor ^. #dataType)) of
-                        P.TensorProto'FLOAT -> Right (map fromIntegral (tensor ^. #dims), map float2Double (tensor ^. #floatData))
-                        _                   -> loadFailureReason $ 
-                                                 "Type of attribute '" ++ show name ++ "' is not float"
+                        P.TensorProto'FLOAT -> (map fromIntegral $ tensor ^. #dims, ) . (readFloatData tensor ++) <$> readRawData tensor
+                        _                   -> loadFailureReason $ "Type of attribute '" ++ show name ++ "' is not float"
 
 readInitializerMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (L r c)
 readInitializerMatrix inits name = do
