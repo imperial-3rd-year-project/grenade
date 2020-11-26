@@ -72,7 +72,7 @@ data Shape
   | D3 Nat Nat Nat
   -- ^ Three dimensional matrix. Row, Column, Channels.
   | D4 Nat Nat Nat Nat 
-  -- ^ Four dimensional matrix. Row, Column, Channels, Depth
+  -- ^ Four dimensional matrix. Depth, Channels, Row, Column
 
 -- | Concrete data structures for a Shape.
 --
@@ -98,8 +98,8 @@ data S (n :: Shape) where
          , KnownNat columns
          , KnownNat channels
          , KnownNat depth)
-      => L (rows * channels * depth) columns
-      -> S ('D4 rows columns channels depth)
+      => L (depth * channels * rows) columns
+      -> S ('D4 depth channels rows columns)
 
 deriving instance Show (S n)
 

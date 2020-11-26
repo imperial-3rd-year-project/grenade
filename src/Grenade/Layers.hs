@@ -26,6 +26,7 @@ module Grenade.Layers (
   , module Grenade.Layers.Softmax
   , module Grenade.Layers.Sinusoid
   , module Grenade.Layers.Tanh
+  , module Grenade.Layers.Transpose
   , module Grenade.Layers.Trivial
   ) where
 
@@ -56,4 +57,5 @@ import           Grenade.Layers.SamePadPooling
 import           Grenade.Layers.Sinusoid
 import           Grenade.Layers.Softmax
 import           Grenade.Layers.Tanh
+import           Grenade.Layers.Transpose
 import           Grenade.Layers.Trivial

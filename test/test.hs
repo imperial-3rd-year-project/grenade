@@ -15,9 +15,11 @@ import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
 import qualified Test.Grenade.Layers.LeakyRelu
 import qualified Test.Grenade.Layers.LRN
+import qualified Test.Grenade.Layers.Transpose
 
 import qualified Test.Grenade.Layers.Internal.Convolution
 import qualified Test.Grenade.Layers.Internal.Pooling
+import qualified Test.Grenade.Layers.Internal.Transpose
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM
 
@@ -41,9 +43,11 @@ main = disorderMain [
     , Test.Grenade.Layers.PadCrop.tests
     , Test.Grenade.Layers.LRN.tests
     , Test.Grenade.Layers.LeakyRelu.tests
+    , Test.Grenade.Layers.Transpose.tests
 
     , Test.Grenade.Layers.Internal.Convolution.tests
     , Test.Grenade.Layers.Internal.Pooling.tests
+    , Test.Grenade.Layers.Internal.Transpose.tests
 
     , Test.Grenade.Recurrent.Layers.LSTM.tests
 

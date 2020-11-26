@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d7c7c946b01415cb6fcca361e976a83df3fbd25b08dfa9c3c8f9d54b06c1cfd9
+-- hash: 2516324f8d694ad09d273e769b5bcb4f99580455c37bc2a21b7949fbc037b263
 
 name:           grenade
 version:        0.1.1
@@ -37,6 +37,8 @@ extra-source-files:
     proto/onnx.proto
     cbits/batchnorm.h
     cbits/batchnorm.c
+    cbits/transpose.h
+    cbits/transpose.c
 data-files:
     assets/mnistModel
 
@@ -108,6 +110,7 @@ library
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
       Grenade.Layers.Internal.Shrink
+      Grenade.Layers.Internal.Transpose
       Grenade.Layers.Internal.Update
       Grenade.Layers.LeakyRelu
       Grenade.Layers.Logit
@@ -124,6 +127,7 @@ library
       Grenade.Layers.Sinusoid
       Grenade.Layers.Softmax
       Grenade.Layers.Tanh
+      Grenade.Layers.Transpose
       Grenade.Layers.Trivial
       Grenade.Networks
       Grenade.Networks.ResNet18
@@ -172,6 +176,7 @@ library
       cbits/shrink.c
       cbits/add.c
       cbits/batchnorm.c
+      cbits/transpose.c
   build-tool-depends:
       proto-lens-protoc:proto-lens-protoc
   build-depends:
@@ -244,12 +249,14 @@ test-suite test
       Test.Grenade.Layers.Internal.Convolution
       Test.Grenade.Layers.Internal.Pooling
       Test.Grenade.Layers.Internal.Reference
+      Test.Grenade.Layers.Internal.Transpose
       Test.Grenade.Layers.LeakyRelu
       Test.Grenade.Layers.LRN
       Test.Grenade.Layers.Mul
       Test.Grenade.Layers.Nonlinear
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling
+      Test.Grenade.Layers.Transpose
       Test.Grenade.Loss
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM

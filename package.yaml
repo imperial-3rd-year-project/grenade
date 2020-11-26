@@ -117,6 +117,8 @@ extra-source-files:
 - proto/onnx.proto
 - cbits/batchnorm.h
 - cbits/batchnorm.c
+- cbits/transpose.h
+- cbits/transpose.c
 
 library:
   source-dirs:
@@ -157,6 +159,7 @@ library:
     - cbits/shrink.c
     - cbits/add.c
     - cbits/batchnorm.c
+    - cbits/transpose.c
   cc-options:
     - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
 
