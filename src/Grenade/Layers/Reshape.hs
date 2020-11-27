@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
@@ -103,6 +105,16 @@ instance (KnownNat a, KnownNat x, KnownNat y, a ~ (x * y)) => Layer Reshape ('D1
 instance (KnownNat a, KnownNat x, KnownNat y, KnownNat (x * z), KnownNat z, a ~ (x * y * z)) => Layer Reshape ('D1 a) ('D3 x y z) where
   type Tape Reshape ('D1 a) ('D3 x y z) = ()
   runForwards _ (S1D y)     = ((), fromJust' . fromStorable . extract $ y)
+  runBackwards _ _ (S3D y)  = ((), fromJust' . fromStorable . flatten . extract $ y)
+
+instance (KnownNat a, KnownNat b, KnownNat c, KnownNat w, KnownNat x, KnownNat y, KnownNat z, (a * b * c) ~ (w * x * y * z)) => Layer Reshape ('D3 a b c) ('D4 w x y z) where
+  type Tape Reshape ('D3 a b c) ('D4 w x y z) = ()
+  runForwards _ (S3D y)     = ((), fromJust' . fromStorable . flatten . extract $ y)
+  runBackwards _ _ (S4D y)  = ((), fromJust' . fromStorable . flatten . extract $ y)
+
+instance (KnownNat a, KnownNat b, KnownNat c, KnownNat d, KnownNat x, KnownNat y, KnownNat z, (a * b * c * d) ~ (x * y * z)) => Layer Reshape ('D4 a b c d) ('D3 x y z) where
+  type Tape Reshape ('D4 a b c d) ('D3 x y z) = ()
+  runForwards _ (S4D y)     = ((), fromJust' . fromStorable . flatten . extract $ y)
   runBackwards _ _ (S3D y)  = ((), fromJust' . fromStorable . flatten . extract $ y)
 
 instance Serialize Reshape where

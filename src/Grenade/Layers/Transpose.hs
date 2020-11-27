@@ -28,8 +28,6 @@ import qualified Numeric.LinearAlgebra             as LA
 import           Numeric.LinearAlgebra.Static      (R)
 import qualified Numeric.LinearAlgebra.Static      as H
 
-import           Lens.Micro                        ((^.))
-
 import           Grenade.Core
 import           Grenade.Layers.Internal.Transpose
 import           Grenade.Onnx
@@ -80,12 +78,15 @@ instance ( KnownNat i, KnownNat j, KnownNat k, KnownNat l, KnownNat a, KnownNat 
 
   runBackwards = undefined
 
--- instance OnnxOperator (Add c h w) where
---   onnxOpTypeNames _ = ["Add"]
+instance OnnxOperator (Transpose dimensions input output) where
+  onnxOpTypeNames _ = ["Transpose"]
 
--- instance (KnownNat c, KnownNat h, KnownNat w) => OnnxLoadable (Add c h w) where
---   loadOnnxNode inits node = case node ^. #input of
---     [bias, _] -> do
---       loadedBias <- readInitializerTensorIntoVector inits bias
---       return $ Add loadedBias
---     _ -> onnxIncorrectNumberOfInputs
+instance OnnxLoadable (Transpose 4 input output) where
+  loadOnnxNode _ node = readIntsAttribute "perm" node >>= formatPerm
+    where 
+      formatPerm :: [Int] -> Either OnnxLoadFailure (Transpose 4 input output)
+      formatPerm [_, _, n, c, h, w]
+        = let centered = map (\x -> fromIntegral $ x - 2) [n, c, h, w]
+              perms :: R 4 = H.fromList centered
+          in  return $ Transpose perms
+      formatPerm _ = loadFailureReason "Permutation shape incorrect of Transpose"

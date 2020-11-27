@@ -85,8 +85,9 @@ generateGraph' node nodes = fst <$> genGraph node
     classifyNode :: (Map.Map T.Text [P.NodeProto], Map.Map T.Text [P.NodeProto])
                  -> P.NodeProto
                  -> (Map.Map T.Text [P.NodeProto], Map.Map T.Text [P.NodeProto])
-    classifyNode (inputNodes, outputNodes) node =
-      (updateMap inputNodes input, updateMap outputNodes output)
+    classifyNode (inputNodes, outputNodes) node
+      | node ^. #opType == "Constant" = (inputNodes, outputNodes)
+      | otherwise = (updateMap inputNodes input, updateMap outputNodes output)
       where
         input = node ^. #input
         output = node ^. #output

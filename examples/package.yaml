@@ -53,6 +53,7 @@ dependencies:
   - gloss
   - convertible
   - hip
+  - ghc-typelits-knownnat
 when:
   condition: flag(use-float)
   then:
@@ -99,6 +100,10 @@ executables:
   yolo:
     ghc-options:       -Wall -threaded -O2
     main:              main/tiny-yolov2.hs
+
+  superres:
+    ghc-options:       -Wall -threaded -O2
+    main:              main/superresolution.hs
 
   gan-mnist:
     ghc-options:       -Wall -threaded -O2

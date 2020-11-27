@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2516324f8d694ad09d273e769b5bcb4f99580455c37bc2a21b7949fbc037b263
+-- hash: 71f038880f3d60c64e2f63aa7995e65e22e6e1cf7172673e7a1ed4f7e5836159
 
 name:           grenade
 version:        0.1.1
@@ -132,6 +132,7 @@ library
       Grenade.Networks
       Grenade.Networks.ResNet18
       Grenade.Networks.TinyYoloV2
+      Grenade.Networks.SuperResolution
       Grenade.Onnx
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer

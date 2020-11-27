@@ -131,6 +131,8 @@ instance (KnownNat a, KnownNat b) => SingI ('D2 a b) where
   sing = D2Sing sing sing
 instance (KnownNat a, KnownNat b, KnownNat c, KnownNat (a * c)) => SingI ('D3 a b c) where
   sing = D3Sing sing sing sing
+instance (KnownNat a, KnownNat b, KnownNat c, KnownNat d) => SingI ('D4 a b c d) where
+  sing = D4Sing sing sing sing sing
 
 instance SingI x => Num (S x) where
   (+) = n2 (+)
