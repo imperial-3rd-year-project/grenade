@@ -32,6 +32,7 @@ import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx
 import           Grenade.Utils.ListStore
+import           Control.DeepSeq
 
 data BiasConvolution :: Bool
                      -> Nat -- Number of channels, for the first layer this could be RGB for instance.
@@ -428,13 +429,13 @@ instance ( KnownNat kernelRows
          , KnownNat (kernelRows * kernelCols * channels)
          ) => OnnxLoadable (BiasConvolution 'True channels filters kernelRows kernelCols strideRows strideCols) where
   loadOnnxNode inits node = do
-    node `doesNotHaveAttribute` "auto_pad"
-
     node & hasSupportedDilations
     node & hasSupportedGroup
 
     (node `hasMatchingShape` "kernel_shape") kernelShape
     (node `hasMatchingShape` "strides"     ) strideShape
+
+    -- todo: proper checking to see if auto_pad attribute is valid
 
     case node ^. #input of
       [_, w, b] -> do
@@ -534,3 +535,43 @@ instance ( KnownNat channels
   getData = undefined
   setData = undefined
   newData = undefined
+
+instance NFData (BiasConvolution hasBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+  rnf (BiasConvolution a b c) = rnf a `seq` rnf b `seq` rnf c
+  rnf (NoBiasConvolution a b) = rnf a `seq` rnf b
+
+instance Show (BiasConvolution hasBias c f k k' s s') where
+  show (BiasConvolution a _ _) = renderConv a
+    where
+      renderConv mm =
+        let m = extract mm
+            ky = fromIntegral $ natVal (Proxy :: Proxy k)
+            rs = LA.toColumns m
+            ms = map (take ky) $ toLists . reshape ky <$> rs
+            render n'
+              | n' <= 0.2 = ' '
+              | n' <= 0.4 = '.'
+              | n' <= 0.6 = '-'
+              | n' <= 0.8 = '='
+              | otherwise = '#'
+            px = (fmap . fmap . fmap) render ms
+         in unlines $ foldl1 (zipWith (\a' b' -> a' ++ "   |   " ++ b')) px
+
+  show (NoBiasConvolution a _) = renderConv a
+    where
+      renderConv mm =
+        let m = extract mm
+            ky = fromIntegral $ natVal (Proxy :: Proxy k)
+            rs = LA.toColumns m
+            ms = map (take ky) $ toLists . reshape ky <$> rs
+            render n'
+              | n' <= 0.2 = ' '
+              | n' <= 0.4 = '.'
+              | n' <= 0.6 = '-'
+              | n' <= 0.8 = '='
+              | otherwise = '#'
+            px = (fmap . fmap . fmap) render ms
+         in unlines $ foldl1 (zipWith (\a' b' -> a' ++ "   |   " ++ b')) px
+
+
+

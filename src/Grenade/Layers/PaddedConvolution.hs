@@ -28,9 +28,8 @@ import           Grenade.Core.Network
 import           Grenade.Core.Shape
 import           Grenade.Layers.BiasConvolution
 import           Grenade.Layers.Pad
-import           Grenade.Utils.ListStore
-
 import           Grenade.Onnx
+import           Grenade.Utils.ListStore
 
 newtype PaddedConvolutionIso a = PaddedConvolutionIso {fromPaddedConvolutionIso :: a}
 

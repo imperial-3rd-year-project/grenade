@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE PolyKinds           #-}
 
 module Grenade.Onnx.Utils 
   ( hasType
@@ -34,12 +35,13 @@ module Grenade.Onnx.Utils
   ) where
 
 
-import           Control.Monad                (void, liftM2)
+import           Control.Monad                (void)
 import           Data.Serialize.Get
 import           Data.Serialize.IEEE754       (getFloat32le)
 import           Data.Either.Combinators
 import qualified Data.Map.Strict              as Map
 import           Data.List                    (find)
+import           Data.List.Split              (chunksOf)
 import           Data.Proxy
 
 import           Grenade.Onnx.OnnxOperator
@@ -54,7 +56,7 @@ import           Data.ProtoLens.Labels        ()
 import qualified Data.Text                    as T
 import           Lens.Micro                   ((^.))
 import qualified Proto.Onnx                   as P
-
+import qualified Numeric.LinearAlgebra.Data   as NLA
 
 hasType :: forall a. OnnxOperator a => P.NodeProto -> Proxy a -> Either OnnxLoadFailure ()
 hasType node a
@@ -143,8 +145,8 @@ readInitializer inits name = maybeLoadFailureReason ("Initializer '" ++ show nam
         listDouble :: Get [Double]
         listDouble = do
           finish <- isEmpty
-          if finish then return []
-                    else liftM2 (\f ds -> float2Double f : ds) getFloat32le listDouble
+          if finish then pure []
+                    else (\f ds -> float2Double f : ds) <$> getFloat32le <*> listDouble
 
     retrieve tensor = case toEnum (fromIntegral (tensor ^. #dataType)) of
                         P.TensorProto'FLOAT -> (map fromIntegral $ tensor ^. #dims, ) . (readFloatData tensor ++) <$> readRawData tensor
@@ -163,16 +165,24 @@ readInitializerTensorIntoMatrix inits name = do
 readInitializerTensorIntoVector :: (KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (R c)
 readInitializerTensorIntoVector inits name = do
   initializer <- readInitializer inits name
-  maybeLoadFailureReason ("Failed to read initializer tensor '" ++ show name ++ "' as vector") (readVector initializer)
+  maybeLoadFailureReason ("Failed to read initializer tensor '" ++ show name ++ "' as matrix into vector") (readMatrixToVector initializer)
 
 readInitializerVector :: KnownNat r => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (R r)
 readInitializerVector inits name = do
   initializer <- readInitializer inits name
   maybeLoadFailureReason ("Failed to read initializer '" ++ show name ++ "' as vector") (readVector initializer)
 
+vector' :: forall r . (KnownNat r) => [Double] -> Maybe (R r)
+vector' = create . NLA.fromList
+
+matrix' :: forall r c . (KnownNat r, KnownNat c) => [Double] -> Maybe (L r c)
+matrix' = create . NLA.fromLists . chunksOf cols
+  where
+    cols = fromIntegral $ natVal (Proxy :: Proxy c)
+
 readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
 readMatrix ([rows, cols], vals)
-  | neededRows == rows && neededCols == cols = Just (matrix vals)
+  | neededRows == rows && neededCols == cols = matrix' vals
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
@@ -180,7 +190,7 @@ readMatrix _ = Nothing
 
 readTensorIntoMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
 readTensorIntoMatrix (rows : cols, vals)
-  | neededRows == rows && neededCols == product cols = Just (matrix vals)
+  | neededRows == rows && neededCols == product cols = matrix' vals
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
@@ -188,10 +198,17 @@ readTensorIntoMatrix _ = Nothing
 
 readVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
 readVector ([rows], vals)
-  | rows == neededRows = Just (vector vals)
+  | rows == neededRows = vector' vals
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
 readVector _ = Nothing
+
+readMatrixToVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
+readMatrixToVector (dims, vals)
+  | product dims == neededRows = vector' vals
+  where
+    neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
+readMatrixToVector _ = Nothing
 
 hasSupportedGroup :: P.NodeProto -> Either OnnxLoadFailure ()
 hasSupportedGroup node = (node `doesNotHaveAttribute` "group")

@@ -139,7 +139,6 @@ sreshape v
   = let rows = fromIntegral $ natVal (Proxy :: Proxy m)
     in  fromJust . H.create . reshape rows . H.extract $ v
 
-
 vectorToList :: KnownNat n => R n -> [RealNum]
 vectorToList = toList . H.extract
 

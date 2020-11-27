@@ -96,7 +96,7 @@ instance ( KnownNat kernelRows
 
     case node `doesNotHaveAttribute` "auto_pad" of 
       Right () -> hasCorrectPadding node (Proxy :: Proxy padLeft) (Proxy :: Proxy padRight) (Proxy :: Proxy padTop) (Proxy :: Proxy padBottom)
-      err      -> err
+      Left _   -> pure () -- todo: proper checking to see if auto_pad attribute is valid
     
     return $ PaddedPoolingIso (Pad :~> Pooling :~> NNil)
       where

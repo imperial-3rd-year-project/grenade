@@ -12,6 +12,8 @@ import Grenade.Core.Layer
 import Grenade.Onnx.OnnxOperator
 import Grenade.Onnx.OnnxLoadable
 
+import Control.DeepSeq
+
 import Lens.Micro (over, _1)
 
 class Iso f where
@@ -33,6 +35,12 @@ instance (Layer x i o, Iso f) => Layer (Lift (f x)) i o where
   runBackwards      = runBackwards . from . unlift
   runBatchForwards  = runBatchForwards . from . unlift
   runBatchBackwards = runBatchBackwards . from . unlift
+
+instance (Show x, Iso f) => Show (Lift (f x)) where
+  show (Lift x) = show (from x)
+
+instance (NFData x, Iso f) => NFData (Lift (f x)) where
+  rnf (Lift x) = rnf (from x)
 
 instance (RandomLayer x, Iso f) => RandomLayer (f x) where
   createRandomWith method gen = to <$> createRandomWith method gen

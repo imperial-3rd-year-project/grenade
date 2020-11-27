@@ -96,6 +96,10 @@ executables:
     ghc-options:       -Wall -threaded -O2
     main:              main/resnet.hs
 
+  yolo:
+    ghc-options:       -Wall -threaded -O2
+    main:              main/tiny-yolov2.hs
+
   gan-mnist:
     ghc-options:       -Wall -threaded -O2
     main:              main/gan-mnist.hs

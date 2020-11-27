@@ -131,6 +131,7 @@ library
       Grenade.Layers.Trivial
       Grenade.Networks
       Grenade.Networks.ResNet18
+      Grenade.Networks.TinyYoloV2
       Grenade.Onnx
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer
@@ -157,6 +158,7 @@ library
       Grenade.Utils.ListStore
       Grenade.Utils.OneHot
       Grenade.Utils.Parallel
+      Grenade.Utils.PascalVoc
       Grenade.Utils.Symbols
   other-modules:
       Paths_grenade
