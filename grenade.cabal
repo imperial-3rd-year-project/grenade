@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 71f038880f3d60c64e2f63aa7995e65e22e6e1cf7172673e7a1ed4f7e5836159
+-- hash: 2e23feb0345d8bc176e2b696f07c2db108cd1bc8882be58c29dec478b2ff5696
 
 name:           grenade
 version:        0.1.1
@@ -131,8 +131,8 @@ library
       Grenade.Layers.Trivial
       Grenade.Networks
       Grenade.Networks.ResNet18
-      Grenade.Networks.TinyYoloV2
       Grenade.Networks.SuperResolution
+      Grenade.Networks.TinyYoloV2
       Grenade.Onnx
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer
@@ -171,7 +171,7 @@ library
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-orphans -Wno-name-shadowing -fwarn-tabs
-  cc-options: -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
+  cc-options: -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1 -fopenmp
   c-sources:
       cbits/im2col.c
       cbits/gradient_descent.c
@@ -180,6 +180,8 @@ library
       cbits/add.c
       cbits/batchnorm.c
       cbits/transpose.c
+  extra-libraries:
+      omp
   build-tool-depends:
       proto-lens-protoc:proto-lens-protoc
   build-depends:

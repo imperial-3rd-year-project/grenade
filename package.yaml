@@ -161,7 +161,8 @@ library:
     - cbits/batchnorm.c
     - cbits/transpose.c
   cc-options:
-    - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
+    - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1 -fopenmp
+  extra-libraries: omp
 
 tests:
   test:
