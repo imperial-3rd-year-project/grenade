@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - lint
+  - bench
 
 default:
 # image: thchar/grenade_ci:latest
@@ -19,3 +20,9 @@ build:
 test: 
   stage: test
   script: cabal test --enable-tests --test-show-details=streaming --test-option=--color
+
+bench:
+  stage: bench 
+  script: cabal bench
+  allow_failure: true
+  when: manual

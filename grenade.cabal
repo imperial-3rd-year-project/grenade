@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 71f038880f3d60c64e2f63aa7995e65e22e6e1cf7172673e7a1ed4f7e5836159
+-- hash: 83ae78c3b1d8917ca3d14bb03f34d1ba285975103e5105fe95e9f9c6c71a6fc3
 
 name:           grenade
 version:        0.1.1
@@ -131,8 +131,8 @@ library
       Grenade.Layers.Trivial
       Grenade.Networks
       Grenade.Networks.ResNet18
-      Grenade.Networks.TinyYoloV2
       Grenade.Networks.SuperResolution
+      Grenade.Networks.TinyYoloV2
       Grenade.Onnx
       Grenade.Onnx.ActivationLayer
       Grenade.Onnx.BypassLayer
@@ -448,64 +448,6 @@ benchmark bench-layers
 benchmark bench-lstm
   type: exitcode-stdio-1.0
   main-is: bench-lstm.hs
-  other-modules:
-      Paths_grenade
-  hs-source-dirs:
-      bench
-  ghc-options: -Wall -threaded -O2
-  build-tool-depends:
-      proto-lens-protoc:proto-lens-protoc
-  build-depends:
-      MonadRandom >=0.4 && <0.6
-    , array
-    , base >=4.7 && <5
-    , bifunctors
-    , binary >=0.8
-    , bytestring ==0.10.*
-    , cereal >=0.5 && <0.6
-    , constraints >=0.10.1
-    , containers >=0.5 && <0.7
-    , criterion >=1.1 && <1.6
-    , data-default
-    , deepseq >=1.4 && <1.5
-    , either
-    , ghc-prim >=0.5.3
-    , ghc-typelits-knownnat
-    , grenade
-    , microlens
-    , microlens-platform
-    , microlens-th
-    , mtl
-    , mwc-random >=0.13
-    , numeric-limits
-    , parallel
-    , primitive >=0.6 && <0.8
-    , proto-lens
-    , proto-lens-runtime
-    , random
-    , reflection >=0.11.2
-    , repa
-    , singletons
-    , split
-    , symbols
-    , terminal-progress-bar
-    , text
-    , vector >=0.11 && <0.13
-  if flag(use-float)
-    cpp-options: -DUSE_FLOAT
-    cc-options: -DUSE_FLOAT
-    build-depends:
-        hmatrix-float
-  else
-    cpp-options: -DUSE_DOUBLE
-    cc-options: -DUSE_DOUBLE
-    build-depends:
-        hmatrix >=0.18 && <0.21
-  default-language: Haskell2010
-
-benchmark bench-util
-  type: exitcode-stdio-1.0
-  main-is: bench-util.hs
   other-modules:
       Paths_grenade
   hs-source-dirs:
