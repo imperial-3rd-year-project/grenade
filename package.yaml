@@ -122,6 +122,8 @@ extra-source-files:
 - cbits/batchnorm.c
 - cbits/transpose.h
 - cbits/transpose.c
+- cbits/leaky_relu.h
+- cbits/leaky_relu.c
 
 library:
   source-dirs:
@@ -163,6 +165,7 @@ library:
     - cbits/add.c
     - cbits/batchnorm.c
     - cbits/transpose.c
+    - cbits/leaky_relu.c
   cc-options:
     - -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
 

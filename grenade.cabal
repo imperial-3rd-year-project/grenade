@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bc6e89da2715da01e2ac253a626d8784d914b8e21ebe16511444c92e48467cd2
+-- hash: 372f5eee98e328fee59ecac21ba9c7e041a8419a3f293eee41221f0cffaa4277
 
 name:           grenade
 version:        0.1.1
@@ -39,6 +39,8 @@ extra-source-files:
     cbits/batchnorm.c
     cbits/transpose.h
     cbits/transpose.c
+    cbits/leaky_relu.h
+    cbits/leaky_relu.c
 data-files:
     assets/mnistModel
 
@@ -129,6 +131,7 @@ library
       Grenade.Layers.Internal.BatchNorm
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Hmatrix
+      Grenade.Layers.Internal.LeakyRelu
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
       Grenade.Layers.Internal.Shrink
@@ -201,6 +204,7 @@ library
       cbits/add.c
       cbits/batchnorm.c
       cbits/transpose.c
+      cbits/leaky_relu.c
   build-tool-depends:
       proto-lens-protoc:proto-lens-protoc
   build-depends:
