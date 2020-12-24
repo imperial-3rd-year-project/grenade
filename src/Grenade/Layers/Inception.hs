@@ -53,15 +53,15 @@ type InceptionMini rows cols channels chx chy
             '[ 'D3 rows cols channels, 'D3 rows cols (chx + chy) ]
 
 type Inception3x3 rows cols channels chx
-  = Network '[ Pad 1 1 1 1, Convolution channels chx 3 3 1 1 ]
+  = Network '[ Pad 1 1 1 1, Convolution 'WithoutBias channels chx 3 3 1 1 ]
             '[ 'D3 rows cols channels, 'D3 (rows + 2) (cols + 2) channels, 'D3 rows cols chx ]
 
 type Inception5x5 rows cols channels chx
-  = Network '[ Pad 2 2 2 2, Convolution channels chx 5 5 1 1 ]
+  = Network '[ Pad 2 2 2 2, Convolution 'WithoutBias channels chx 5 5 1 1 ]
             '[ 'D3 rows cols channels, 'D3 (rows + 4) (cols + 4) channels, 'D3 rows cols chx ]
 
 type Inception7x7 rows cols channels chx
-  = Network '[ Pad 3 3 3 3, Convolution channels chx 7 7 1 1 ]
+  = Network '[ Pad 3 3 3 3, Convolution 'WithoutBias channels chx 7 7 1 1 ]
             '[ 'D3 rows cols channels, 'D3 (rows + 6) (cols + 6) channels, 'D3 rows cols chx ]
 
 type Resnet branch = Merge Trivial branch

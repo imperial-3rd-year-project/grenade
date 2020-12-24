@@ -39,10 +39,10 @@ import           Grenade.Utils.OneHot
 
 type MNIST
   = Network
-    '[ Convolution 1 10 5 5 1 1
+    '[ Convolution 'WithoutBias 1 10 5 5 1 1
      , Pooling 2 2 2 2
      , Relu
-     , Convolution 10 16 5 5 1 1
+     , Convolution 'WithoutBias 10 16 5 5 1 1
      , Pooling 2 2 2 2
      , Reshape
      , Relu

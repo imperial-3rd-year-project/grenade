@@ -26,7 +26,7 @@ import           Numeric.LinearAlgebra.Static (tr)
 
 import           Grenade.Core.Network
 import           Grenade.Core.Shape
-import           Grenade.Layers.BiasConvolution
+import           Grenade.Layers.Convolution
 import           Grenade.Layers.Pad
 import           Grenade.Onnx
 import           Grenade.Utils.ListStore
@@ -39,7 +39,7 @@ instance Iso PaddedConvolutionIso where
 
 type PaddedConvolution' (input      :: Shape)
                         (output     :: Shape)
-                        (hasBias    :: Bool)
+                        (hasBias    :: HasBias)
                         (channels   :: Nat) 
                         (filters    :: Nat)
                         (kernelRows :: Nat) 
@@ -51,7 +51,7 @@ type PaddedConvolution' (input      :: Shape)
                         (padRight   :: Nat) 
                         (padBottom  :: Nat)
   = Network
-   '[ Pad padLeft padTop padRight padBottom , BiasConvolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , Convolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
     (PaddedConvolutionShapes padLeft padTop padRight padBottom input output)
 
 type PaddedConvolution input output hasBias channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom = Lift (PaddedConvolutionIso (PaddedConvolution' input output hasBias channels filters kernelRows kernelCols strideRows strideCols padLeft padTop padRight padBottom))
@@ -63,7 +63,7 @@ type family PaddedConvolutionShapes (padLeft :: Nat) (padTop :: Nat) (padRight :
     = '[ 'D3 rows cols channels, 'D3 (pt + rows + pb) (pl + cols + pr) channels, output ]
 
 instance OnnxOperator (PaddedConvolutionIso (Network
-   '[ Pad padLeft padTop padRight padBottom , BiasConvolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , Convolution hasBias channels filters kernelRows kernelCols strideRows strideCols ] 
     '[ 'D3 rows cols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
   onnxOpTypeNames _ = ["Conv"]
 
@@ -93,7 +93,7 @@ instance ( KnownNat kernelRows
          , KnownNat padTop
          , KnownNat padBottom
          ) => OnnxLoadable (PaddedConvolutionIso (Network
-   '[ Pad padLeft padTop padRight padBottom , BiasConvolution 'False channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols ] 
    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
   loadOnnxNode inits node = do
@@ -110,7 +110,7 @@ instance ( KnownNat kernelRows
     case node ^. #input of
       [_, w] -> do
         filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
-        return $ PaddedConvolutionIso (Pad :~> NoBiasConvolution filterWeights mkListStore :~> NNil)
+        return $ PaddedConvolutionIso (Pad :~> Convolution filterWeights mkListStore :~> NNil)
       _ -> onnxIncorrectNumberOfInputs
       where
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
@@ -142,7 +142,7 @@ instance ( KnownNat kernelRows
          , KnownNat padTop
          , KnownNat padBottom
          ) => OnnxLoadable (PaddedConvolutionIso (Network
-   '[ Pad padLeft padTop padRight padBottom , BiasConvolution 'True channels filters kernelRows kernelCols strideRows strideCols ] 
+   '[ Pad padLeft padTop padRight padBottom , Convolution 'WithBias channels filters kernelRows kernelCols strideRows strideCols ] 
    '[ 'D3 inputRows inputCols channels, 'D3 convInputRows convInputCols channels, 'D3 outputRows outputCols filters ])) where
 
   loadOnnxNode inits node = do

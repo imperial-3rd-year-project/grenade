@@ -94,7 +94,7 @@ prop_networkAveragesGradients = property $ do
 
 prop_convolutionCalculatesOutputOfBatches = property $ do
   let weights :: H.L 25 1 = H.fromList [1..25]
-      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      convLayer :: Convolution 'WithoutBias 1 1 5 5 2 2 = Convolution weights mkListStore
       ins :: [S ('D2 11 11)] = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
       (_, outs :: [S ('D2 4 4)]) = runBatchForwards convLayer ins
       outs' = map (\(S2D v) -> (concat . D.toLists . H.extract) v) outs
@@ -107,12 +107,12 @@ unwrapGradConv :: ( KnownNat c
               , KnownNat sR
               , KnownNat sC
               , KnownNat kF
-              , kF ~ (kR * kC * c)) => Convolution' c f kR kC sR sC -> Matrix Double
+              , kF ~ (kR * kC * c)) => Convolution' 'WithoutBias c f kR kC sR sC -> Matrix Double
 unwrapGradConv (Convolution' mat) = H.extract mat
 
 prop_convolutionBackprop = property $ do
   let weights :: H.L 25 1 = H.fromList [1..25]
-      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      convLayer :: Convolution 'WithoutBias 1 1 5 5 2 2 = Convolution weights mkListStore
       ins :: [S ('D2 11 11)] = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
       (tapes, outs :: [S ('D2 4 4)]) = runBatchForwards convLayer ins
       (grads, vs   :: [S ('D2 11 11)]) = runBatchBackwards convLayer tapes outs
@@ -128,13 +128,13 @@ prop_convolutionBackprop = property $ do
 
 prop_convolutionAveragesGradients = property $ do
   let weights :: H.L 25 1                  = H.fromList (concat (replicate 5 [1, 2, 3, 4, 5]))
-      convLayer :: Convolution 1 1 5 5 2 2 = Convolution weights mkListStore
+      convLayer :: Convolution 'WithoutBias 1 1 5 5 2 2 = Convolution weights mkListStore
       ins :: [S ('D2 11 11)]               = [S2D (H.fromList [1..121]), S2D (H.fromList [2..122])]
       (tapes, outs :: [S ('D2 4 4)])       = runBatchForwards convLayer ins
       (grads, _    :: [S ('D2 11 11)])     = runBatchBackwards convLayer tapes outs
       (grad,  _    :: S ('D2 11 11))       = runBackwards convLayer (tapes!!0) (outs!!0)
       (grad', _    :: S ('D2 11 11))       = runBackwards convLayer (tapes!!1) (outs!!1)
-      rgrad                                = unwrapGradConv (reduceGradient @(Convolution 1 1 5 5 2 2) grads)
+      rgrad                                = unwrapGradConv (reduceGradient @(Convolution 'WithoutBias 1 1 5 5 2 2) grads)
       w                                    = unwrapGradConv grad
       w'                                   = unwrapGradConv grad'
       rgrad'                       = 0.5 * (w + w') 

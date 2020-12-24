@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 83ae78c3b1d8917ca3d14bb03f34d1ba285975103e5105fe95e9f9c6c71a6fc3
+-- hash: 2eebf8a19af4e9b92093866d54f63e131cc4576b6d6a76686ff8c646688c1d1c
 
 name:           grenade
 version:        0.1.1
@@ -93,7 +93,6 @@ library
       Grenade.Layers
       Grenade.Layers.Add
       Grenade.Layers.BatchNormalisation
-      Grenade.Layers.BiasConvolution
       Grenade.Layers.Concat
       Grenade.Layers.Convolution
       Grenade.Layers.Crop
@@ -246,7 +245,6 @@ test-suite test
       Test.Grenade.Batch
       Test.Grenade.Layers.Add
       Test.Grenade.Layers.BatchNorm
-      Test.Grenade.Layers.BiasConvolution
       Test.Grenade.Layers.Convolution
       Test.Grenade.Layers.FullyConnected
       Test.Grenade.Layers.Internal.Convolution

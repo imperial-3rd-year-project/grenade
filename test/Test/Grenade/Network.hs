@@ -136,7 +136,7 @@ genNetwork =
                                         , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
                                     (SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
-                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution 1 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D2 inRows inCols) ': h ': hs )))
+                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution 'WithoutBias 1 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D2 inRows inCols) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
                    , do -- Build a convolution layer with one filter output
                         -- Figure out some kernel sizes which work for this layer
@@ -182,7 +182,7 @@ genNetwork =
                                         , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
                                     (SNat, SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
-                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution channels 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
+                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution 'WithoutBias channels 1 kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
                    , do -- Build a Pooling layer
                         let output_r = fromIntegral $ natVal r
@@ -326,7 +326,7 @@ genNetwork =
                                         , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
                                     (SNat, SNat, Dict, Dict, Dict, Dict, Dict) -> do
                                         conv <- genConvolution
-                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution channels filters kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
+                                        pure (SomeNetwork (conv :~> rest :: Network ( Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols ': layers ) ( ('D3 inRows inCols channels) ': h ': hs )))
                           _ -> Gen.discard -- Can't occur
                    , do -- Build a Pooling layer
                         let output_r = fromIntegral $ natVal r
