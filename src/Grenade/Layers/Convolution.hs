@@ -109,7 +109,7 @@ data Convolution' :: HasBias
                       , KnownNat kernelFlattened
                       , kernelFlattened ~ (kernelRows * kernelColumns * channels))
                    => !(L kernelFlattened filters) -- The kernel filter weights
-                   -> R filters -- The bias weights
+                   -> !(R filters) -- The bias weights
                    -> Convolution' 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns
 
 {---------------------------}

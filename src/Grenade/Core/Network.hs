@@ -193,8 +193,8 @@ runNetwork = go
       -> S (Head js)
       -> (Tapes ss js, S (Last js))
   go (layer :~> n) !x =
-    let (tape, forward) = runForwards layer x
-        (tapes, answer) = go n forward
+    let !(tape, forward) = runForwards layer x
+        !(tapes, answer) = go n forward
     in  (tape :\> tapes, answer)
 
   go NNil !x

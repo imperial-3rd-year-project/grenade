@@ -39,9 +39,11 @@ class OnnxLoadable a where
   loadOnnx tensors (Node node) = bimap (over currentNode (<|> Just node)) (, Just node, Series []) (node `hasType` (Proxy :: Proxy a) >> loadOnnxNode tensors node)
   loadOnnx tensors (Series ((Node node) : ns)) = fmap (Series ns <$) (loadOnnx tensors $ Node node)
   loadOnnx _ _ = loadFailureExpecting "Unexpected Parallel node" Nothing
+  {-# INLINE loadOnnx #-}
 
   loadOnnxNode :: Map.Map T.Text P.TensorProto -> P.NodeProto -> Either OnnxLoadFailure a
   loadOnnxNode tensors node = (^. _1) <$> loadOnnx tensors (Node node)
+  {-# INLINE loadOnnxNode #-}
 
   {-# MINIMAL loadOnnx | loadOnnxNode #-}
 

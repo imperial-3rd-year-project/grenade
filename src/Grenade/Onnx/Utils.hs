@@ -1,12 +1,12 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE PolyKinds           #-}
 
-module Grenade.Onnx.Utils 
+module Grenade.Onnx.Utils
   ( hasType
   , loadFailure
   , loadFailureReason
@@ -36,33 +36,38 @@ module Grenade.Onnx.Utils
 
 
 import           Control.Monad                (void)
-import           Data.Serialize.Get
-import           Data.Serialize.IEEE754       (getFloat32le)
+import qualified Data.ByteString.Internal     as BS
+import qualified Data.Vector.Storable         as V
 import           Data.Either.Combinators
-import qualified Data.Map.Strict              as Map
 import           Data.List                    (find)
-import           Data.List.Split              (chunksOf)
+import qualified Data.Map.Strict              as Map
 import           Data.Proxy
+import           Data.Word                    (Word32)
 
-import           Grenade.Onnx.OnnxOperator
+import           Foreign.ForeignPtr
+
 import           Grenade.Onnx.OnnxLoadFailure
+import           Grenade.Onnx.OnnxOperator
 
-import           Numeric.LinearAlgebra.Static hiding ((<>))
+import           Numeric.LinearAlgebra        hiding (R, find, (<>))
+import           Numeric.LinearAlgebra.Static (L, R)
+import qualified Numeric.LinearAlgebra.Static as H
 
-import           GHC.Float                    (float2Double)
+import           GHC.Float                    (castWord32ToFloat, float2Double)
 import           GHC.TypeLits
 
 import           Data.ProtoLens.Labels        ()
 import qualified Data.Text                    as T
 import           Lens.Micro                   ((^.))
 import qualified Proto.Onnx                   as P
-import qualified Numeric.LinearAlgebra.Data   as NLA
+
+import           Grenade.Types
 
 hasType :: forall a. OnnxOperator a => P.NodeProto -> Proxy a -> Either OnnxLoadFailure ()
 hasType node a
   | node ^. #opType `elem` expectedTypes = return ()
   | otherwise = void loadFail
-  where 
+  where
     nodeType = node ^. #opType
     expectedTypes = onnxOpTypeNames a
     loadFail :: Either OnnxLoadFailure (a, b, c)
@@ -111,7 +116,7 @@ readDoubleAttribute attributeName node = readAttribute attributeName node >>= re
   where
     retrieve attribute = case (attribute ^. #type') of
                            P.AttributeProto'FLOAT -> Right . float2Double $ attribute ^. #f
-                           _                      -> loadFailureReason $ 
+                           _                      -> loadFailureReason $
                                                        "Type of attribute '" ++ show attributeName ++ "' is not float"
 
 filterDoubleAttribute :: T.Text -> (Double -> Bool) -> P.NodeProto -> Either OnnxLoadFailure ()
@@ -122,7 +127,7 @@ readIntsAttribute attributeName node = readAttribute attributeName node >>= retr
   where
     retrieve attribute = case (attribute ^. #type') of
                            P.AttributeProto'INTS -> Right . map fromIntegral $ attribute ^. #ints
-                           _                     -> loadFailureReason $ 
+                           _                     -> loadFailureReason $
                                                       "Type of attribute '" ++ show attributeName ++ "' is not ints"
 
 filterIntsAttribute :: T.Text -> ([Int] -> Bool) -> P.NodeProto -> Either OnnxLoadFailure ()
@@ -131,30 +136,36 @@ filterIntsAttribute attribute pred node = readIntsAttribute attribute node >>= g
 doesNotHaveAttribute :: P.NodeProto -> T.Text -> Either OnnxLoadFailure ()
 doesNotHaveAttribute node attribute = guardAttr attribute $ isLeft $ readAttribute attribute node
 
-readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure ([Int], [Double])
+readInitializer :: Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure ([Int], Vector RealNum)
 readInitializer inits name = maybeLoadFailureReason ("Initializer '" ++ show name ++ "' does not exist")
                                (Map.lookup name inits) >>= retrieve
   where
-    readFloatData :: P.TensorProto-> [Double]
-    readFloatData = map float2Double . (^. #floatData)
+    rawDataToVector :: P.TensorProto-> Maybe (Vector RealNum)
+    rawDataToVector tensor
+      = let (ptr, off, len)    = BS.toForeignPtr (tensor ^. #rawData)
+            vec                = V.unsafeFromForeignPtr (castForeignPtr ptr) (div off 4) (div len 4) :: Vector Word32
+            vec'               = V.map (float2Double . castWord32ToFloat) vec
+        in if len == 0 then Nothing else Just vec'
 
-    readRawData :: P.TensorProto -> Either OnnxLoadFailure [Double]
-    readRawData tensor = mapLeft (const $ OnnxLoadFailure ("Failed reading raw_data field of initializer " ++ show name) Nothing Nothing [])
-                       $ runGet listDouble (tensor ^. #rawData)
-      where
-        listDouble :: Get [Double]
-        listDouble = do
-          finish <- isEmpty
-          if finish then pure []
-                    else (\f ds -> float2Double f : ds) <$> getFloat32le <*> listDouble
+    readFloatData :: P.TensorProto -> Either OnnxLoadFailure (Vector RealNum)
+    readFloatData tensor
+      = let floatData = tensor ^. #floatData
+        in  if null floatData then loadFailureReason ("Failed reading raw_data field of initializer " ++ show name)
+                              else Right $ vector $ map float2Double floatData
 
-    retrieve tensor = case toEnum (fromIntegral (tensor ^. #dataType)) of
-                        P.TensorProto'FLOAT -> (map fromIntegral $ tensor ^. #dims, ) . (readFloatData tensor ++) <$> readRawData tensor
-                        _                   -> loadFailureReason $ "Type of attribute '" ++ show name ++ "' is not float"
+    getData :: P.TensorProto -> Either OnnxLoadFailure (Vector RealNum)
+    getData tensor = case rawDataToVector tensor of
+      Just vec -> Right vec
+      Nothing   -> readFloatData tensor
+
+    retrieve tensor = let vec = getData tensor
+                      in  case toEnum (fromIntegral (tensor ^. #dataType)) of
+                            P.TensorProto'FLOAT -> (map fromIntegral $ tensor ^. #dims, ) <$> vec
+                            _                   -> loadFailureReason $ "Type of attribute '" ++ show name ++ "' is not float"
 
 readInitializerMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (L r c)
 readInitializerMatrix inits name = do
-  initializer <- readInitializer inits name 
+  initializer <- readInitializer inits name
   maybeLoadFailureReason ("Failed to read initializer '" ++ show name ++ "' as matrix") (readMatrix initializer)
 
 readInitializerTensorIntoMatrix :: (KnownNat r, KnownNat c) => Map.Map T.Text P.TensorProto -> T.Text -> Either OnnxLoadFailure (L r c)
@@ -172,15 +183,15 @@ readInitializerVector inits name = do
   initializer <- readInitializer inits name
   maybeLoadFailureReason ("Failed to read initializer '" ++ show name ++ "' as vector") (readVector initializer)
 
-vector' :: forall r . (KnownNat r) => [Double] -> Maybe (R r)
-vector' = create . NLA.fromList
+vector' :: forall r . (KnownNat r) => Vector Double -> Maybe (R r)
+vector' = H.create
+{-# INLINE vector' #-}
 
-matrix' :: forall r c . (KnownNat r, KnownNat c) => [Double] -> Maybe (L r c)
-matrix' = create . NLA.fromLists . chunksOf cols
-  where
-    cols = fromIntegral $ natVal (Proxy :: Proxy c)
+matrix' :: forall r c . (KnownNat r, KnownNat c) => Vector Double -> Maybe (L r c)
+matrix' vec = let cols = fromIntegral $ natVal (Proxy :: Proxy c) in H.create $ reshape cols vec
+{-# INLINE matrix' #-}
 
-readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
+readMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], Vector RealNum) -> Maybe (L r c)
 readMatrix ([rows, cols], vals)
   | neededRows == rows && neededCols == cols = matrix' vals
   where
@@ -188,7 +199,7 @@ readMatrix ([rows, cols], vals)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
 readMatrix _ = Nothing
 
-readTensorIntoMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], [Double]) -> Maybe (L r c)
+readTensorIntoMatrix :: forall r c . (KnownNat r, KnownNat c) => ([Int], Vector RealNum) -> Maybe (L r c)
 readTensorIntoMatrix (rows : cols, vals)
   | neededRows == rows && neededCols == product cols = matrix' vals
   where
@@ -196,14 +207,14 @@ readTensorIntoMatrix (rows : cols, vals)
     neededCols = fromIntegral $ natVal (Proxy :: Proxy c)
 readTensorIntoMatrix _ = Nothing
 
-readVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
+readVector :: forall r . KnownNat r => ([Int], Vector RealNum) -> Maybe (R r)
 readVector ([rows], vals)
   | rows == neededRows = vector' vals
   where
     neededRows = fromIntegral $ natVal (Proxy :: Proxy r)
 readVector _ = Nothing
 
-readMatrixToVector :: forall r . KnownNat r => ([Int], [Double]) -> Maybe (R r)
+readMatrixToVector :: forall r . KnownNat r => ([Int], Vector RealNum) -> Maybe (R r)
 readMatrixToVector (dims, vals)
   | product dims == neededRows = vector' vals
   where
@@ -223,7 +234,7 @@ hasMatchingShape node attribute dims = filterIntsAttribute attribute (== map fro
 
 hasCorrectPadding :: (KnownNat padLeft, KnownNat padRight, KnownNat padTop, KnownNat padBottom)
                   => P.NodeProto -> Proxy padLeft -> Proxy padRight -> Proxy padTop -> Proxy padBottom -> Either OnnxLoadFailure ()
-hasCorrectPadding node ppl ppr ppt ppb 
+hasCorrectPadding node ppl ppr ppt ppb
   = let left   = fromIntegral $ natVal ppl
         right  = fromIntegral $ natVal ppr
         top    = fromIntegral $ natVal ppt
@@ -235,9 +246,8 @@ hasCorrectPadding node ppl ppr ppt ppb
           [left', top', right', bottom'] -> guardOnnx "Padding dimensions mismatch" (left == left' && top == top' && right == right' && bottom == bottom')
           _                              -> loadFailureReason "Incorrect padding dimensions"
 
-
 hasMatchingDouble :: KnownSymbol a => P.NodeProto -> Proxy a -> T.Text -> Either OnnxLoadFailure ()
-hasMatchingDouble node a x = do 
+hasMatchingDouble node a x = do
   let a' = (read $ symbolVal a) :: Double
   x' <- readDoubleAttribute x node
   guardOnnx ("Value mismatch for attribute " ++ T.unpack x ++ " of type double") (x' == a')
@@ -247,7 +257,6 @@ hasMatchingInt node a x = do
   let a' = fromIntegral $ natVal a
   x' <- readIntAttribute x node
   guardOnnx ("Value mismatch for attribute " ++ T.unpack x ++ " of type int") (x' == a')
-
 
 onnxIncorrectNumberOfInputs :: Either OnnxLoadFailure a
 onnxIncorrectNumberOfInputs = loadFailureReason "Incorrect number of inputs"

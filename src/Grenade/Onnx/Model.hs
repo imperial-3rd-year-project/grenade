@@ -31,12 +31,14 @@ readOnnxModel path = do
   case model of
     Left err -> return . loadFailureReason $ show err
     Right modelProto -> return (Right modelProto)
+{-# INLINE readOnnxModel #-}
 
 loadOnnxModel :: OnnxLoadable a => FilePath -> IO (Either OnnxLoadFailure a)
 loadOnnxModel path = do
   eitherModel <- readOnnxModel path
-  return $ do
+  return $! do
     model <- eitherModel
     (graphProto, graph) <- generateGraph model
     let initMap = generateInitializerMap graphProto
     (^. _1) <$> loadOnnx initMap graph
+{-# INLINABLE loadOnnxModel #-}
