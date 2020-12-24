@@ -87,7 +87,7 @@ draw (S2D arr) x y = S2D $ fromMaybe (error "") $ SA.create m
 main :: IO ()
 main = do
     mnistPath <- getPathForNetwork MNIST
-    net <- (loadNetwork mnistPath :: IO MNIST)
+    net <- (loadSerializedNetwork mnistPath :: IO MNIST)
     putStrLn "Successfully loaded model"
 
     let initialCanvas = Canvas initialMat MouseUp net

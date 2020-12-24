@@ -80,6 +80,9 @@ dependencies:
   - array
   - symbols
   - numeric-limits
+  - directory
+  - filepath
+  - process
 when:
   condition: flag(use-float)
   then:
@@ -185,6 +188,14 @@ tests:
 benchmarks:
   bench:
     main:                bench.hs
+    ghc-options:         -Wall -threaded -O2
+    source-dirs:         bench
+    dependencies:
+      - grenade
+      - criterion                       >= 1.1        && < 1.6
+
+  bench-networks:
+    main:                bench-networks.hs
     ghc-options:         -Wall -threaded -O2
     source-dirs:         bench
     dependencies:
