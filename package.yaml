@@ -202,14 +202,6 @@ benchmarks:
       - grenade
       - criterion                       >= 1.1        && < 1.6
 
-  bench-lstm:
-    main:                bench-lstm.hs
-    ghc-options:         -Wall -threaded -O2
-    source-dirs:         bench
-    dependencies:
-      - grenade
-      - criterion                       >= 1.1        && < 1.6
-
   bench-layers:
     main:                bench-layers.hs
     ghc-options:         -Wall -threaded -O2
@@ -217,3 +209,22 @@ benchmarks:
     dependencies:
       - grenade
       - criterion                       >= 1.1        && < 1.6
+
+  # NOTE: We currently do not run these benchmarks as we are not 
+  # currently developing this functionality.
+  #
+  # bench-lstm:
+  #   main:                bench-lstm.hs
+  #   ghc-options:         -Wall -threaded -O2
+  #   source-dirs:         bench
+  #   dependencies:
+  #     - grenade
+  #     - criterion                       >= 1.1        && < 1.6
+
+  # bench-feedfoward:
+  #   main:                bench-feedfoward.hs
+  #   ghc-options:         -Wall -threaded -O2
+  #   source-dirs:         bench
+  #   dependencies:
+  #     - grenade
+  #     - criterion                       >= 1.1        && < 1.6

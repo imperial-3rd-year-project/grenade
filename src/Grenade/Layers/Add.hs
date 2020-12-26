@@ -18,6 +18,8 @@
 
 module Grenade.Layers.Add where
 
+import           Control.DeepSeq              (NFData (..))
+
 import           Data.Kind                    (Type)
 import           Data.Maybe                   (fromJust)
 import           Data.Proxy
@@ -31,8 +33,8 @@ import qualified Numeric.LinearAlgebra.Static as H
 import           Lens.Micro                   ((^.))
 
 import           Grenade.Core
-import           Grenade.Onnx
 import           Grenade.Layers.Internal.Add
+import           Grenade.Onnx
 
 data Add :: Nat -- The number of channels of the bias
          -> Nat -- The number of rows of the bias
@@ -91,3 +93,6 @@ instance (KnownNat c, KnownNat h, KnownNat w) => OnnxLoadable (Add c h w) where
       loadedBias <- readInitializerTensorIntoVector inits bias
       return $ Add loadedBias
     _ -> onnxIncorrectNumberOfInputs
+
+instance NFData (Add c h w) where
+  rnf (Add bias) = rnf bias

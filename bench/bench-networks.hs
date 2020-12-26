@@ -1,30 +1,35 @@
-{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import           Criterion.Main
+
 import           Grenade
 
 main :: IO ()
-main = do
-  (!inputYolo) :: S ('D3 416 416 3) <- randomOfShape
-  yoloPath <- getPathForNetwork TinyYoloV2
-  !yolo <- loadTinyYoloV2 yoloPath
-  
-  (!inputResnet) :: S ('D3 224 224 3) <- randomOfShape
-  resnetPath <- getPathForNetwork ResNet18
-  !resnet <- loadResNet resnetPath
-  
-  (!inputSuper) :: S ('D3 224 224 1) <- randomOfShape
-  superPath <- getPathForNetwork SuperResolution
-  !super <- loadSuperResolution superPath
-  
-  case (yolo, resnet, super) of
-    (Right y, Right r, Right s) -> do
-      defaultMain [bgroup "run"  [ bench "resnet" $ nf (runNet r) inputResnet
-                                 , bench "yolo"   $ nf (runNet y) inputYolo
-                                 , bench "super"  $ nf (runNet s) inputSuper]]
-    (Left err, _, _) -> print $ "Error in yolo: " ++ (show err)
-    (_, Left err, _) -> print $ "Error in resnet: " ++ (show err)
-    (_, _, Left err) -> print $ "Error in super-res: " ++ (show err)
+main = defaultMain
+  [ env resnetEnv     $ \ ~(net, x) -> bench "Resnet18"        $ nf (runNet net) x
+  , env tinyYoloV2Env $ \ ~(net, x) -> bench "TinyYoloV2"      $ nf (runNet net) x
+  , env superResEnv   $ \ ~(net, x) -> bench "SuperResoltuion" $ nf (runNet net) x
+  ]
+
+tinyYoloV2Env :: IO (TinyYoloV2, S ('D3 416 416 3))
+tinyYoloV2Env = do
+  x          <- randomOfShape
+  yoloPath   <- getPathForNetwork TinyYoloV2
+  Right yolo <- loadTinyYoloV2 yoloPath
+  return (yolo, x)
+
+resnetEnv :: IO (ResNet18, S ('D3 224 224 3))
+resnetEnv = do
+  x            <- randomOfShape
+  resnetPath   <- getPathForNetwork ResNet18
+  Right resnet <- loadResNet resnetPath
+  return (resnet, x)
+
+superResEnv :: IO (SuperResolution, S ('D3 224 224 1))
+superResEnv = do
+  x           <- randomOfShape
+  superPath   <- getPathForNetwork SuperResolution
+  Right super <- loadSuperResolution superPath
+  return (super, x)

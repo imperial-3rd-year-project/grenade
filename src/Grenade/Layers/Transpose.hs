@@ -18,6 +18,8 @@
 
 module Grenade.Layers.Transpose where
 
+import           Control.DeepSeq                   (NFData (..))
+
 import           Data.Kind                         (Type)
 import           Data.Maybe                        (fromJust)
 import           Data.Proxy
@@ -32,12 +34,13 @@ import           Grenade.Core
 import           Grenade.Layers.Internal.Transpose
 import           Grenade.Onnx
 
-data Transpose :: Nat -- todo: we can probably use a type family to represent this much better
+ -- todo: we can probably use a type family to represent this much better
+data Transpose :: Nat
                -> Shape
                -> Shape
                -> Type where
   Transpose  :: ( KnownNat dimensions )
-          => R dimensions
+          => !(R dimensions)
           -> Transpose dimensions input output
 
 instance UpdateLayer (Transpose dimensions input output) where
@@ -83,10 +86,13 @@ instance OnnxOperator (Transpose dimensions input output) where
 
 instance OnnxLoadable (Transpose 4 input output) where
   loadOnnxNode _ node = readIntsAttribute "perm" node >>= formatPerm
-    where 
+    where
       formatPerm :: [Int] -> Either OnnxLoadFailure (Transpose 4 input output)
       formatPerm [_, _, n, c, h, w]
         = let centered = map (\x -> fromIntegral $ x - 2) [n, c, h, w]
               perms :: R 4 = H.fromList centered
           in  return $ Transpose perms
       formatPerm _ = loadFailureReason "Permutation shape incorrect of Transpose"
+
+instance NFData (Transpose dims input output) where
+  rnf (Transpose perms) = rnf perms
