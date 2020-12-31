@@ -1,8 +1,11 @@
 stages:
   - build
   - test
+  - coverage
   - lint
   - bench
+  - docs
+  - pages
 
 default:
 # image: thchar/grenade_ci:latest
@@ -19,10 +22,45 @@ build:
 
 test: 
   stage: test
-  script: cabal test --enable-tests --test-show-details=streaming --test-option=--color
+  script: cabal test --enable-tests --test-show-details=streaming --test-option=--color --enable-coverage
+  artifacts:
+    paths:
+      - dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc
+
+coverage:
+  stage: coverage
+  script: hpc report dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/tix/grenade-0.1.1/grenade-0.1.1.tix --hpcdir=dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/mix/grenade-0.1.1/
+  dependencies:
+    - test
+  coverage: '/.*expressions used.*/'
 
 bench:
   stage: bench 
   script: cabal bench
   allow_failure: true
   when: manual
+
+haddock:
+  stage: docs
+  script: cabal haddock
+  artifacts:
+    paths:
+      - dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/doc
+
+pages:
+  stage: pages
+  script:
+    - rm -rf gitlab-pages/$CI_COMMIT_REF_NAME
+    - mkdir -p gitlab-pages/$CI_COMMIT_REF_NAME || true
+    - cp -r dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/html/grenade-0.1.1 gitlab-pages/$CI_COMMIT_REF_NAME/coverage-report
+    - cp -r dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/doc/html/grenade gitlab-pages/$CI_COMMIT_REF_NAME/docs
+    - cp -r gitlab-pages public
+  dependencies:
+    - test
+    - haddock
+  cache: 
+    paths:
+      - gitlab-pages
+  artifacts:
+    paths:
+      - public

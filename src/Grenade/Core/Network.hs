@@ -300,12 +300,11 @@ applySettingsUpdate _ NNil = NNil
 
 -- | A network can easily be created by hand with (:~>), but an easy way to
 --   initialise a random network is with the @randomNetworkWith@ function.
-class CreatableNetwork (xs :: [Type]) (ss :: [Shape])
+class CreatableNetwork (xs :: [Type]) (ss :: [Shape]) where
   -- | Create a network with randomly initialised weights.
   --
   --   Calls to this function will not compile if the type of the neural
   --   network is not sound.
-  where
   randomNetworkWith :: PrimBase m => WeightInitMethod -> Gen (PrimState m) -> m (Network xs ss)
 
 -- | Create a random network using uniform distribution.
