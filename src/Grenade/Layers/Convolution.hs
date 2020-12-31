@@ -283,6 +283,7 @@ instance ( KnownNat kernelRows
   runForwards (BiasConvolution kernel biases _) (S3D input) =
     let ex = extract input
         ek = extract kernel
+        eb = extract biases
         ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
         iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
         kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
@@ -292,12 +293,11 @@ instance ( KnownNat kernelRows
         ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
         oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
         fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+        
+        r  = biasConv2d cs ix iy fs kx ky sx sy ex ek eb
 
-        c  = vid2col kx ky sx sy ix iy ex
-        mt = c LA.<> ek
-        bs = LA.build (ox * fs, oy) (\i _ -> extract biases ! div (round i) ox)
-        r  = col2vid 1 1 1 1 ox oy mt
-        rs = fromJust . create $ (r + bs)
+        rs = fromJust $ create r
     in  (S3D input, S3D rs)
   runBackwards = error "Backpropagation not implemented for convolutional layers with bias."
 

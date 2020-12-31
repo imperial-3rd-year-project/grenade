@@ -2,6 +2,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 void im2col_cpu(const RealNum* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,

@@ -42,7 +42,7 @@ main = do
   defaultMain
     [ bgroup
         "batchnorm forward (CxHxW)"
-        [ benchBatchNorm "1x64x64" 1 1 64
+        [ benchBatchNorm "1x1x64" 1 1 64
         , benchBatchNorm "1x64x64" 1 64 64
         , benchBatchNorm "64x64x64" 64 64 64
         ]

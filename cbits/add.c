@@ -16,3 +16,15 @@ void add_per_channel_cpu(RealNum* src, const int channels, const int height,
         }
     }
 }
+
+void in_place_add_per_channel_cpu(RealNum* src, const int channels, const int height, 
+    const int width, RealNum* bias) {
+  int pixels = height * width;
+
+  for (int c = 0; c < channels; ++c) {
+    RealNum b = bias[c];
+    for (int i = 0; i < pixels; ++i) {
+      src[c * pixels + i] += b;
+    }
+  }
+}
