@@ -64,8 +64,8 @@ import           Grenade.Utils.OneHot
 
 type Discriminator =
   Network
-    '[ Convolution 'WithoutBias 1 10 5 5 1 1, Pooling 2 2 2 2, Relu
-     , Convolution 'WithoutBias 10 16 5 5 1 1, Pooling 2 2 2 2, Relu
+    '[ Convolution 'WithoutBias 'NoPadding 1 10 5 5 1 1, Pooling 2 2 2 2, Relu
+     , Convolution 'WithoutBias 'NoPadding 10 16 5 5 1 1, Pooling 2 2 2 2, Relu
      , Reshape, FullyConnected 256 80, Logit, FullyConnected 80 1, Logit]
     '[ 'D2 28 28
      , 'D3 24 24 10, 'D3 12 12 10, 'D3 12 12 10

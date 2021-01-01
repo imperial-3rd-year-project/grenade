@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE GADTs                 #-}
@@ -6,14 +8,17 @@
 
 module Test.Hedgehog.Hmatrix where
 
+import GHC.Stack (HasCallStack, withFrozenCallStack)
+
 import           Grenade
 import           Data.Singletons
 import           Data.Singletons.TypeLits
 
-import           Hedgehog (Gen)
+import           Hedgehog (Gen, diff, MonadTest)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
+import   Numeric.LinearAlgebra (norm_Inf)
 import qualified Numeric.LinearAlgebra.Static as H
 import           Numeric.LinearAlgebra.Data   hiding ((===))
 
@@ -50,18 +55,21 @@ nice :: S shape -> String
 nice (S1D x) = show . H.extract $ x
 nice (S2D x) = show . H.extract $ x
 nice (S3D x) = show . H.extract $ x
+nice (S4D x) = show . H.extract $ x
 
 allClose :: SingI shape => S shape -> S shape -> Bool 
 allClose xs ys = case xs - ys of
   (S1D x) -> H.norm_Inf x < 0.0001
   (S2D x) -> H.norm_Inf x < 0.0001
-  (S3D x) -> H.norm_Inf x < 0.0001 
+  (S3D x) -> H.norm_Inf x < 0.0001
+  (S4D x) -> H.norm_Inf x < 0.0001 
 
 allCloseP :: SingI shape => S shape -> S shape -> Double -> Bool 
 allCloseP xs ys p = case xs - ys of
   (S1D x) -> H.norm_Inf x < p
   (S2D x) -> H.norm_Inf x < p
   (S3D x) -> H.norm_Inf x < p
+  (S4D x) -> H.norm_Inf x < p
 
 allCloseV :: KnownNat n => H.R n -> H.R n -> Bool 
 allCloseV xs ys = H.norm_Inf (xs - ys) < 0.0001
@@ -75,6 +83,7 @@ extractVec (S1D vec) = toList $ H.extract vec
 
 extractMat :: (KnownNat a, KnownNat b) => S ('D2 a b) -> [[Double]]
 extractMat (S2D mat) = toLists $ H.extract mat
+extractMat _ = error "Expected 2D matrix"
 
 elementsEqual :: SingI shape => S shape -> Bool 
 elementsEqual m = case m of 
@@ -88,3 +97,13 @@ listSameElements [_] = True
 listSameElements (x:x':xs) 
   | x == x'   = listSameElements (x':xs)
   | otherwise = False
+
+isSimilarMatrixTo :: (MonadTest m, HasCallStack) => Matrix RealNum -> Matrix RealNum -> m ()
+isSimilarMatrixTo x y = 
+  withFrozenCallStack $ 
+    diff x (\a b -> norm_Inf (a - b) < 0.000001) y
+
+isSimilarVectorTo :: (MonadTest m, HasCallStack) => Vector RealNum -> Vector RealNum -> m ()
+isSimilarVectorTo x y = 
+  withFrozenCallStack $ 
+    diff x (\a b -> norm_Inf (a - b) < 0.000001) y

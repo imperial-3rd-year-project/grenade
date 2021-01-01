@@ -29,8 +29,15 @@ col2vid nrows ncols srows scols drows dcols m =
 
 col2im :: Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 col2im krows kcols srows scols drows dcols m =
-  let starts     = fittingStarts drows krows srows dcols kcols scols
-  in  col2imfit starts krows kcols drows dcols m
+  let rs       = map toList $ toColumns m 
+      rs'      = zip [0..] rs
+      indicies = (\[a,b] -> (a,b)) <$> sequence [[0..(krows-1)], [0..(kcols-1)]]
+      accums   = concatMap (\(offset, column) -> zipWith (comb offset) indicies column) rs'
+  in accum (konst 0 (drows, dcols)) (+) accums
+  where     
+    comb o (i, j) x = let w = (div (dcols - kcols) scols) + 1
+                          (a, b) = divMod o w
+                      in  ((i + srows * a, j + scols * b), x)
 
 col2imfit :: [(Int,Int)] -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 col2imfit starts krows kcols drows dcols m =
@@ -99,3 +106,141 @@ fittingStart width kernel steps =
               | otherwise
               = []
   in go 0
+
+convBackProp :: Matrix RealNum -> Int -> Int -> Int 
+             -> Matrix RealNum -> Int -> Int -> Int 
+             -> Matrix RealNum -> Int -> Int
+             -> Int -> Int 
+             -> (Matrix RealNum, Matrix RealNum)
+convBackProp input channels inRows inCols kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols =
+  let fs       = [0..filters-1]
+      hs       = [let h_start = h * strideRows in (h, h_start) | h <- [0..outRows - 1]]
+      ws       = [let w_start = w * strideCols in (w, w_start) | w <- [0..outCols - 1]]
+      fhws     = [(f, h, w) | f <- fs, h <- hs, w <- ws]
+      dX_accum = concatMap dxLoop fhws
+      dX       = accum (konst 0 (channels * inRows, inCols)) (+) dX_accum
+      dW_accum = concatMap dwLoop fhws
+      dW       = accum (konst 0 (kernelRows * kernelCols * channels, filters)) (+) dW_accum
+  in (dX, dW)
+  where 
+    dxLoop (f, (h, h_start), (w, w_start)) 
+      = [ ((c * inRows + h_start + i, w_start + j), (indexAtdOut f h w) * (indexAtKernel f c i j)) | i <- [0..kernelRows-1], j <- [0..kernelCols-1], c <- [0..channels-1]]
+    
+    dwLoop (f, (h, h_start), (w, w_start))
+      = [ ((c * kernelRows * kernelCols + i * kernelCols + j, f), (indexAtdOut f h w) * (indexAtIn c (h_start + i) (w_start + j))) | i <- [0..kernelRows-1], j <- [0..kernelCols-1], c <- [0..channels-1]]
+
+    indexAtIn       c x y = input `atIndex` (c * inRows + x, y)
+    indexAtdOut     c x y = dout `atIndex` (c * outRows + x, y)
+    indexAtKernel f c x y = kernel `atIndex` (c * kernelRows * kernelCols + x * kernelCols + y, f)
+
+convForwards :: Matrix RealNum -> Int -> Int -> Int 
+             -> Matrix RealNum -> Int -> Int -> Int 
+             -> Int -> Int
+             -> Int -> Int 
+             -> Matrix RealNum
+convForwards input channels inRows inCols kernel filters kernelRows kernelCols outRows outCols strideRows strideCols =
+  let fs     = [0..filters-1]
+      hs     = [(h, h * strideRows) | h <- [0..outRows - 1], h * strideRows + kernelRows - 1 < inRows]
+      ws     = [(w, w * strideCols) | w <- [0..outCols - 1], w * strideCols + kernelCols - 1 < inCols]
+      fhws   = [(f, h, w) | f <- fs, h <- hs, w <- ws]
+      accums = map loopIter fhws
+  in accum (konst 0 (filters * outRows, outCols)) (+) accums
+  where 
+    loopIter (f, (h, h_start), (w, w_start)) 
+      = ((f * outRows + h, w), sum [ (indexAtKernel f c i j) * (indexAtIn c (h_start + i) (w_start + j)) | i <- [0..kernelRows-1], j <- [0..kernelCols-1], c <- [0..channels-1]])
+    
+    indexAtIn c x y = input `atIndex` (c * inRows + x, y)
+    indexAtKernel f c x y = kernel `atIndex` (c * kernelRows * kernelCols + x * kernelCols + y, f)
+
+convForwardsWithPadding :: Matrix RealNum -> Int -> Int -> Int 
+                        -> Matrix RealNum -> Int -> Int -> Int 
+                        -> Int -> Int
+                        -> Int -> Int
+                        -> Int -> Int -> Int -> Int  
+                        -> Matrix RealNum
+convForwardsWithPadding input channels inRows inCols kernel filters kernelRows kernelCols outRows outCols strideRows strideCols padl padt padr padb =
+  let accums      = [((c * padded_r + x + padt, y + padl), input `atIndex` (c * inRows + x, y)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      padded_r    = inRows + padt + padb
+      padded_c    = inCols + padl + padr
+      paddedInput = accum (konst 0 (channels * padded_r, padded_c)) (+) accums
+  in convForwards paddedInput channels padded_r padded_c kernel filters kernelRows kernelCols outRows outCols strideRows strideCols 
+
+convBackPropWithPadding :: Matrix RealNum -> Int -> Int -> Int 
+                        -> Matrix RealNum -> Int -> Int -> Int 
+                        -> Matrix RealNum -> Int -> Int
+                        -> Int -> Int 
+                        -> Int -> Int -> Int -> Int  
+                        -> (Matrix RealNum, Matrix RealNum)
+convBackPropWithPadding input channels inRows inCols kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols padl padt padr padb =
+  let accums      = [((c * padded_r + x + padt, y + padl), input `atIndex` (c * inRows + x, y)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      padded_r    = inRows + padt + padb
+      padded_c    = inCols + padl + padr
+      paddedInput = accum (konst 0 (channels * padded_r, padded_c)) (+) accums
+      (dX', dW)   = convBackProp paddedInput channels padded_r padded_c kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols 
+      accums'     = [((c * inRows + x, y), dX' `atIndex` (c * padded_r + x + padt, y + padl)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      dX          = accum (konst 0 (channels * inRows, inCols)) (+) accums'
+  in  (dX, dW)
+
+biasConvForwards :: Matrix RealNum -> Int -> Int -> Int 
+                 -> Matrix RealNum -> Int -> Int -> Int 
+                 -> Vector RealNum
+                 -> Int -> Int
+                 -> Int -> Int 
+                 -> Matrix RealNum
+biasConvForwards input channels inRows inCols kernel filters kernelRows kernelCols bias outRows outCols strideRows strideCols =
+  let fs     = [0..filters-1]
+      hs     = [(h, h * strideRows) | h <- [0..outRows - 1], h * strideRows + kernelRows - 1 < inRows]
+      ws     = [(w, w * strideCols) | w <- [0..outCols - 1], w * strideCols + kernelCols - 1 < inCols]
+      fhws   = [(f, h, w) | f <- fs, h <- hs, w <- ws]
+      accums = map loopIter fhws
+  in accum (konst 0 (filters * outRows, outCols)) (+) accums
+  where 
+    loopIter (f, (h, h_start), (w, w_start)) 
+      = ((f * outRows + h, w), indexAtBias f + sum [ (indexAtKernel f c i j) * (indexAtIn c (h_start + i) (w_start + j)) | i <- [0..kernelRows-1], j <- [0..kernelCols-1], c <- [0..channels-1]])
+    
+    indexAtBias i = bias `atIndex` i
+    indexAtIn c x y = input `atIndex` (c * inRows + x, y)
+    indexAtKernel f c x y = kernel `atIndex` (c * kernelRows * kernelCols + x * kernelCols + y, f)
+
+biasConvForwardsWithPadding :: Matrix RealNum -> Int -> Int -> Int 
+                        -> Matrix RealNum -> Int -> Int -> Int 
+                        -> Vector RealNum
+                        -> Int -> Int
+                        -> Int -> Int
+                        -> Int -> Int -> Int -> Int  
+                        -> Matrix RealNum
+biasConvForwardsWithPadding input channels inRows inCols kernel filters kernelRows kernelCols bias outRows outCols strideRows strideCols padl padt padr padb =
+  let accums      = [((c * padded_r + x + padt, y + padl), input `atIndex` (c * inRows + x, y)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      padded_r    = inRows + padt + padb
+      padded_c    = inCols + padl + padr
+      paddedInput = accum (konst 0 (channels * padded_r, padded_c)) (+) accums
+  in biasConvForwards paddedInput channels padded_r padded_c kernel filters kernelRows kernelCols bias outRows outCols strideRows strideCols 
+
+biasConvBackProp :: Matrix RealNum -> Int -> Int -> Int 
+                 -> Matrix RealNum -> Int -> Int -> Int 
+                 -> Matrix RealNum -> Int -> Int
+                 -> Int -> Int 
+                 -> (Matrix RealNum, Matrix RealNum, Vector RealNum)
+biasConvBackProp input channels inRows inCols kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols =
+  let (dX, dW)  = convBackProp input channels inRows inCols kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols
+      db_accums = [ (f, sum [ indexAtdOut f i j | i <- [0..outRows-1], j <- [0..outCols-1]]) | f <- [0..filters-1]]
+      db        = accum (konst 0 filters) (+) db_accums
+  in (dX, dW, db)
+  where 
+    indexAtdOut     c x y = dout `atIndex` (c * outRows + x, y)
+
+biasConvBackPropWithPadding :: Matrix RealNum -> Int -> Int -> Int 
+                            -> Matrix RealNum -> Int -> Int -> Int 
+                            -> Matrix RealNum -> Int -> Int
+                            -> Int -> Int 
+                            -> Int -> Int -> Int -> Int  
+                            -> (Matrix RealNum, Matrix RealNum, Vector RealNum)
+biasConvBackPropWithPadding input channels inRows inCols kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols padl padt padr padb =
+  let accums        = [((c * padded_r + x + padt, y + padl), input `atIndex` (c * inRows + x, y)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      padded_r      = inRows + padt + padb
+      padded_c      = inCols + padl + padr
+      paddedInput   = accum (konst 0 (channels * padded_r, padded_c)) (+) accums
+      (dX', dW, db) = biasConvBackProp paddedInput channels padded_r padded_c kernel filters kernelRows kernelCols dout outRows outCols strideRows strideCols 
+      accums'       = [((c * inRows + x, y), dX' `atIndex` (c * padded_r + x + padt, y + padl)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
+      dX            = accum (konst 0 (channels * inRows, inCols)) (+) accums'
+  in  (dX, dW, db)

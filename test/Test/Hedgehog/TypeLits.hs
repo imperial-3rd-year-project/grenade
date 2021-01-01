@@ -61,8 +61,9 @@ genD3 = do
 rss :: SomeSing Shape -> String
 rss (SomeSing (r :: Sing s)) =
   case r of
-    (D1Sing a@SNat)               -> "D1 " ++ show (GHC.TypeLits.natVal a)
-    (D2Sing a@SNat b@SNat)        -> "D2 " ++ show (GHC.TypeLits.natVal a) ++ " " ++ show (GHC.TypeLits.natVal b)
-    (D3Sing a@SNat b@SNat c@SNat) -> "D3 " ++ show (GHC.TypeLits.natVal a) ++ " " ++ show (GHC.TypeLits.natVal b) ++ " " ++ show (GHC.TypeLits.natVal c)
+    (D1Sing a@SNat)                      -> "D1 " ++ show (GHC.TypeLits.natVal a)
+    (D2Sing a@SNat b@SNat)               -> "D2 " ++ show (GHC.TypeLits.natVal a) ++ " " ++ show (GHC.TypeLits.natVal b)
+    (D3Sing a@SNat b@SNat c@SNat)        -> "D3 " ++ show (GHC.TypeLits.natVal a) ++ " " ++ show (GHC.TypeLits.natVal b) ++ " " ++ show (GHC.TypeLits.natVal c)
+    (D4Sing a@SNat b@SNat c@SNat d@SNat) -> "D4 " ++ show (GHC.TypeLits.natVal a) ++ " " ++ show (GHC.TypeLits.natVal b) ++ " " ++ show (GHC.TypeLits.natVal c) ++ " " ++ show (GHC.TypeLits.natVal d)
 
 

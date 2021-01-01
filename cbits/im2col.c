@@ -4,21 +4,37 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-void im2col_cpu(const RealNum* data_im, const int channels,
-    const int height, const int width, const int kernel_h, const int kernel_w,
-    const int stride_h, const int stride_w,
-    RealNum* data_col) {
+inline bool is_a_ge_zero_and_a_lt_b(int a, int b) { return 0 <= a && a < b; }
 
+// This function follows the implementation by Caffe, which can be found at 
+// https://github.com/BVLC/caffe/blob/9b891540183ddc834a02b2bd81b31afae71b2153/src/caffe/util/im2col.cpp#L19
+void im2col_cpu(const RealNum* data_im, const int channels,
+                const int height, const int width, const int kernel_h, const int kernel_w,
+                const int stride_h, const int stride_w,
+                const int pad_t, const int pad_l,
+                const int out_h, const int out_w,
+                RealNum* data_col) {
+    
   const int channel_size = height * width;
 
-  for (int fitting_height = 0; fitting_height <= (height - kernel_h); fitting_height += stride_h) {
-    for (int fitting_width = 0; fitting_width <= (width - kernel_w); fitting_width += stride_w) {
-      for (int channel = 0; channel < channels; channel++) {
-        for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {
-          for (int kernel_col = 0; kernel_col < kernel_w; kernel_col++) {
-            int input_row = fitting_height + kernel_row;
-            int input_col = fitting_width + kernel_col;
-            *(data_col++) = data_im[input_row * width + input_col + channel_size * channel];
+  for (int channel = 0; channel < channels; ++channel) {
+    for (int kernel_row = 0; kernel_row < kernel_h; ++kernel_row) {
+      for (int kernel_col = 0; kernel_col < kernel_w; ++kernel_col) {
+        for (int output_row = 0; output_row < out_h; ++output_row) {
+          int input_row = -pad_t + kernel_row + stride_h * output_row;
+          if (!(0 <= input_row && input_row < height)) {
+            for (int output_col = 0; output_col < out_w; ++output_col) {
+              *(data_col++) = 0;
+            }
+          } else {
+            for (int output_col = 0; output_col < out_w; ++output_col) {
+              int input_col = -pad_l + kernel_col + stride_w * output_col;
+              if (0 <= input_col && input_col < width) {
+                *(data_col++) = data_im[channel * channel_size + input_row * width + input_col];
+              } else {
+                *(data_col++) = 0;
+              }
+            }
           }
         }
       }
@@ -26,23 +42,36 @@ void im2col_cpu(const RealNum* data_im, const int channels,
   }
 }
 
+// This function follows the implementation by Caffe, which can be found at 
+// https://github.com/BVLC/caffe/blob/9b891540183ddc834a02b2bd81b31afae71b2153/src/caffe/util/im2col.cpp#L163
 void col2im_cpu(const RealNum* data_col, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w,
+    const int pad_t, const int pad_l,
+    const int out_h, const int out_w,
     RealNum* data_im) {
-  memset(data_im, 0, height * width * channels * sizeof(RealNum));
 
+  memset(data_im, 0, height * width * channels * sizeof(RealNum));
   const int channel_size = height * width;
 
-  for (int fitting_height = 0; fitting_height <= (height - kernel_h); fitting_height += stride_h) {
-    for (int fitting_width = 0; fitting_width <= (width - kernel_w); fitting_width += stride_w) {
-      for (int channel = 0; channel < channels; channel++) {
-        for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {
-          for (int kernel_col = 0; kernel_col < kernel_w; kernel_col++) {
-            int input_row = fitting_height + kernel_row;
-            int input_col = fitting_width + kernel_col;
-            data_im[input_row * width + input_col + channel_size * channel] += *(data_col++);
+  for (int channel = channels; channel--; data_im += channel_size) {
+    for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {
+      for (int kernel_col = 0; kernel_col < kernel_w; kernel_col++) {
+        int input_row = -pad_t + kernel_row;
+        for (int output_rows = out_h; output_rows; output_rows--) {
+          if (!is_a_ge_zero_and_a_lt_b(input_row, height)) {
+            data_col += out_w;
+          } else {
+            int input_col = -pad_l + kernel_col;
+            for (int output_col = out_w; output_col; output_col--) {
+              if (is_a_ge_zero_and_a_lt_b(input_col, width)) {
+                data_im[input_row * width + input_col] += *data_col;
+              }
+              data_col++;
+              input_col += stride_w;
+            }
           }
+          input_row += stride_h;
         }
       }
     }

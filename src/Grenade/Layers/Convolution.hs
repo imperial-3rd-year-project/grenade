@@ -1,16 +1,17 @@
 {-# LANGUAGE CPP                   #-}
+{-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE OverloadedLabels      #-}
-{-# LANGUAGE OverloadedStrings     #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
@@ -29,26 +30,35 @@ import           Data.Singletons
 import           Data.Singletons.Prelude.Num         ((%*))
 import           Data.Singletons.TypeLits            hiding (natVal)
 import           GHC.TypeLits
-import           Numeric.LinearAlgebra               hiding (konst, uniformSample, R)
-import qualified Numeric.LinearAlgebra               as LA
-import           Numeric.LinearAlgebra.Static        hiding ((&), build, toRows, (|||))
 import           Lens.Micro                          ((^.))
+import           Numeric.LinearAlgebra               hiding (R, konst,
+                                                      uniformSample)
+import qualified Numeric.LinearAlgebra               as LA
+import           Numeric.LinearAlgebra.Static        hiding (build, toRows, (&),
+                                                      (|||), size)
 import           System.Random.MWC                   (Gen)
 import           Unsafe.Coerce                       (unsafeCoerce)
 
+import           Control.DeepSeq
 import           Grenade.Core
 import           Grenade.Dynamic
 import           Grenade.Dynamic.Internal.Build
 import           Grenade.Layers.Internal.Convolution
 import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx
-import           Grenade.Utils.ListStore
 import           Grenade.Utils.LinearAlgebra
-import           Control.DeepSeq
+import           Grenade.Utils.ListStore
+
+type OutputShapeIsOkay (input :: Nat) (pad :: Nat) (kernel :: Nat) (strides :: Nat) (output :: Nat)
+  = ( strides * (output - 1) <= (input - kernel + pad)
+    , (input - kernel + pad) <= (output * strides ) - 1 )
 
 data HasBias = WithBias | WithoutBias
 
+data ConvPadding = NoPadding | SameUpper | SameLower | Padding Nat Nat Nat Nat
+
 data Convolution :: HasBias
+                 -> ConvPadding
                  -> Nat -- Number of channels, for the first layer this could be RGB for instance.
                  -> Nat -- Number of filters, this is the number of channels output by the layer.
                  -> Nat -- The number of rows in the kernel filter
@@ -66,7 +76,7 @@ data Convolution :: HasBias
                  , kernelFlattened ~ (kernelRows * kernelColumns * channels))
               => !(L kernelFlattened filters) -- The kernel filter weights
               -> !(ListStore (L kernelFlattened filters)) -- The last kernel update (or momentum)
-              -> Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns
+              -> Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns
 
   BiasConvolution :: ( KnownNat channels
                      , KnownNat filters
@@ -79,9 +89,10 @@ data Convolution :: HasBias
                   => !(L kernelFlattened filters) -- The kernel filter weights
                   -> !(R filters) -- The bias weights
                   -> !(ListStore (L kernelFlattened filters)) -- The last kernel update (or momentum)
-                  -> Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns
+                  -> Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns
 
 data Convolution' :: HasBias
+                  -> ConvPadding
                   -> Nat -- Number of channels, for the first layer this could be RGB for instance.
                   -> Nat -- Number of filters, this is the number of channels output by the layer.
                   -> Nat -- The number of rows in the kernel filter
@@ -98,7 +109,7 @@ data Convolution' :: HasBias
                   , KnownNat kernelFlattened
                   , kernelFlattened ~ (kernelRows * kernelColumns * channels))
                => !(L kernelFlattened filters) -- The kernel filter weights
-               -> Convolution' 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns
+               -> Convolution' 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns
 
   BiasConvolution' :: ( KnownNat channels
                       , KnownNat filters
@@ -110,7 +121,7 @@ data Convolution' :: HasBias
                       , kernelFlattened ~ (kernelRows * kernelColumns * channels))
                    => !(L kernelFlattened filters) -- The kernel filter weights
                    -> !(R filters) -- The bias weights
-                   -> Convolution' 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns
+                   -> Convolution' 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns
 
 {---------------------------}
 {--    Layer instances    --}
@@ -124,7 +135,7 @@ instance ( KnownNat channels
          , KnownNat strideColumns
          , KnownNat ((kernelRows * kernelColumns) * channels)
          , KnownNat (filters * ((kernelRows * kernelColumns) * channels))
-         ) => RandomLayer (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => RandomLayer (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   createRandomWith m gen = do
     wN <- getRandomMatrix i i m gen
     wB <- getRandomVector i i m gen
@@ -140,7 +151,7 @@ instance ( KnownNat channels
          , KnownNat strideColumns
          , KnownNat ((kernelRows * kernelColumns) * channels)
          , KnownNat (filters * ((kernelRows * kernelColumns) * channels))
-         ) => RandomLayer (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => RandomLayer (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   createRandomWith m gen = do
     wN <- getRandomMatrix i i m gen
     return $ Convolution wN mkListStore
@@ -155,10 +166,10 @@ instance ( KnownNat channels
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
          , kernelFlattened ~ (kernelRows * kernelColumns * channels)
-         ) => UpdateLayer (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) where
-  type Gradient (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) = (Convolution' 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns)
+         ) => UpdateLayer (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
+  type Gradient (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) = (Convolution' 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns)
 
-  type MomentumStore (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns)  = ListStore (L (kernelRows * kernelColumns * channels) filters)
+  type MomentumStore (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns)  = ListStore (L (kernelRows * kernelColumns * channels) filters)
 
   runUpdate opt@OptSGD{} x@(Convolution oldKernel store) (Convolution' kernelGradient) =
     let  momentum = getData opt x store
@@ -183,13 +194,18 @@ instance ( KnownNat channels
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
          , kernelFlattened ~ (kernelRows * kernelColumns * channels)
-         ) => UpdateLayer (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) where
-  type Gradient (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) = (Convolution' 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns)
+         ) => UpdateLayer (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
+  type Gradient (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) = (Convolution' 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns)
 
-  type MomentumStore (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns)  = ListStore (L (kernelRows * kernelColumns * channels) filters)
+  type MomentumStore (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns)  = ListStore (L (kernelRows * kernelColumns * channels) filters)
 
   runUpdate      = undefined
   reduceGradient = undefined
+
+
+{-----------------------------------}
+{--    No Bias Layer instances    --}
+{-----------------------------------}
 
 -- | A three dimensional image (or 2d with many channels) can have
 --   an appropriately sized convolution filter run across it.
@@ -204,15 +220,179 @@ instance ( KnownNat kernelRows
          , KnownNat outputRows
          , KnownNat outputCols
          , KnownNat channels
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * channels)
-         , KnownNat (outputRows * filters)
-         ) => Layer (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithoutBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
 
-  type Tape (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
+  type Tape (Convolution 'WithoutBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (Convolution kernel _) (S3D input) =     
+    let ex = extract input
+        ek = extract kernel
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+
+        out  = forwardConv2d ex cs ix iy ek fs kx ky sx sy ox oy 0 0
+    in  (S3D input, S3D . fromJust . create $ out)
+
+  runBackwards (Convolution kernel _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+
+        (dx, dw)  = backwardConv2d ex cs ix iy ek fs kx ky sx sy 0 0 0 0 ey ox oy
+    in  (Convolution' . fromJust . create $ dw, S3D . fromJust . create $ dx)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat outputRows
+         , KnownNat outputCols
+         , KnownNat channels
+         , KnownNat padt
+         , KnownNat padl
+         , KnownNat padb
+         , KnownNat padr
+         , OutputShapeIsOkay inputRows (padt + padb) kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols (padl + padr) kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithoutBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
+
+  type Tape (Convolution 'WithoutBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (Convolution kernel _) (S3D input) =
+    let ex = extract input
+        ek = extract kernel
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+        pl = fromIntegral $ natVal (Proxy :: Proxy padl)
+        pt = fromIntegral $ natVal (Proxy :: Proxy padt)
+
+        out  = fromJust . create $ forwardConv2d ex cs ix iy ek fs kx ky sx sy ox oy pl pt
+    in  (S3D input, S3D out)
+
+  runBackwards (Convolution kernel _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+        pl = fromIntegral $ natVal (Proxy :: Proxy padl      )
+        pt = fromIntegral $ natVal (Proxy :: Proxy padt      )
+        pr = fromIntegral $ natVal (Proxy :: Proxy padr      )
+        pb = fromIntegral $ natVal (Proxy :: Proxy padb      )
+
+        (dx, dw) = backwardConv2d ex cs ix iy ek fs kx ky sx sy pl pt pr pb ey ox oy
+    in  (Convolution' . fromJust . create $ dw, S3D . fromJust . create $ dx)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithoutBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) where
+
+  type Tape (Convolution 'WithoutBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (Convolution kernel _) (S3D input) =
+    let ex = extract input
+        ek = extract kernel
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padt = div pady 2
+        padl = div padx 2
+
+        out  = fromJust . create $ forwardConv2d ex cs ix iy ek fs kx ky sx sy ix iy padl padt
+    in  (S3D input, S3D out)
+
+  runBackwards (Convolution kernel _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padl = div padx 2
+        padt = div pady 2
+        padr = padx - padl
+        padb = pady - padt
+
+        (dx, dw) = backwardConv2d ex cs ix iy ek fs kx ky sx sy padl padt padr padb ey ix iy
+    in  (Convolution' . fromJust . create $ dw, S3D . fromJust . create $ dx)
+
+-- | A three dimensional image (or 2d with many channels) can have
+--   an appropriately sized convolution filter run across it.
+--   Case without bias vector.
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithoutBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) where
+
+  type Tape (Convolution 'WithoutBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols channels)
 
   runForwards (Convolution kernel _) (S3D input) =
     let ex = extract input
@@ -223,39 +403,45 @@ instance ( KnownNat kernelRows
         ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
         sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
         sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
-        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
-        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
 
-        c  = vid2col kx ky sx sy ix iy ex
-        mt = c LA.<> ek
-        r  = col2vid 1 1 1 1 ox oy mt
-        rs = fromJust . create $ r
-    in  (S3D input, S3D rs)
-  runBackwards (Convolution kernel _) (S3D input) (S3D dEdy) =
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padt = pady - div pady 2
+        padl = padx - div padx 2
+        out  = fromJust . create $ forwardConv2d ex cs ix iy ek fs kx ky sx sy ix iy padl padt
+
+    in  (S3D input, S3D out)
+
+  runBackwards (Convolution kernel _) (S3D input) (S3D dEdy) =     
     let ex = extract input
-        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
-        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
         kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
         ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
         sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
         sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
-        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
-        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
 
-        c  = vid2col kx ky sx sy ix iy ex
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
 
-        eo = extract dEdy
-        ek = extract kernel
+        padt = pady - padb
+        padl = padx - padr
+        padr = div padx 2
+        padb = div pady 2
 
-        vs = vid2col 1 1 1 1 ox oy eo
+        (dx, dw) = backwardConv2d ex cs ix iy ek fs kx ky sx sy padl padt padr padb ey ix iy
+    in  (Convolution' . fromJust . create $ dw, S3D . fromJust . create $ dx)
 
-        kN = fromJust . create $ tr c LA.<> vs
-
-        dW = vs LA.<> tr ek
-
-        xW = col2vid kx ky sx sy ix iy dW
-    in  (Convolution' kN, S3D . fromJust . create $ xW)
-
+{--------------------------------}
+{--    Bias Layer instances    --}
+{--------------------------------}
 
 -- | A three dimensional image (or 2d with many channels) can have
 --   an appropriately sized convolution filter run across it.
@@ -270,15 +456,11 @@ instance ( KnownNat kernelRows
          , KnownNat outputRows
          , KnownNat outputCols
          , KnownNat channels
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * channels)
-         , KnownNat (outputRows * filters)
-         ) => Layer (Convolution 'WithBias channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
 
-  type Tape (Convolution 'WithBias channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
+  type Tape (Convolution 'WithBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
 
   runForwards (BiasConvolution kernel biases _) (S3D input) =
     let ex = extract input
@@ -294,12 +476,229 @@ instance ( KnownNat kernelRows
         oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
         fs = fromIntegral $ natVal (Proxy :: Proxy filters)
         cs = fromIntegral $ natVal (Proxy :: Proxy channels)
-        
-        r  = biasConv2d cs ix iy fs kx ky sx sy ex ek eb
 
-        rs = fromJust $ create r
-    in  (S3D input, S3D rs)
-  runBackwards = error "Backpropagation not implemented for convolutional layers with bias."
+        out  = fromJust . create $ forwardBiasConv2d ex cs ix iy eb ek fs kx ky sx sy ox oy 0 0
+
+    in  (S3D input, S3D out)
+
+  runBackwards (BiasConvolution kernel _ _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+        
+        (dx', dw', db') = backwardBiasConv2d ex cs ix iy ek fs kx ky sx sy 0 0 0 0 ey ox oy
+        dx              = fromJust . create $ dx'
+        dw              = fromJust . create $ dw'
+        db              = fromJust . create $ db'
+    in  (BiasConvolution' dw db, S3D dx)
+
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat outputRows
+         , KnownNat outputCols
+         , KnownNat channels
+         , KnownNat padt
+         , KnownNat padl
+         , KnownNat padb
+         , KnownNat padr
+         , OutputShapeIsOkay inputRows (padt + padb) kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols (padl + padr) kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) where
+
+  type Tape (Convolution 'WithBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (BiasConvolution kernel biases _) (S3D input) =
+    let ex = extract input
+        ek = extract kernel
+        eb = extract biases
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+        pl = fromIntegral $ natVal (Proxy :: Proxy padl      )
+        pt = fromIntegral $ natVal (Proxy :: Proxy padt      )
+
+        out  = fromJust . create $ forwardBiasConv2d ex cs ix iy eb ek fs kx ky sx sy ox oy pl pt
+
+    in  (S3D input, S3D out)
+
+  runBackwards (BiasConvolution kernel _ _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        ox = fromIntegral $ natVal (Proxy :: Proxy outputRows)
+        oy = fromIntegral $ natVal (Proxy :: Proxy outputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+        pl = fromIntegral $ natVal (Proxy :: Proxy padl      )
+        pt = fromIntegral $ natVal (Proxy :: Proxy padt      )
+        pr = fromIntegral $ natVal (Proxy :: Proxy padr      )
+        pb = fromIntegral $ natVal (Proxy :: Proxy padb      )
+
+        (dx', dw', db') = backwardBiasConv2d ex cs ix iy ek fs kx ky sx sy pl pt pr pb ey ox oy
+        dx              = fromJust . create $ dx'
+        dw              = fromJust . create $ dw'
+        db              = fromJust . create $ db'
+    in  (BiasConvolution' dw db, S3D dx)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) where
+
+  type Tape (Convolution 'WithBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (BiasConvolution kernel bias _) (S3D input) =
+    let ex = extract input
+        ek = extract kernel
+        eb = extract bias
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padt = div pady 2
+        padl = div padx 2
+
+        out  = fromJust . create $ forwardBiasConv2d ex cs ix iy eb ek fs kx ky sx sy ix iy padl padt
+
+    in  (S3D input, S3D out)
+
+  runBackwards (BiasConvolution kernel _ _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padl = div padx 2
+        padt = div pady 2
+        padr = padx - padl
+        padb = pady - padt
+
+        (dx', dw', db') = backwardBiasConv2d ex cs ix iy ek fs kx ky sx sy padl padt padr padb ey ix iy
+        dx              = fromJust . create $ dx'
+        dw              = fromJust . create $ dw'
+        db              = fromJust . create $ db'
+    in  (BiasConvolution' dw db, S3D dx)
+
+-- | A three dimensional image (or 2d with many channels) can have
+--   an appropriately sized convolution filter run across it.
+--   Case without bias vector.
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) where
+
+  type Tape (Convolution 'WithBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols channels)
+
+  runForwards (BiasConvolution kernel bias _) (S3D input) =
+    let ex = extract input
+        ek = extract kernel
+        eb = extract bias
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols)
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters)
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels)
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padt = pady - div pady 2
+        padl = padx - div padx 2
+
+        out  = fromJust . create $ forwardBiasConv2d ex cs ix iy eb ek fs kx ky sx sy ix iy padl padt
+    in  (S3D input, S3D out)
+
+  runBackwards (BiasConvolution kernel _ _) (S3D input) (S3D dEdy) =     
+    let ex = extract input
+        ek = extract kernel
+        ey = extract dEdy
+        ix = fromIntegral $ natVal (Proxy :: Proxy inputRows )
+        iy = fromIntegral $ natVal (Proxy :: Proxy inputCols )
+        kx = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+        ky = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+        sx = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+        sy = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+        fs = fromIntegral $ natVal (Proxy :: Proxy filters   )
+        cs = fromIntegral $ natVal (Proxy :: Proxy channels  )
+
+        pady = (ix - 1) * sx + kx - ix
+        padx = (iy - 1) * sy + ky - iy
+
+        padr = div padx 2
+        padb = div pady 2
+        padl = padx - padr
+        padt = pady - padb
+
+        (dx', dw', db') = backwardBiasConv2d ex cs ix iy ek fs kx ky sx sy padl padt padr padb ey ix iy
+        dx              = fromJust . create $ dx'
+        dw              = fromJust . create $ dw'
+        db              = fromJust . create $ db'
+    in  (BiasConvolution' dw db, S3D dx)
+
+
+{---------------------------------}
+{--    Other Layer instances    --}
+{---------------------------------}
 
 -- | A two dimentional image may have a convolution filter applied to it.
 --   Case without bias vector
@@ -312,14 +711,42 @@ instance ( KnownNat kernelRows
          , KnownNat inputCols
          , KnownNat outputRows
          , KnownNat outputCols
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * 1)
-         , KnownNat (outputRows * filters)
-         ) => Layer (Convolution 'WithoutBias 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) where
-  type Tape (Convolution 'WithoutBias 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols 1)
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithoutBias 'NoPadding 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) where
+  type Tape (Convolution 'WithoutBias 'NoPadding 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
+
+  runBackwards c tape grads =
+    case runBackwards c tape grads of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) ->  (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithoutBias 'SameUpper 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) where
+  type Tape (Convolution 'WithoutBias 'SameUpper 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
+
+  runBackwards c tape grads =
+    case runBackwards c tape grads of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) ->  (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithoutBias 'SameLower 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) where
+  type Tape (Convolution 'WithoutBias 'SameLower 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols 1)
   runForwards c (S2D input) =
     runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
 
@@ -338,14 +765,42 @@ instance ( KnownNat kernelRows
          , KnownNat inputCols
          , KnownNat outputRows
          , KnownNat outputCols
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * 1)
-         , KnownNat (outputRows * filters)
-         ) => Layer (Convolution 'WithBias 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) where
-  type Tape (Convolution 'WithBias 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols 1)
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithBias 'NoPadding 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) where
+  type Tape (Convolution 'WithBias 'NoPadding 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 outputRows outputCols filters) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
+
+  runBackwards c tape grads =
+    case runBackwards c tape grads of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) ->  (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithBias 'SameUpper 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) where
+  type Tape (Convolution 'WithBias 'SameUpper 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
+
+  runBackwards c tape grads =
+    case runBackwards c tape grads of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) ->  (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithBias 'SameLower 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) where
+  type Tape (Convolution 'WithBias 'SameLower 1 filters kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D3 inputRows inputCols filters) = S ('D3 inputRows inputCols 1)
   runForwards c (S2D input) =
     runForwards c (S3D input :: S ('D3 inputRows inputCols 1))
 
@@ -363,20 +818,49 @@ instance ( KnownNat kernelRows
          , KnownNat inputRows
          , KnownNat inputCols
          , KnownNat outputCols
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * 1)
-         , KnownNat (outputRows * 1)
-         ) => Layer (Convolution 'WithoutBias 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) where
-  type Tape (Convolution 'WithoutBias 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols 1)
+         , KnownNat outputRows
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithoutBias 'NoPadding 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) where
+  type Tape (Convolution 'WithoutBias 'NoPadding 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols 1)
   runForwards c (S2D input) =
     case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
       (tps, S3D back :: S ('D3 outputRows outputCols 1)) ->  (tps, S2D back)
 
   runBackwards c tape (S2D grads) =
     case runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1)) of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithoutBias 'SameUpper 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithoutBias 'SameUpper 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    case runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1)) of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithoutBias 'SameLower 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithoutBias 'SameLower 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    case runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1)) of
       (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
 
 -- | A two dimensional image may have a convolution filter applied to it producing
@@ -389,20 +873,49 @@ instance ( KnownNat kernelRows
          , KnownNat inputRows
          , KnownNat inputCols
          , KnownNat outputCols
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * 1)
-         , KnownNat (outputRows * 1)
-         ) => Layer (Convolution 'WithBias 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) where
-  type Tape (Convolution 'WithBias 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols 1)
+         , KnownNat outputRows
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithBias 'NoPadding 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) where
+  type Tape (Convolution 'WithBias 'NoPadding 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols 1)
   runForwards c (S2D input) =
     case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
       (tps, S3D back :: S ('D3 outputRows outputCols 1)) ->  (tps, S2D back)
 
   runBackwards c tape (S2D grads) =
     case runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1)) of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithBias 'SameUpper 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithBias 'SameUpper 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    case runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1)) of
+      (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         ) => Layer (Convolution 'WithBias 'SameLower 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithBias 'SameLower 1 1 kernelRows kernelCols strideRows strideCols) ('D2 inputRows inputCols) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols 1)
+  runForwards c (S2D input) =
+    case runForwards c (S3D input :: S ('D3 inputRows inputCols 1)) of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    case runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1)) of
       (c', S3D back :: S ('D3 inputRows inputCols 1)) -> (c', S2D back)
 
 -- | A three dimensional image can produce a 2D image from a convolution with 1 filter
@@ -414,21 +927,50 @@ instance ( KnownNat kernelRows
          , KnownNat inputRows
          , KnownNat inputCols
          , KnownNat outputCols
+         , KnownNat outputRows
          , KnownNat channels
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * channels)
-         , KnownNat (outputRows * 1)
-         ) => Layer (Convolution 'WithoutBias channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) where
-  type Tape (Convolution 'WithoutBias channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols channels)
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithoutBias 'NoPadding channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) where
+  type Tape (Convolution 'WithoutBias 'NoPadding channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols channels)
   runForwards c input =
     case runForwards c input of
       (tps, S3D back :: S ('D3 outputRows outputCols 1)) ->  (tps, S2D back)
 
   runBackwards c tape (S2D grads) =
     runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1))
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithoutBias 'SameUpper channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithoutBias 'SameUpper channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols channels)
+  runForwards c input =
+    case runForwards c input of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1))
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithoutBias 'SameLower channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithoutBias 'SameLower channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols channels)
+  runForwards c input =
+    case runForwards c input of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1))
 
 -- | A three dimensional image can produce a 2D image from a convolution with 1 filter
 --   Case with bias vector.
@@ -439,15 +981,12 @@ instance ( KnownNat kernelRows
          , KnownNat inputRows
          , KnownNat inputCols
          , KnownNat outputCols
+         , KnownNat outputRows
          , KnownNat channels
-         , strideRows * (outputRows - 1) <= (inputRows - kernelRows + 1) - 1
-         , (inputRows - kernelRows + 1) <= (outputRows * strideRows)
-         , strideCols * (outputCols - 1) <= (inputCols - kernelCols + 1) - 1
-         , (inputCols - kernelCols + 1) <= (outputCols * strideCols)
-         , KnownNat (kernelRows * kernelCols * channels)
-         , KnownNat (outputRows * 1)
-         ) => Layer (Convolution 'WithBias channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) where
-  type Tape (Convolution 'WithBias channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols channels)
+         , OutputShapeIsOkay inputRows 0 kernelRows strideRows outputRows
+         , OutputShapeIsOkay inputCols 0 kernelCols strideCols outputCols
+         ) => Layer (Convolution 'WithBias 'NoPadding channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) where
+  type Tape (Convolution 'WithBias 'NoPadding channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 outputRows outputCols) = S ('D3 inputRows inputCols channels)
   runForwards c input =
     case runForwards c input of
       (tps, S3D back :: S ('D3 outputRows outputCols 1)) ->  (tps, S2D back)
@@ -455,14 +994,46 @@ instance ( KnownNat kernelRows
   runBackwards c tape (S2D grads) =
     runBackwards c tape (S3D grads :: S ('D3 outputRows outputCols 1))
 
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithBias 'SameUpper channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithBias 'SameUpper channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols channels)
+  runForwards c input =
+    case runForwards c input of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1))
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat inputRows
+         , KnownNat inputCols
+         , KnownNat channels
+         ) => Layer (Convolution 'WithBias 'SameLower channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) where
+  type Tape (Convolution 'WithBias 'SameLower channels 1 kernelRows kernelCols strideRows strideCols) ('D3 inputRows inputCols channels) ('D2 inputRows inputCols) = S ('D3 inputRows inputCols channels)
+  runForwards c input =
+    case runForwards c input of
+      (tps, S3D back :: S ('D3 inputRows inputCols 1)) ->  (tps, S2D back)
+
+  runBackwards c tape (S2D grads) =
+    runBackwards c tape (S3D grads :: S ('D3 inputRows inputCols 1))
+
 {--------------------}
 {-- ONNX Instances --}
 {--------------------}
 
-instance OnnxOperator (Convolution 'WithBias channels filters kernelRows kernelCols strideRows strideCols) where
+instance OnnxOperator (Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) where
   onnxOpTypeNames _ = ["Conv"]
 
-instance OnnxOperator (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols) where
+instance OnnxOperator (Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows strideCols) where
   onnxOpTypeNames _ = ["Conv"]
 
 instance ( KnownNat kernelRows
@@ -472,34 +1043,7 @@ instance ( KnownNat kernelRows
          , KnownNat strideCols
          , KnownNat channels
          , KnownNat (kernelRows * kernelCols * channels)
-         ) => OnnxLoadable (Convolution 'WithBias channels filters kernelRows kernelCols strideRows strideCols) where
-  loadOnnxNode inits node = do
-    node & hasSupportedDilations
-    node & hasSupportedGroup
-
-    (node `hasMatchingShape` "kernel_shape") kernelShape
-    (node `hasMatchingShape` "strides"     ) strideShape
-
-    -- todo: proper checking to see if auto_pad attribute is valid
-
-    case node ^. #input of
-      [_, w, b] -> do
-        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
-        filterBias    <- readInitializerVector inits b
-        return (BiasConvolution filterWeights filterBias mkListStore)
-      _ -> onnxIncorrectNumberOfInputs
-      where
-        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
-        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
-
-instance ( KnownNat kernelRows
-         , KnownNat kernelCols
-         , KnownNat filters
-         , KnownNat strideRows
-         , KnownNat strideCols
-         , KnownNat channels
-         , KnownNat (kernelRows * kernelCols * channels)
-         ) => OnnxLoadable (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols) where
+         ) => OnnxLoadable (Convolution 'WithoutBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) where
   loadOnnxNode inits node = do
     node `doesNotHaveAttribute` "auto_pad"
 
@@ -519,6 +1063,87 @@ instance ( KnownNat kernelRows
         kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
         strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
 
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat channels
+         , KnownNat (kernelRows * kernelCols * channels)
+         ) => OnnxLoadable (Convolution 'WithoutBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols) where
+  loadOnnxNode inits node = do
+    node `doesNotHaveAttribute` "auto_pad"
+
+    node & hasSupportedDilations
+    node & hasSupportedGroup
+
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides"     ) strideShape
+
+    case node ^. #input of
+      [_, w] -> do
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
+        return (Convolution filterWeights mkListStore)
+      _ -> onnxIncorrectNumberOfInputs
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat channels
+         , KnownNat padl, KnownNat padt, KnownNat padr, KnownNat padb
+         ) => OnnxLoadable (Convolution 'WithoutBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols) where
+  loadOnnxNode inits node = do
+    node `doesNotHaveAttribute` "auto_pad"
+
+    node & hasSupportedDilations
+    node & hasSupportedGroup
+
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides"     ) strideShape
+
+    hasCorrectPadding node (Proxy :: Proxy padl) (Proxy :: Proxy padr) (Proxy :: Proxy padt) (Proxy :: Proxy padb)
+
+    case node ^. #input of
+      [_, w] -> do
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
+        return (Convolution filterWeights mkListStore)
+      _ -> onnxIncorrectNumberOfInputs
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
+
+instance ( KnownNat kernelRows
+         , KnownNat kernelCols
+         , KnownNat filters
+         , KnownNat strideRows
+         , KnownNat strideCols
+         , KnownNat channels
+         , KnownNat (kernelRows * kernelCols * channels)
+         ) => OnnxLoadable (Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) where
+  loadOnnxNode inits node = do
+    node & hasSupportedDilations
+    node & hasSupportedGroup
+
+    (node `hasMatchingShape` "kernel_shape") kernelShape
+    (node `hasMatchingShape` "strides"     ) strideShape
+
+    -- todo: proper checking to see if auto_pad attribute is valid
+
+    case node ^. #input of
+      [_, w, b] -> do
+        filterWeights <- tr <$> readInitializerTensorIntoMatrix inits w
+        filterBias    <- readInitializerVector inits b
+        return (BiasConvolution filterWeights filterBias mkListStore)
+      _ -> onnxIncorrectNumberOfInputs
+      where
+        kernelShape = [natVal (Proxy :: Proxy kernelRows), natVal (Proxy :: Proxy kernelCols)]
+        strideShape = [natVal (Proxy :: Proxy strideRows), natVal (Proxy :: Proxy strideCols)]
+
 {--------------------}
 {-- Misc Instances --}
 {--------------------}
@@ -529,11 +1154,10 @@ instance ( KnownNat channels
          , KnownNat kernelColumns
          , KnownNat strideRows
          , KnownNat strideColumns
-         , KnownNat (kernelRows * kernelColumns * channels)
          ) =>
-         LayerOptimizerData (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) where
-  type MomentumExpOptResult (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
-  type MomentumDataType (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
+         LayerOptimizerData (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) where
+  type MomentumExpOptResult (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
+  type MomentumDataType (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
   getData opt x store = head $ getListStore opt x store
   setData opt x store = setListStore opt x store . return
   newData _ _ = konst 0
@@ -544,11 +1168,10 @@ instance ( KnownNat channels
          , KnownNat kernelColumns
          , KnownNat strideRows
          , KnownNat strideColumns
-         , KnownNat (kernelRows * kernelColumns * channels)
          ) =>
-         LayerOptimizerData (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) where
-  type MomentumExpOptResult (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
-  type MomentumDataType (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
+         LayerOptimizerData (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) where
+  type MomentumExpOptResult (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
+  type MomentumDataType (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'SGD) = L (kernelRows * kernelColumns * channels) filters
   getData = undefined
   setData = undefined
   newData = undefined
@@ -559,10 +1182,9 @@ instance ( KnownNat channels
          , KnownNat kernelColumns
          , KnownNat strideRows
          , KnownNat strideColumns
-         , KnownNat (kernelRows * kernelColumns * channels)
-         ) => LayerOptimizerData (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) where
-  type MomentumExpOptResult (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam)  = [L (kernelRows * kernelColumns * channels) filters]
-  type MomentumDataType (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) = L (kernelRows * kernelColumns * channels) filters
+         ) => LayerOptimizerData (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) where
+  type MomentumExpOptResult (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam)  = [L (kernelRows * kernelColumns * channels) filters]
+  type MomentumDataType (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) = L (kernelRows * kernelColumns * channels) filters
   getData = getListStore
   setData = setListStore
   newData _ _ = konst 0
@@ -574,9 +1196,9 @@ instance ( KnownNat channels
          , KnownNat strideRows
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
-         ) => LayerOptimizerData (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) where
-  type MomentumExpOptResult (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam)  = [L (kernelRows * kernelColumns * channels) filters]
-  type MomentumDataType (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) = L (kernelRows * kernelColumns * channels) filters
+         ) => LayerOptimizerData (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) where
+  type MomentumExpOptResult (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam)  = [L (kernelRows * kernelColumns * channels) filters]
+  type MomentumDataType (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) (Optimizer 'Adam) = L (kernelRows * kernelColumns * channels) filters
   getData = undefined
   setData = undefined
   newData = undefined
@@ -586,7 +1208,7 @@ instance ( KnownNat channels
          , KnownNat kernelRows
          , KnownNat kernelColumns
          , KnownNat strideRows
-         , KnownNat strideColumns) => FoldableGradient (Convolution' hasBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         , KnownNat strideColumns) => FoldableGradient (Convolution' hasBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   mapGradient f (Convolution' kernelGradient) = Convolution' (dmmap f kernelGradient)
   mapGradient f (BiasConvolution' kernelGradient biasGradient) = BiasConvolution' (dmmap f kernelGradient) (dvmap f biasGradient)
   squaredSums (Convolution' kernelGradient) = [sumM . squareM $ kernelGradient]
@@ -599,7 +1221,7 @@ instance ( KnownNat channels
          , KnownNat strideRows
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
-         ) => Serialize (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => Serialize (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   put (Convolution w store) = do
     putListOf put . toList . flatten . extract $ w
     put (fmap (toList . flatten . extract) store)
@@ -616,7 +1238,7 @@ instance ( KnownNat channels
          , KnownNat strideRows
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
-         ) => Serialize (Convolution 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => Serialize (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   put (BiasConvolution w b store) = do
     putListOf put . toList . flatten . extract $ w
     putListOf put . toList . extract $ b
@@ -635,7 +1257,7 @@ instance ( KnownNat channels
          , KnownNat strideRows
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
-         ) => Serialize (Convolution' 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => Serialize (Convolution' 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   put (Convolution' w) = do
     putListOf put . toList . flatten . extract $ w
   get = do
@@ -650,7 +1272,7 @@ instance ( KnownNat channels
          , KnownNat strideRows
          , KnownNat strideColumns
          , KnownNat (kernelRows * kernelColumns * channels)
-         ) => Serialize (Convolution' 'WithBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         ) => Serialize (Convolution' 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   put (BiasConvolution' w b) = do
     putListOf put . toList . flatten . extract $ w
     putListOf put . toList . extract $ b
@@ -660,71 +1282,43 @@ instance ( KnownNat channels
       wB    <- maybe (fail "Vector of incorrect size") return . create . LA.fromList =<< getListOf get
       return $ BiasConvolution' wN wB
 
-instance NFData (Convolution hasBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+instance NFData (Convolution hasBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   rnf (BiasConvolution a b c) = rnf a `seq` rnf b `seq` rnf c
-  rnf (Convolution a b) = rnf a `seq` rnf b
+  rnf (Convolution a b)       = rnf a `seq` rnf b
 
-instance NFData (Convolution' hasBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+instance NFData (Convolution' hasBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   rnf (BiasConvolution' a b) = rnf a `seq` rnf b
-  rnf (Convolution' a) = rnf a
+  rnf (Convolution' a)       = rnf a
 
-instance Show (Convolution hasBias c f k k' s s') where
-  show (BiasConvolution a _ _) = renderConv a
-    where
-      renderConv mm =
-        let m = extract mm
-            ky = fromIntegral $ natVal (Proxy :: Proxy k)
-            rs = LA.toColumns m
-            ms = map (take ky) $ toLists . reshape ky <$> rs
-            render n'
-              | n' <= 0.2 = ' '
-              | n' <= 0.4 = '.'
-              | n' <= 0.6 = '-'
-              | n' <= 0.8 = '='
-              | otherwise = '#'
-            px = (fmap . fmap . fmap) render ms
-         in unlines $ foldl1 (zipWith (\a' b' -> a' ++ "   |   " ++ b')) px
+instance Show (Convolution hasBias padding c f k k' s s') where
+  show (BiasConvolution _ _ _) = "Bias Convolution"
 
-  show (Convolution a _) = renderConv a
-    where
-      renderConv mm =
-        let m = extract mm
-            ky = fromIntegral $ natVal (Proxy :: Proxy k)
-            rs = LA.toColumns m
-            ms = map (take ky) $ toLists . reshape ky <$> rs
-            render n'
-              | n' <= 0.2 = ' '
-              | n' <= 0.4 = '.'
-              | n' <= 0.6 = '-'
-              | n' <= 0.8 = '='
-              | otherwise = '#'
-            px = (fmap . fmap . fmap) render ms
-         in unlines $ foldl1 (zipWith (\a' b' -> a' ++ "   |   " ++ b')) px
+  show (Convolution _ _) = "Convolution"
 
 {--------------------}
 {-- GNum Instances --}
 {--------------------}
 
 instance (KnownNat striCols, KnownNat strideRows, KnownNat kernelCols, KnownNat kernelRows, KnownNat filters, KnownNat channels, KnownNat ((kernelRows * kernelCols) * channels)) =>
-         GNum (Convolution 'WithBias channels filters kernelRows kernelCols strideRows striCols) where
+         GNum (Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows striCols) where
   n |* (BiasConvolution w b store) = BiasConvolution (dmmap (fromRational n *) w) (dvmap (fromRational n *) b) (n |* store)
   (BiasConvolution w1 b1 store1)  |+ (BiasConvolution w2 b2 store2) = BiasConvolution (w1 + w2) (b1 + b2) (store1 |+ store2)
   gFromRational r = BiasConvolution (fromRational r) (fromRational r) mkListStore
 
 instance (KnownNat striCols, KnownNat strideRows, KnownNat kernelCols, KnownNat kernelRows, KnownNat filters, KnownNat channels, KnownNat ((kernelRows * kernelCols) * channels)) =>
-         GNum (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows striCols) where
+         GNum (Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows striCols) where
   n |* (Convolution w store) = Convolution (dmmap (fromRational n *) w) (n |* store)
   (Convolution w1 store1)  |+ (Convolution w2 store2)  = Convolution (w1 + w2) (store1 |+ store2)
   gFromRational r = Convolution (fromRational r) mkListStore
 
 instance (KnownNat striCols, KnownNat strideRows, KnownNat kernelCols, KnownNat kernelRows, KnownNat filters, KnownNat channels, KnownNat ((kernelRows * kernelCols) * channels)) =>
-         GNum (Convolution' 'WithBias channels filters kernelRows kernelCols strideRows striCols) where
+         GNum (Convolution' 'WithBias padding channels filters kernelRows kernelCols strideRows striCols) where
   n |* (BiasConvolution' g1 g2) = BiasConvolution' (dmmap (fromRational n *) g1) (dvmap (fromRational n *) g2)
   (BiasConvolution' g1 g2) |+ (BiasConvolution' g3 g4) = BiasConvolution' (g1 + g3) (g2 + g4)
   gFromRational r = BiasConvolution' (fromRational r) (fromRational r)
 
 instance (KnownNat striCols, KnownNat strideRows, KnownNat kernelCols, KnownNat kernelRows, KnownNat filters, KnownNat channels, KnownNat ((kernelRows * kernelCols) * channels)) =>
-         GNum (Convolution' 'WithoutBias channels filters kernelRows kernelCols strideRows striCols) where
+         GNum (Convolution' 'WithoutBias padding channels filters kernelRows kernelCols strideRows striCols) where
   n |* (Convolution' g) = Convolution' (dmmap (fromRational n *) g)
   (Convolution' g) |+ (Convolution' g2) = Convolution' (g + g2)
   gFromRational r = Convolution' (fromRational r)
@@ -733,7 +1327,7 @@ instance (KnownNat striCols, KnownNat strideRows, KnownNat kernelCols, KnownNat 
 {-- DynamicNetwork Instances --}
 {------------------------------}
 instance (KnownNat channels, KnownNat filters, KnownNat kernelRows, KnownNat kernelColumns, KnownNat strideRows, KnownNat strideColumns) =>
-         FromDynamicLayer (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns) where
+         FromDynamicLayer (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns) where
   fromDynamicLayer inp _ _ =
     SpecNetLayer $
     SpecConvolution
@@ -768,24 +1362,24 @@ toDynamicLayer' wInit gen (SpecConvolution (rows, cols, depth) ch fil kerRows ke
          , singByProxy pxRows %* singByProxy pxCh -- 'D3 representation
          ) of
       (SNat, SNat, SNat, SNat) | ch == 1 && fil == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, filters ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, filters ~ 1, OutputShapeIsOkay rows 0 kernelRows strideRows outRows, OutputShapeIsOkay cols 0 kernelCols strideCols outCols )) of
           Dict -> do
-            (layer  :: Convolution 'WithoutBias 1 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
+            (layer  :: Convolution 'WithoutBias 'NoPadding 1 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D2 rows cols)) (sing :: Sing ('D2 outRows outCols))
       (SNat, SNat, SNat, SNat) | ch == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (channels ~ 1, OutputShapeIsOkay rows 0 kernelRows strideRows outRows, OutputShapeIsOkay cols 0 kernelCols strideCols outCols )) of
           Dict -> do
-            (layer  :: Convolution 'WithoutBias 1 filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
+            (layer  :: Convolution 'WithoutBias 'NoPadding 1 filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D2 rows cols)) (sing :: Sing ('D3 outRows outCols filters))
       (SNat, SNat, SNat, SNat) | fil == 1 ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (filters ~ 1, strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict (filters ~ 1, OutputShapeIsOkay rows 0 kernelRows strideRows outRows, OutputShapeIsOkay cols 0 kernelCols strideCols outCols )) of
           Dict -> do
-            (layer  :: Convolution 'WithoutBias channels 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
+            (layer  :: Convolution 'WithoutBias 'NoPadding channels 1 kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D3 rows cols channels)) (sing :: Sing ('D2 outRows outCols))
       (SNat, SNat, SNat, SNat) ->
-        case (unsafeCoerce (Dict :: Dict ()) :: Dict (strideRows * (outRows - 1) <= (rows - kernelRows + 1) - 1, (rows - kernelRows + 1) <= (outRows * strideRows), strideCols * (outCols - 1) <= (cols - kernelCols + 1) - 1, (cols - kernelCols + 1) <= (outCols * strideCols))) of
+        case (unsafeCoerce (Dict :: Dict ()) :: Dict ( OutputShapeIsOkay rows 0 kernelRows strideRows outRows, OutputShapeIsOkay cols 0 kernelCols strideCols outCols ) ) of
           Dict -> do
-            (layer  :: Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
+            (layer  :: Convolution 'WithoutBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols) <- createRandomWith wInit gen
             return $ SpecLayer layer (sing :: Sing ('D3 rows cols channels)) (sing :: Sing ('D3 outRows outCols filters))
 
 -- | Creates a specification for a convolutional layer with 2D input to the layer. If channels and filters are both 1 then the output is 2D otherwise it is 3D. The output sizes are `out = (in -

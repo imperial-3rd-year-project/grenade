@@ -17,7 +17,6 @@ import qualified Numeric.LinearAlgebra.Devel as U
 
 import           System.IO.Unsafe            (unsafePerformIO)
 
-import           Debug.Trace
 import           Grenade.Types
 poolForward :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 poolForward channels height width kernelRows kernelColumns strideRows strideColumns dataIm =

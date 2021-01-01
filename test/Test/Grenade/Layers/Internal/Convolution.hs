@@ -20,6 +20,7 @@ import qualified Hedgehog.Range as Range
 
 import qualified Test.Grenade.Layers.Internal.Reference as Reference
 import           Test.Hedgehog.Compat
+import           Test.Hedgehog.Hmatrix
 
 prop_im2col_col2im_symmetrical_with_kernel_stride =
   let factors n = [x | x <- [1..n], n `mod` x == 0]
@@ -49,21 +50,23 @@ prop_im2col_col2im_behaves_as_reference =
         let outFast       = im2col kernel_h kernel_w stride_h stride_w input
         let retFast       = col2im kernel_h kernel_w stride_h stride_w height width outFast
 
-        let outReference  = Reference.im2col kernel_h kernel_w stride_h stride_w  input
+        let outReference  = LA.tr $ Reference.im2col kernel_h kernel_w stride_h stride_w  input
         let retReference  = Reference.col2im kernel_h kernel_w stride_h stride_w height width outReference
 
-        outFast === outReference
-        retFast === retReference
+        annotate $ show outReference
+
+        isSimilarMatrixTo outFast outReference
+        isSimilarMatrixTo retFast retReference
 
 prop_im2col_col2im_crops_valid_pad = withTests 1 $ property $ do 
   let mat    = matrix 10 [0..99]        :: Matrix RealNum
       kernel = matrix 1 $ replicate 9 1 :: Matrix RealNum
 
-      col    = vid2col 3 3 3 3 10 10 mat
+      matCol = vid2col 3 3 3 3 10 10 mat
 
-      res    = col LA.<> kernel
+      res    = LA.tr kernel LA.<> matCol
 
-      expected = matrix 1 [99, 126, 153, 369, 396, 423, 639, 666, 693]
+      expected = matrix 9 [99, 126, 153, 369, 396, 423, 639, 666, 693]
   
   res === expected
 

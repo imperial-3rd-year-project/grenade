@@ -11,6 +11,7 @@
 import           Control.Applicative
 import           Control.Monad.Random
 import           Control.Monad.Trans.Except
+import           Options.Applicative
 
 import qualified Data.Attoparsec.Text         as A
 import           Data.Function                (on)
@@ -18,8 +19,6 @@ import           Data.List
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T
 import qualified Data.Vector.Storable         as V
-import Debug.Trace
-import           Options.Applicative
 
 import           Graphics.Image               hiding (map, on)
 import           Graphics.Image.Interface     (toDouble)

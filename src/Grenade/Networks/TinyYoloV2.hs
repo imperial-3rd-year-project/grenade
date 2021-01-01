@@ -16,37 +16,37 @@ import           Grenade.Layers
 import           Grenade.Onnx
 
 type TinyYoloV2 = Network
-  '[ PaddedConvolution ('D3 416 416 3) ('D3 416 416 16) 'WithBias 3 16 3 3 1 1 1 1 1 1
+  '[ Convolution 'WithBias 'SameUpper 3 16 3 3 1 1
    , LeakyRelu
    , Lift (LoadActivation (Pooling 2 2 2 2))
    
-   , PaddedConvolution ('D3 208 208 16) ('D3 208 208 32) 'WithBias 16 32 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 16 32 3 3 1 1
    , LeakyRelu
    , Lift (LoadActivation (Pooling 2 2 2 2))
 
-   , PaddedConvolution ('D3 104 104 32) ('D3 104 104 64) 'WithBias 32 64 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 32 64 3 3 1 1
    , LeakyRelu
    , Lift (LoadActivation (Pooling 2 2 2 2))
 
-   , PaddedConvolution ('D3 52 52 64) ('D3 52 52 128) 'WithBias 64 128 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 64 128 3 3 1 1
    , LeakyRelu
    , Lift (LoadActivation (Pooling 2 2 2 2))
 
-   , PaddedConvolution ('D3 26 26 128) ('D3 26 26 256) 'WithBias 128 256 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 128 256 3 3 1 1
    , LeakyRelu
    , Lift (LoadActivation (Pooling 2 2 2 2))
 
-   , PaddedConvolution ('D3 13 13 256) ('D3 13 13 512) 'WithBias 256 512 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 256 512 3 3 1 1
    , LeakyRelu
    , PaddedPooling ('D3 13 13 512) ('D3 13 13 512) 2 2 1 1 0 0 1 1
 
-   , PaddedConvolution ('D3 13 13 512) ('D3 13 13 1024) 'WithBias 512 1024 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 512 1024 3 3 1 1
    , LeakyRelu
 
-   , PaddedConvolution ('D3 13 13 1024) ('D3 13 13 1024) 'WithBias 1024 1024 3 3 1 1 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 1024 1024 3 3 1 1
    , LeakyRelu
 
-   , Convolution 'WithBias 1024 125 1 1 1 1
+   , Convolution 'WithBias 'SameUpper 1024 125 1 1 1 1
    ]
   '[ 'D3 416 416 3                   -- Input
    , 'D3 416 416 16, 'D3 416 416 16  -- PaddedConv1, LeakyRelu

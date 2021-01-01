@@ -66,21 +66,21 @@ benchBiasConvolution name channels width height filters strides kernels outWidth
       = case (someNatVal (fromIntegral channels), someNatVal (fromIntegral width), someNatVal (fromIntegral height), someNatVal (fromIntegral filters), someNatVal (fromIntegral strides), someNatVal (fromIntegral kernels), someNatVal (fromIntegral outWidth), someNatVal (fromIntegral outHeight)) of
           (Just (SomeNat (Proxy :: Proxy channels)), Just (SomeNat (Proxy :: Proxy width)), Just (SomeNat (Proxy :: Proxy height)), Just (SomeNat (Proxy :: Proxy filters)), Just (SomeNat (Proxy :: Proxy strides)), Just (SomeNat (Proxy :: Proxy kernels)), Just (SomeNat (Proxy :: Proxy outWidth)), Just (SomeNat (Proxy :: Proxy outHeight))) ->
             case (channels, width, height
-                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strides * (outHeight - 1) <= (height - kernels + 1) - 1 ) )
-                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (height - kernels + 1) <= (outHeight * strides) ) )
-                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strides * (outWidth - 1) <= (width - kernels + 1) - 1 ) )
-                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (width - kernels + 1) <= (outWidth * strides) ) ) ) of
+                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strides * (outHeight - 1) <= (height - kernels) ) )
+                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (height - kernels) <= (outHeight * strides) - 1 ) )
+                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strides * (outWidth - 1) <= (width - kernels ) ) )
+                 , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (width - kernels) <= (outWidth * strides) - 1 ) ) ) of
               (1, 1, _, _, _, _, _)
                 -> error "1D convolutions are not allowed"
               (1, _, _, Dict, Dict, Dict, Dict)
-                -> env (generateBiasConvEnv :: IO (Convolution 'WithBias 1 filters kernels kernels strides strides, S ('D2 height width))) $ \ ~(layer, x) -> bench name $ nf (snd . runForwards layer :: S ('D2 height width) -> S ('D3 outHeight outWidth filters )) x
+                -> env (generateBiasConvEnv :: IO (Convolution 'WithBias 'NoPadding 1 filters kernels kernels strides strides, S ('D2 height width))) $ \ ~(layer, x) -> bench name $ nf (snd . runForwards layer :: S ('D2 height width) -> S ('D3 outHeight outWidth filters )) x
               (_, _, _, Dict, Dict, Dict, Dict)
-                -> env (generateBiasConvEnv :: IO (Convolution 'WithBias channels filters kernels kernels strides strides, S ('D3 height width channels))) $ \ ~(layer, x) -> bench name $ nf (snd . runForwards layer :: S ('D3 height width channels) -> S ('D3 outHeight outWidth filters)) x
+                -> env (generateBiasConvEnv :: IO (Convolution 'WithBias 'NoPadding channels filters kernels kernels strides strides, S ('D3 height width channels))) $ \ ~(layer, x) -> bench name $ nf (snd . runForwards layer :: S ('D3 height width channels) -> S ('D3 outHeight outWidth filters)) x
   where
     generateBiasConvEnv :: forall channels filters kernel1 kernel2 strides1 strides2 s.
                             ( SingI s, KnownNat channels, KnownNat filters, KnownNat kernel1, KnownNat kernel2,
                               KnownNat strides1, KnownNat strides2 )
-                            => IO (Convolution 'WithBias channels filters kernel1 kernel2 strides1 strides2, S s)
+                            => IO (Convolution 'WithBias 'NoPadding channels filters kernel1 kernel2 strides1 strides2, S s)
     generateBiasConvEnv = do
       x     <- randomOfShape
       gen   <- createSystemRandom

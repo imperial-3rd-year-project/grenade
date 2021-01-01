@@ -44,7 +44,7 @@ prop_poolForwards_poolBackwards_behaves_as_reference =
         retFast === retReference
 
 prop_same_pad_pool_behaves_as_reference_when_zero_pad =
-  let output extent kernel stride = (extent - kernel) `div` stride + 1
+  let output extent kernel_dim stride = (extent - kernel_dim) `div` stride + 1
       kernel i s = let x = ceiling (fromIntegral i / fromIntegral s) in i - (x - 1) * s
   in  property $ do
         height   <- forAll $ choose 2 100

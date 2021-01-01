@@ -1,34 +1,39 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 module Test.Grenade.Layers.Convolution where
-
 import           Data.Constraint
 import           Data.Proxy
 import           Data.Singletons
-import           Data.Singletons.Prelude.Num ((%*))
+import           Data.Singletons.Prelude.Num            ((%*))
 import           GHC.TypeLits
-import qualified Numeric.LinearAlgebra.Static   as H
+import qualified Numeric.LinearAlgebra.Static           as H
 import           Unsafe.Coerce
 
 #if MIN_VERSION_singletons(2,6,0)
-import           Data.Singletons.TypeLits    (SNat (..))
+import           Data.Singletons.TypeLits               (SNat (..))
 #endif
 
-
+import qualified Test.Grenade.Layers.Internal.Reference as Reference
 #if MIN_VERSION_base(4,9,0)
-import           Data.Kind                   (Type)
+import           Data.Kind                              (Type)
 #endif
 
 
 import           Hedgehog
-import qualified Hedgehog.Gen                as Gen
+import qualified Hedgehog.Gen                           as Gen
 
 import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
@@ -40,10 +45,16 @@ import           Grenade.Utils.ListStore
 
 
 data OpaqueConvolution :: Type where
-     OpaqueConvolution :: Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns -> OpaqueConvolution
+     OpaqueConvolution :: Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns -> OpaqueConvolution
 
 instance Show OpaqueConvolution where
     show (OpaqueConvolution n) = show n
+
+data OpaqueBiasConvolution :: Type where
+     OpaqueBiasConvolution :: Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns -> OpaqueBiasConvolution
+
+instance Show OpaqueBiasConvolution where
+    show (OpaqueBiasConvolution n) = show n
 
 genConvolution :: ( KnownNat channels
                   , KnownNat filters
@@ -53,11 +64,22 @@ genConvolution :: ( KnownNat channels
                   , KnownNat strideColumns
                   , KnownNat kernelFlattened
                   , kernelFlattened ~ (kernelRows * kernelColumns * channels)
-                  ) => Gen (Convolution 'WithoutBias channels filters kernelRows kernelColumns strideRows strideColumns)
+                  ) => Gen (Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns)
 genConvolution = Convolution <$> uniformSample <*> pure mkListStore
 
-genOpaqueOpaqueConvolution :: Gen OpaqueConvolution
-genOpaqueOpaqueConvolution = do
+genBiasConvolution :: ( KnownNat channels
+                      , KnownNat filters
+                      , KnownNat kernelRows
+                      , KnownNat kernelColumns
+                      , KnownNat strideRows
+                      , KnownNat strideColumns
+                      , KnownNat kernelFlattened
+                      , kernelFlattened ~ (kernelRows * kernelColumns * channels)
+                      ) => Gen (Convolution 'WithBias padding channels filters kernelRows kernelColumns strideRows strideColumns)
+genBiasConvolution = BiasConvolution <$> uniformSample <*> randomVector <*> pure mkListStore
+
+genOpaqueConvolution :: Gen OpaqueConvolution
+genOpaqueConvolution = do
     channels <- genNat
     filters  <- genNat
     kernel_h <- genNat
@@ -72,43 +94,403 @@ genOpaqueOpaqueConvolution = do
               p2 = singByProxy pkc
               p3 = singByProxy pch
           in  case p1 %* p2 %* p3 of
-            SNat -> OpaqueConvolution <$> (genConvolution :: Gen (Convolution 'WithoutBias ch fl kr kc sr sc))
+            SNat -> OpaqueConvolution <$> (genConvolution :: Gen (Convolution 'WithoutBias padding ch fl kr kc sr sc))
 
-prop_conv_net_witness = property $
-  blindForAll genOpaqueOpaqueConvolution >>= \(OpaqueConvolution ((Convolution _ _) :: Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols)) -> success
+genOpaqueBiasConvolution :: Gen OpaqueBiasConvolution
+genOpaqueBiasConvolution = do
+    channels <- genNat
+    filters  <- genNat
+    kernel_h <- genNat
+    kernel_w <- genNat
+    stride_h <- genNat
+    stride_w <- genNat
+    case (channels, filters, kernel_h, kernel_w, stride_h, stride_w) of
+       ( SomeNat (pch :: Proxy ch), SomeNat  (_   :: Proxy fl),
+         SomeNat (pkr :: Proxy kr), SomeNat  (pkc :: Proxy kc),
+         SomeNat (_   :: Proxy sr), SomeNat  (_   :: Proxy sc)) ->
+          let p1 = singByProxy pkr
+              p2 = singByProxy pkc
+              p3 = singByProxy pch
+          in  case p1 %* p2 %* p3 of
+            SNat -> OpaqueBiasConvolution <$> (genBiasConvolution :: Gen (Convolution 'WithBias padding ch fl kr kc sr sc))
 
+prop_conv_no_padding_forward_and_backward_correct :: Property
+prop_conv_no_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueConvolution (convLayer'@(Convolution kernels _) :: Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueConvolution
 
-prop_conv_net = property $
-  blindForAll genOpaqueOpaqueConvolution >>= \(OpaqueConvolution (convLayer@(Convolution _ _) :: Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols)) ->
-          let ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
-              kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
-              kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
-              sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
-              sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithoutBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
 
-          in  forAll (Gen.element (ok sr kr)) >>= \er ->
-                  forAll (Gen.element (ok sc kc)) >>= \ec ->
-                      let rr = ((er - kr) `div` sr) + 1
-                          rc = ((ec - kc) `div` sc) + 1
-                          Just er' = someNatVal er
-                          Just ec' = someNatVal ec
-                          Just rr' = someNatVal rr
-                          Just rc' = someNatVal rc
-                      in case (er', ec', rr', rc') of
-                            ( SomeNat (pinr :: Proxy inRows), SomeNat (_  :: Proxy inCols), SomeNat (pour :: Proxy outRows), SomeNat (_ :: Proxy outCols)) ->
-                              case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
-                                   , singByProxy pour %* singByProxy (Proxy :: Proxy filters)
-                                   -- Fake it till you make it.
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 1) - 1 ) )
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 1) <= (outRows * strideRows) ) )
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 1) - 1 ) )
-                                        , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 1) <= (outCols * strideCols) ) ) ) of
-                                (SNat, SNat, Dict, Dict, Dict, Dict) ->
-                                    blindForAll (S3D <$> uniformSample) >>= \(input :: S ('D3 inRows inCols channels)) ->
-                                        let (tape, output :: S ('D3 outRows outCols filters)) = runForwards convLayer input
-                                            backed :: (Gradient (Convolution 'WithoutBias channels filters kernelRows kernelCols strideRows strideCols), S ('D3 inRows inCols channels))
-                                                                                              = runBackwards convLayer tape output
-                                        in  backed `seq` success
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  -- calculate output size
+  let rr = ((er - kr) `div` sr) + 1
+      rc = ((ec - kc) `div` sc) + 1
+
+  case (someNatVal er, someNatVal ec, someNatVal rr, someNatVal rc) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)), Just (SomeNat (pour :: Proxy outRows)), Just (SomeNat (_ :: Proxy outCols))) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pour %* singByProxy (Proxy :: Proxy filters)
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 0) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 0) <= (outRows * strideRows ) - 1 ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 0) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 0) <= (outCols * strideCols ) - 1 ) ) ) of
+                    (SNat, SNat, Dict, Dict, Dict, Dict) -> do
+                      input :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 outRows outCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.convForwards input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc)
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (Convolution' dW, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw) = Reference.convBackProp input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc)
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+
+prop_conv_same_upper_padding_forward_and_backward_correct :: Property
+prop_conv_same_upper_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueConvolution (convLayer'@(Convolution kernels _) :: Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueConvolution
+
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithoutBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  annotate $ show (kr, kc, sr, sc, fs, cs)
+
+  -- calculate padding size
+  let pw = fromIntegral $ (ec - 1) * sc + kc - ec
+      ph = fromIntegral $ (er - 1) * sr + kr - er
+      padt = div ph 2
+      padl = div pw 2
+      padb = ph - padt
+      padr = pw - padl
+
+  case (someNatVal er, someNatVal ec) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pinr %* singByProxy (Proxy :: Proxy filters) ) of
+                    (SNat, SNat) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 inRows inCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.convForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (Convolution' dW, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw)   = Reference.convBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+
+prop_conv_same_lower_padding_forward_and_backward_correct :: Property
+prop_conv_same_lower_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueConvolution (convLayer'@(Convolution kernels _) :: Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueConvolution
+
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithoutBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  annotate $ show (kr, kc, sr, sc, fs, cs)
+
+  -- calculate padding size
+  let pw = fromIntegral $ (ec - 1) * sc + kc - ec
+      ph = fromIntegral $ (er - 1) * sr + kr - er
+      padb = div ph 2
+      padr = div pw 2
+      padt = ph - padb
+      padl = pw - padr
+
+  case (someNatVal er, someNatVal ec) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pinr %* singByProxy (Proxy :: Proxy filters) ) of
+                    (SNat, SNat) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 inRows inCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.convForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (Convolution' dW, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw)   = Reference.convBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+
+prop_conv_explicit_padding_forward_and_backward_correct :: Property
+prop_conv_explicit_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueConvolution (convLayer'@(Convolution kernels _) :: Convolution 'WithoutBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueConvolution
+
+  let ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  padl <- forAll $ choose 0 kc
+  padt <- forAll $ choose 0 kr
+  padr <- forAll $ choose 0 kc
+  padb <- forAll $ choose 0 kr
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  let rr = ((padt + er + padb - kr) `div` sr) + 1
+      rc = ((padl + ec + padr - kc) `div` sc) + 1
+
+  case (someNatVal er, someNatVal ec, someNatVal rr, someNatVal rc, someNatVal padl, someNatVal padt, someNatVal padr, someNatVal padb) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)), Just (SomeNat (poutr :: Proxy outRows)), Just (SomeNat (_  :: Proxy outCols)), Just (SomeNat (_  :: Proxy padl)), Just (SomeNat (_  :: Proxy padt)), Just (SomeNat (_  :: Proxy padr)), Just (SomeNat (_  :: Proxy padb)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy poutr %* singByProxy (Proxy :: Proxy filters)
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + (padt + padb)) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + (padt + padb)) <= (outRows * strideRows ) - 1 ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + (padl + padr)) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + (padl + padr)) <= (outCols * strideCols ) - 1 ) ) ) of
+                    (SNat, SNat, Dict, Dict, Dict, Dict) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let convLayer = unsafeCoerce convLayer' :: Convolution 'WithoutBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols
+
+                      let (tape, out@(S3D out') :: S ('D3 outRows outCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.convForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc) (fromIntegral padl) (fromIntegral padt) (fromIntegral padr) (fromIntegral padb)
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (Convolution' dW, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw)   = Reference.convBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc) (fromIntegral padl) (fromIntegral padt) (fromIntegral padr) (fromIntegral padb)
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+
+prop_bias_conv_no_padding_forward_and_backward_correct :: Property
+prop_bias_conv_no_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueBiasConvolution (convLayer'@(BiasConvolution kernels bias _) :: Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueBiasConvolution
+
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithBias 'NoPadding channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  -- calculate output size
+  let rr = ((er - kr) `div` sr) + 1
+      rc = ((ec - kc) `div` sc) + 1
+
+  case (someNatVal er, someNatVal ec, someNatVal rr, someNatVal rc) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)), Just (SomeNat (pour :: Proxy outRows)), Just (SomeNat (_ :: Proxy outCols))) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pour %* singByProxy (Proxy :: Proxy filters)
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + 0) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + 0) <= (outRows * strideRows ) - 1 ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + 0) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + 0) <= (outCols * strideCols ) - 1 ) ) ) of
+                    (SNat, SNat, Dict, Dict, Dict, Dict) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 outRows outCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.biasConvForwards input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (H.extract bias) (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc)
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (BiasConvolution' dW db, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw, refdb) = Reference.biasConvBackProp (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc)
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+                      H.extract db `isSimilarVectorTo` refdb
+
+prop_bias_conv_same_upper_forward_and_backward_correct :: Property
+prop_bias_conv_same_upper_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueBiasConvolution (convLayer'@(BiasConvolution kernels bias _) :: Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueBiasConvolution
+
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithBias 'SameUpper channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  -- calculate padding size
+  let pw = fromIntegral $ (ec - 1) * sc + kc - ec
+      ph = fromIntegral $ (er - 1) * sr + kr - er
+      padt = div ph 2
+      padl = div pw 2
+      padb = ph - padt
+      padr = pw - padl
+
+  case (someNatVal er, someNatVal ec) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pinr %* singByProxy (Proxy :: Proxy filters) ) of
+                    (SNat, SNat) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 inRows inCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.biasConvForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (H.extract bias) (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (BiasConvolution' dW db, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw, refdb) = Reference.biasConvBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+                      H.extract db `isSimilarVectorTo` refdb
+
+prop_bias_conv_same_lower_forward_and_backward_correct :: Property
+prop_bias_conv_same_lower_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueBiasConvolution (convLayer'@(BiasConvolution kernels bias _) :: Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueBiasConvolution
+
+  let convLayer = unsafeCoerce convLayer' :: Convolution 'WithBias 'SameLower channels filters kernelRows kernelCols strideRows strideCols
+      ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  -- calculate padding size
+  let pw = fromIntegral $ (ec - 1) * sc + kc - ec
+      ph = fromIntegral $ (er - 1) * sr + kr - er
+      padb = div ph 2
+      padr = div pw 2
+      padt = ph - padb
+      padl = pw - padr
+
+  case (someNatVal er, someNatVal ec) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy pinr %* singByProxy (Proxy :: Proxy filters) ) of
+                    (SNat, SNat) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let (tape, out@(S3D out') :: S ('D3 inRows inCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.biasConvForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (H.extract bias) (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (BiasConvolution' dW db, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw, refdb) = Reference.biasConvBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral er) (fromIntegral ec) (fromIntegral sr) (fromIntegral sc) padl padt padr padb
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+                      H.extract db `isSimilarVectorTo` refdb
+
+prop_bias_conv_explicit_padding_forward_and_backward_correct :: Property
+prop_bias_conv_explicit_padding_forward_and_backward_correct = withTests 20 $ property $ do
+  OpaqueBiasConvolution (convLayer'@(BiasConvolution kernels bias _) :: Convolution 'WithBias padding channels filters kernelRows kernelCols strideRows strideCols) <- forAll genOpaqueBiasConvolution
+
+  let ok stride kernel = [extent | extent <- [(kernel + 1) .. 30 ], (extent - kernel) `mod` stride == 0]
+      kr = fromIntegral $ natVal (Proxy :: Proxy kernelRows)
+      kc = fromIntegral $ natVal (Proxy :: Proxy kernelCols)
+      sr = fromIntegral $ natVal (Proxy :: Proxy strideRows)
+      sc = fromIntegral $ natVal (Proxy :: Proxy strideCols)
+      fs = fromIntegral $ natVal (Proxy :: Proxy filters   ) :: Int
+      cs = fromIntegral $ natVal (Proxy :: Proxy channels  ) :: Int
+
+  padl <- forAll $ choose 0 kc
+  padt <- forAll $ choose 0 kr
+  padr <- forAll $ choose 0 kc
+  padb <- forAll $ choose 0 kr
+
+  -- generate input size
+  er <- forAll (Gen.element (ok sr kr))
+  ec <- forAll (Gen.element (ok sc kc))
+
+  let rr = ((padt + er + padb - kr) `div` sr) + 1
+      rc = ((padl + ec + padr - kc) `div` sc) + 1
+
+  case (someNatVal er, someNatVal ec, someNatVal rr, someNatVal rc, someNatVal padl, someNatVal padt, someNatVal padr, someNatVal padb) of
+      ( Just (SomeNat (pinr :: Proxy inRows)), Just (SomeNat (_  :: Proxy inCols)), Just (SomeNat (poutr :: Proxy outRows)), Just (SomeNat (_  :: Proxy outCols)), Just (SomeNat (_  :: Proxy padl)), Just (SomeNat (_  :: Proxy padt)), Just (SomeNat (_  :: Proxy padr)), Just (SomeNat (_  :: Proxy padb)) ) ->
+        case ( singByProxy pinr %* singByProxy (Proxy :: Proxy channels)
+             , singByProxy poutr %* singByProxy (Proxy :: Proxy filters)
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideRows * (outRows - 1) <= (inRows - kernelRows + (padt + padb)) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inRows - kernelRows + (padt + padb)) <= (outRows * strideRows ) - 1 ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( strideCols * (outCols - 1) <= (inCols - kernelCols + (padl + padr)) ) )
+             , (unsafeCoerce (Dict :: Dict ()) :: Dict ( (inCols - kernelCols + (padl + padr)) <= (outCols * strideCols ) - 1 ) ) ) of
+                    (SNat, SNat, Dict, Dict, Dict, Dict) -> do
+                      input@(S3D inp') :: S ('D3 inRows inCols channels) <- forAll (S3D <$> uniformSample)
+
+                      let convLayer = unsafeCoerce convLayer' :: Convolution 'WithBias ('Padding padl padt padr padb) channels filters kernelRows kernelCols strideRows strideCols
+
+                      let (tape, out@(S3D out') :: S ('D3 outRows outCols filters)) = runForwards convLayer input
+                          input'   = (\(S3D x) -> H.extract x) input
+                          refOut   = Reference.biasConvForwardsWithPadding input' cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) (H.extract bias) (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc) (fromIntegral padl) (fromIntegral padt) (fromIntegral padr) (fromIntegral padb)
+
+                      H.extract out' `isSimilarMatrixTo` refOut
+
+                      let (BiasConvolution' dW db, S3D dx :: S ('D3 inRows inCols channels))
+                            = runBackwards convLayer tape out
+                          (refdx, refdw, refdb)   = Reference.biasConvBackPropWithPadding (H.extract inp') cs (fromIntegral er) (fromIntegral ec) (H.extract kernels) fs (fromIntegral kr) (fromIntegral kc) refOut (fromIntegral rr) (fromIntegral rc) (fromIntegral sr) (fromIntegral sc) (fromIntegral padl) (fromIntegral padt) (fromIntegral padr) (fromIntegral padb)
+
+                      H.extract dx `isSimilarMatrixTo` refdx
+                      H.extract dW `isSimilarMatrixTo` refdw
+                      H.extract db `isSimilarVectorTo` refdb
 
 prop_bias_convolution_same_as_torch :: Property
 prop_bias_convolution_same_as_torch = withTests 1 $ property $ assert $ allClose output refOutput
@@ -116,7 +498,7 @@ prop_bias_convolution_same_as_torch = withTests 1 $ property $ assert $ allClose
     refOutput = S3D . H.fromList . concat . concat $ outputList :: S ('D3 4 4 3)
     output    = snd $ runForwards layer input :: S ('D3 4 4 3)
 
-    layer   = BiasConvolution filters bias mkListStore :: Convolution 'WithBias 1 3 4 4 2 2
+    layer   = BiasConvolution filters bias mkListStore :: Convolution 'WithBias 'NoPadding 1 3 4 4 2 2
     filters = H.tr . H.fromList . concat . concat $ filtersList
     bias    = H.fromList biasList
     input   = S2D . H.fromList . concat $ inputList :: S ('D2 10 10)

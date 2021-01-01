@@ -139,7 +139,7 @@ library:
     -fwarn-tabs
   when:
     - condition: impl(ghc < 8.0)
-      ghc-options:       -fno-warn-incomplete-patterns
+      ghc-options:       -fno-warn-incomplete-patterns -fno-warn-unrecognised-pragmas
       cpp-options:       -DType=*
 
     - condition: impl(ghc >= 8.6)

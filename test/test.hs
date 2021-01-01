@@ -25,8 +25,11 @@ import qualified Test.Grenade.Recurrent.Layers.LSTM
 import           System.Exit
 import           System.IO
 
+import Hedgehog
+
 main :: IO ()
-main = disorderMain [
+main 
+  = disorderMain [
       Test.Grenade.Network.tests
     , Test.Grenade.Loss.tests
     , Test.Grenade.Batch.tests

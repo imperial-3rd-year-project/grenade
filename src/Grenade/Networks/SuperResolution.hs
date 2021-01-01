@@ -20,13 +20,13 @@ import           Grenade.Onnx.OnnxLoadFailure
 
 type SuperResolution
   = Network
-     '[ PaddedConvolution ('D3 224 224 1) ('D3 224 224 64) 'WithBias 1 64 5 5 1 1 2 2 2 2 
+     '[ Convolution 'WithBias ('Padding 2 2 2 2) 1 64 5 5 1 1
       , Lift (LoadActivation Relu)
-      , PaddedConvolution ('D3 224 224 64) ('D3 224 224 64) 'WithBias 64 64 3 3 1 1 1 1 1 1 
+      , Convolution 'WithBias ('Padding 1 1 1 1) 64 64 3 3 1 1
       , Lift (LoadActivation Relu)
-      , PaddedConvolution ('D3 224 224 64) ('D3 224 224 32) 'WithBias 64 32 3 3 1 1 1 1 1 1 
+      , Convolution 'WithBias ('Padding 1 1 1 1) 64 32 3 3 1 1
       , Lift (LoadActivation Relu)
-      , PaddedConvolution ('D3 224 224 32) ('D3 224 224 9) 'WithBias 32 9 3 3 1 1 1 1 1 1 
+      , Convolution 'WithBias ('Padding 1 1 1 1) 32 9 3 3 1 1
       , Lift (LoadActivation Reshape) 
       , Transpose 4 ('D4 3 3 224 224) ('D4 224 3 224 3)
       , Lift (LoadActivation Reshape)

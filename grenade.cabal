@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e5b5c6a1507e8f17e481c07c144832bd93b90602ffdd394e2be89b95f95d2f41
+-- hash: 19ca9effdfecbf86f15bd9bc6c9c59c59c5ab07111138b42295abf5f0e23f92f
 
 name:           grenade
 version:        0.1.1
@@ -106,6 +106,7 @@ library
       Grenade.Layers.Internal.Add
       Grenade.Layers.Internal.BatchNorm
       Grenade.Layers.Internal.Convolution
+      Grenade.Layers.Internal.Hmatrix
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
       Grenade.Layers.Internal.Shrink
@@ -117,7 +118,6 @@ library
       Grenade.Layers.Merge
       Grenade.Layers.Mul
       Grenade.Layers.Pad
-      Grenade.Layers.PaddedConvolution
       Grenade.Layers.PaddedPooling
       Grenade.Layers.Pooling
       Grenade.Layers.Relu
@@ -229,7 +229,7 @@ library
     build-depends:
         hmatrix >=0.18 && <0.21
   if impl(ghc < 8.0)
-    ghc-options: -fno-warn-incomplete-patterns
+    ghc-options: -fno-warn-incomplete-patterns -fno-warn-unrecognised-pragmas
     cpp-options: -DType=*
   if impl(ghc >= 8.6)
     default-extensions: NoStarIsType
