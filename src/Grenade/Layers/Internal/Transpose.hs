@@ -10,15 +10,14 @@ import           Foreign                     (mallocForeignPtrArray,
                                               withForeignPtr)
 import           Foreign.C.Types             (CInt)
 import           Foreign.Ptr                 (Ptr)
-import           Numeric.LinearAlgebra       (Matrix, Vector, cmap, flatten,
-                                              vector)
+import           Numeric.LinearAlgebra       (Matrix, Vector, cmap, flatten)
 import qualified Numeric.LinearAlgebra.Data  as D
 import qualified Numeric.LinearAlgebra.Devel as U
 import           System.IO.Unsafe            (unsafePerformIO)
 
 import           Grenade.Types
 
-transpose4d :: [Int] -> Vector Double -> Matrix RealNum -> Matrix RealNum
+transpose4d :: [Int] -> Vector RealNum -> Matrix RealNum -> Matrix RealNum
 transpose4d dims@[n, c, h, w] permsV m
   = let outMatSize = n * c * h * w
         outW       = dims !! (round $ permsV D.! 3)

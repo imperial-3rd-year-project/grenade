@@ -9,28 +9,34 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Test.Grenade.Layers.FullyConnected where
 
+import           System.Random.MWC             (create)
+
 import           Data.Constraint               (Dict (..))
 import           Data.Proxy
 import           Data.Singletons               ()
+import           Data.Kind                     (Type)
+import           Data.Serialize
+import           Data.Either
+
 import           GHC.TypeLits
 import           Unsafe.Coerce                 (unsafeCoerce)
-import           Data.Kind                     (Type)
+
+
 import           Hedgehog
-import qualified Hedgehog.Gen                as Gen
 import qualified Hedgehog.Range              as Range
+
 import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
 import           Test.Utils.Rnf
 import           Test.Grenade.Layers.Internal.Reference
-import           Grenade.Core.Optimizer
-import           System.Random.MWC             (create)
+
+
 import qualified Numeric.LinearAlgebra.Data   as D
 import           Numeric.LinearAlgebra.Static (R)
 import qualified Numeric.LinearAlgebra.Static as H
-import           Data.Serialize
-import           Data.Either
 
 import           Grenade.Core
+import           Grenade.Core.Optimizer
 import           Grenade.Layers.FullyConnected
 import           Grenade.Utils.ListStore
 
@@ -64,14 +70,15 @@ prop_fully_connected_run_forwards_backwards = property $ do
   input <- forAll randomVector
   let (ntape, nout)  = naiveFullyConnectedRunForwards w b input
       (nnw, nnb, nd) = naiveFullyConnectedBackprop w (ntape, nout)
-      (tape, out :: S ('D1 o)) = runForwards fc (S1D input)
-      (grad, d   :: S ('D1 i)) = runBackwards fc tape out
+      (tape, S1D out :: S ('D1 o)) = runForwards fc (S1D input)
+      (grad, S1D d   :: S ('D1 i)) = runBackwards fc tape (S1D out)
       FullyConnected' nb nw = grad
-  assert $ allClose out        (S1D nout)
-  assert $ allClose d          (S1D nd)
-  assert $ allClose (S2D nw)   (S2D nnw)
-  assert $ allClose (S1D nb)   (S1D nnb)
-  assert $ allClose (S1D tape) (S1D ntape)
+
+  H.extract out  `isSimilarVectorTo` H.extract nout
+  H.extract d    `isSimilarVectorTo` H.extract nd
+  H.extract nw   `isSimilarMatrixTo` H.extract nnw
+  H.extract nb   `isSimilarVectorTo` H.extract nnb
+  H.extract tape `isSimilarVectorTo` H.extract ntape
 
 prop_fully_connected_rnf :: Property
 prop_fully_connected_rnf = property $ do
@@ -162,7 +169,7 @@ prop_fully_connected_update = withTests 1 $ property $ do
 prop_fully_connected_foldable_gradient :: Property
 prop_fully_connected_foldable_gradient = property $ do
   OpaqueFullyConnected (fc :: FullyConnected i o) <- blindForAll genOpaqueFullyConnected
-  m <- forAll $ Gen.double (Range.constant 0 0.9)
+  m <- forAll $ genRealNum (Range.constant 0 0.9)
   let FullyConnected fc'@(FullyConnected' b w) _ = fc
       FullyConnected' b' w' = mapGradient (*m) fc'
       bl  = D.toList $ H.extract b
@@ -171,10 +178,14 @@ prop_fully_connected_foldable_gradient = property $ do
       wl' = concat $ D.toLists $ H.extract w'
       [sb, sw] = squaredSums fc'
       ssum =  sum . map (** 2)
-  assert $ allCloseL (map (*m) bl) bl'
-  assert $ allCloseL (map (*m) wl) wl'
-  assert $ (<= 0.001) $ abs $ (ssum bl) - sb
-  assert $ (<= 0.001) $ abs $ (ssum wl) - sw
+    
+  (map (*m) bl) `isSimilarListTo` bl'
+  (map (*m) wl) `isSimilarListTo` wl'
+
+  ssum bl `isWithinPrecisionOf` sb
+  ssum wl `isWithinPrecisionOf` sw
+  where 
+    isWithinPrecisionOf = isWithinOf 0.001
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

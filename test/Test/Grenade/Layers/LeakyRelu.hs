@@ -25,7 +25,6 @@ import           Numeric.LinearAlgebra.Static (L)
 import qualified Numeric.LinearAlgebra.Static as H
 
 import           Hedgehog
-import qualified Hedgehog.Gen                 as Gen
 import qualified Hedgehog.Range               as Range
 
 import           Test.Hedgehog.Compat
@@ -33,7 +32,7 @@ import           Test.Hedgehog.Hmatrix
 
 prop_leaky_relu_correct_on_one_element = property $ do
   input :: S ('D1 1) <- forAll genOfShape
-  alpha              <- forAll $ Gen.double (Range.constant 0 0.9)
+  alpha              <- forAll $ genRealNum (Range.constant 0 0.9)
 
   let layer   = LeakyRelu alpha :: LeakyRelu
       S1D out = snd $ runForwards layer input :: S ('D1 1)
@@ -45,7 +44,7 @@ prop_leaky_relu_correct_on_3D_array = property $ do
   height   :: Int <- forAll $ choose 2 100
   width    :: Int <- forAll $ choose 2 100
   channels :: Int <- forAll $ choose 2 100
-  alpha           <- forAll $ Gen.double (Range.constant 0 0.9)
+  alpha           <- forAll $ genRealNum (Range.constant 0 0.9)
 
   case (someNatVal (fromIntegral height), someNatVal (fromIntegral width), someNatVal (fromIntegral channels)) of
     (Just (SomeNat (Proxy :: Proxy h)), Just (SomeNat (Proxy :: Proxy w)), Just (SomeNat (Proxy :: Proxy c))) -> do

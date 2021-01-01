@@ -28,7 +28,7 @@ loadTinyYoloImage path = do
   displayImage img
   return $ do
     guard $ dims img == (416, 416)
-    let [reds, greens, blues] = map (fromList . map (\(PixelX y) -> y) . concat . toLists)
+    let [reds, greens, blues] = map (fromList . map (\(PixelX y) -> doubleToRealNum y) . concat . toLists)
                               $ toImagesX img :: [L 416 416]
     return $ S3D $ reds === greens === blues
 
@@ -44,3 +44,4 @@ main = do
         print $ processOutput (runNet net img) 0.3
 
       (Left err, _) -> print err
+      _             -> print "Error loading image"

@@ -63,8 +63,8 @@ foreign import ccall unsafe
 validPadPoolForwards :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 validPadPoolForwards channels height width kernelRows kernelColumns strideRows strideCols padLeft padTop padRight padBottom dataIm
   = let vec     = flatten dataIm
-        outRows = ceiling $ fromIntegral height / fromIntegral strideRows
-        outCols = ceiling $ fromIntegral width / fromIntegral strideCols  -- todo: this is calculated both here and in C
+        outRows = ceiling $ (fromIntegral height :: RealNum) / (fromIntegral strideRows :: RealNum)
+        outCols = ceiling $ (fromIntegral width  :: RealNum) / (fromIntegral strideCols :: RealNum)  -- todo: this is calculated both here and in C
     in unsafePerformIO $ do
       outPtr <- mallocForeignPtrArray (outRows * outCols * channels)
       let (inPtr, _) = U.unsafeToForeignPtr0 vec

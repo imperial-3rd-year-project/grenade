@@ -11,9 +11,7 @@
 module Test.Grenade.Recurrent.Layers.LSTM where
 
 import           Data.Foldable                                (toList)
-import           Data.Proxy                                   (Proxy (..))
 import           Data.Singletons.TypeLits
-import           Data.Typeable                                (typeRep)
 import           Grenade
 import           Grenade.Recurrent
 import           Hedgehog
@@ -26,6 +24,7 @@ import qualified Numeric.LinearAlgebra.Static                 as S
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM.Reference as Reference
 import           Test.Hedgehog.Hmatrix
+import           Test.Hedgehog.Compat
 
 genLSTM :: forall i o. (KnownNat i, KnownNat o) => Gen (LSTM i o)
 genLSTM = do
@@ -123,8 +122,6 @@ prop_lstm_reference_backwards_cell =
       Just differ ->
         withFrozenCallStack $
           failWith (Just $ Diff "Failed (" "- lhs" "~/~" "+ rhs" ")" differ) ""
-  where precision | nameF == show (typeRep (Proxy :: Proxy Float)) = 1e-2
-                  | otherwise = 1e-8
 
 infix 4 ~~~
 

@@ -46,10 +46,10 @@ import           Grenade.Core.Shape
 import           Grenade.Types
 
 sumV :: (KnownNat n) => R n -> RealNum
-sumV v = fromDoubleToRealNum $ v H.<.> 1
+sumV v = v H.<.> 1
 
 sumM :: (KnownNat m, KnownNat n) => L m n -> RealNum
-sumM m = fromDoubleToRealNum $ (m H.#> 1) H.<.> 1
+sumM m = (m H.#> 1) H.<.> 1
 
 squareV :: (KnownNat n) => R n -> R n
 squareV = H.dvmap (^ (2 :: Int))
@@ -106,7 +106,7 @@ batchNormVariance :: forall n. KnownNat n => [R n] -> RealNum
 batchNormVariance vs 
   = let mu  = batchNormMean vs
         hw  = fromIntegral $ natVal (Proxy :: Proxy n)
-        vs' = map (sumElements . H.extract . H.dvmap (\a -> (a - mu) ^ 2)) vs :: [RealNum] 
+        vs' = map (sumElements . H.extract . H.dvmap (\a -> (a - mu) ^ (2 :: Int))) vs :: [RealNum] 
         n   = fromIntegral $ length vs 
     in  sum vs' / (hw * n)
 

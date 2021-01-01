@@ -36,9 +36,9 @@ import           Grenade.Utils.Symbols
 import           Data.ProtoLens.Labels ()
 
 data LRN :: Symbol -> Symbol -> Symbol -> Nat -> Type where
-  LRN :: ( KnownSymbol a, ValidDouble a
-         , KnownSymbol b, ValidDouble b
-         , KnownSymbol k, ValidDouble k
+  LRN :: ( KnownSymbol a, ValidRealNum a
+         , KnownSymbol b, ValidRealNum b
+         , KnownSymbol k, ValidRealNum k
          , KnownNat n
          ) => LRN a b k n
 
@@ -58,16 +58,16 @@ instance UpdateLayer (LRN a b k n) where
   runUpdate _ x _ = x
   reduceGradient _ = ()
 
-instance ( KnownSymbol a, ValidDouble a
-         , KnownSymbol b, ValidDouble b
-         , KnownSymbol k, ValidDouble k
+instance ( KnownSymbol a, ValidRealNum a
+         , KnownSymbol b, ValidRealNum b
+         , KnownSymbol k, ValidRealNum k
          , KnownNat n
          ) => RandomLayer (LRN a b k n) where
   createRandomWith _ _ = return LRN 
 
-instance ( KnownSymbol a, ValidDouble a
-         , KnownSymbol b, ValidDouble b
-         , KnownSymbol k, ValidDouble k
+instance ( KnownSymbol a, ValidRealNum a
+         , KnownSymbol b, ValidRealNum b
+         , KnownSymbol k, ValidRealNum k
          , KnownNat n
          ) => Serialize (LRN a b k n) where
   put _ = return ()
@@ -91,14 +91,14 @@ instance ( KnownNat inputRows
       rows     = fromIntegral $ natVal (Proxy :: Proxy inputRows) :: Int
 
       n  = natVal (Proxy :: Proxy n)
-      a  = (read $ symbolVal (Proxy :: Proxy a)) :: Double
-      b  = (read $ symbolVal (Proxy :: Proxy b)) :: Double
-      k  = (read $ symbolVal (Proxy :: Proxy k)) :: Double
+      a  = (read $ symbolVal (Proxy :: Proxy a)) :: RealNum
+      b  = (read $ symbolVal (Proxy :: Proxy b)) :: RealNum
+      k  = (read $ symbolVal (Proxy :: Proxy k)) :: RealNum
 
       sums  = build buildSums
       sums' = extract sums
       
-      buildSums :: Double -> Double -> Double
+      buildSums :: RealNum -> RealNum -> RealNum
       buildSums i j = k + a * summation
         where
           i' = floor i :: Int
@@ -107,15 +107,15 @@ instance ( KnownNat inputRows
           ro = i' `mod` rows :: Int
           co = j'
           
-          sub = floor ((fromIntegral n) / 2     :: Double)
-          add = floor ((fromIntegral n - 1) / 2 :: Double)
+          sub = floor ((fromIntegral n) / 2     :: RealNum)
+          add = floor ((fromIntegral n - 1) / 2 :: RealNum)
           lower = maximum [0, ch - sub]
           upper = minimum [channels - 1, ch + add]
           summation = sum [ (ex `LA.atIndex` (q * rows + ro, co)) ** 2 | q <- [lower..upper]]
 
       -- Calculates the normalised values for each cell of the input based
       -- on the cross-channel sums of the surrounding cells
-      buildNormalizedMatrix :: Double -> Double -> Double
+      buildNormalizedMatrix :: RealNum -> RealNum -> RealNum
       buildNormalizedMatrix i j = val
         where
           i' = floor i :: Int
@@ -137,12 +137,12 @@ instance ( KnownNat inputRows
       rows     = fromIntegral $ natVal (Proxy :: Proxy inputRows) :: Int
       
       n  = natVal (Proxy :: Proxy n)
-      a  = (read $ symbolVal (Proxy :: Proxy a)) :: Double
-      b  = (read $ symbolVal (Proxy :: Proxy b)) :: Double
+      a  = (read $ symbolVal (Proxy :: Proxy a)) :: RealNum
+      b  = (read $ symbolVal (Proxy :: Proxy b)) :: RealNum
       
       err' = build buildErrorMatrix
       
-      buildErrorMatrix :: Double -> Double -> Double
+      buildErrorMatrix :: RealNum -> RealNum -> RealNum
       buildErrorMatrix i j = res
         where
           i' = floor i :: Int
@@ -151,8 +151,8 @@ instance ( KnownNat inputRows
           ro = i' `mod` rows
           co = j'
 
-          sub = floor ((fromIntegral n) / 2     :: Double)
-          add = floor ((fromIntegral n - 1) / 2 :: Double)
+          sub = floor ((fromIntegral n) / 2     :: RealNum)
+          add = floor ((fromIntegral n - 1) / 2 :: RealNum)
           lower = maximum [0, ch - sub]
           upper = minimum [channels - 1, ch + add]
 
@@ -165,15 +165,15 @@ instance ( KnownNat inputRows
 instance OnnxOperator (LRN a b k n) where
   onnxOpTypeNames _ = ["LRN"]
 
-instance ( KnownSymbol a, ValidDouble a
-         , KnownSymbol b, ValidDouble b
-         , KnownSymbol k, ValidDouble k
+instance ( KnownSymbol a, ValidRealNum a
+         , KnownSymbol b, ValidRealNum b
+         , KnownSymbol k, ValidRealNum k
          , KnownNat n
          )  => OnnxLoadable (LRN a b k n) where
   loadOnnxNode _ node = do
-    hasMatchingDouble node (Proxy :: Proxy a) "alpha"
-    hasMatchingDouble node (Proxy :: Proxy b) "beta"
-    hasMatchingDouble node (Proxy :: Proxy k) "bias"
-    hasMatchingInt    node (Proxy :: Proxy n) "size"
+    hasMatchingRealNum node (Proxy :: Proxy a) "alpha"
+    hasMatchingRealNum node (Proxy :: Proxy b) "beta"
+    hasMatchingRealNum node (Proxy :: Proxy k) "bias"
+    hasMatchingInt     node (Proxy :: Proxy n) "size"
     return LRN
     

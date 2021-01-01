@@ -9,14 +9,11 @@
 
 module Test.Grenade.Layers.Trivial where
 
-import           GHC.TypeLits
 import           Grenade.Layers.Trivial
 import           Grenade.Core
-import           Data.Proxy
 
 import           Hedgehog
 
-import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
 
 import           Numeric.LinearAlgebra.Static as H hiding ((===), create)

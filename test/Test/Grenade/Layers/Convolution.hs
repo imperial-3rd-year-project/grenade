@@ -13,24 +13,23 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+
 module Test.Grenade.Layers.Convolution where
+
 import           Data.Constraint
 import           Data.Proxy
 import           Data.Singletons
 import           Data.Singletons.Prelude.Num            ((%*))
 import           GHC.TypeLits
-import qualified Numeric.LinearAlgebra.Static           as H
 import           Unsafe.Coerce
 
 #if MIN_VERSION_singletons(2,6,0)
 import           Data.Singletons.TypeLits               (SNat (..))
 #endif
 
-import qualified Test.Grenade.Layers.Internal.Reference as Reference
 #if MIN_VERSION_base(4,9,0)
 import           Data.Kind                              (Type)
 #endif
-
 
 import           Hedgehog
 import qualified Hedgehog.Gen                           as Gen
@@ -39,10 +38,15 @@ import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
 import           Test.Hedgehog.TypeLits
 
+import qualified Numeric.LinearAlgebra                  as LA
+import qualified Numeric.LinearAlgebra.Static           as H
+
 import           Grenade.Core
 import           Grenade.Layers.Convolution
+import           Grenade.Types
 import           Grenade.Utils.ListStore
 
+import qualified Test.Grenade.Layers.Internal.Reference as Reference
 
 data OpaqueConvolution :: Type where
      OpaqueConvolution :: Convolution 'WithoutBias padding channels filters kernelRows kernelColumns strideRows strideColumns -> OpaqueConvolution
@@ -493,17 +497,17 @@ prop_bias_conv_explicit_padding_forward_and_backward_correct = withTests 20 $ pr
                       H.extract db `isSimilarVectorTo` refdb
 
 prop_bias_convolution_same_as_torch :: Property
-prop_bias_convolution_same_as_torch = withTests 1 $ property $ assert $ allClose output refOutput
+prop_bias_convolution_same_as_torch = withTests 1 $ property $ H.extract output `isSimilarMatrixTo` refOutput
   where
-    refOutput = S3D . H.fromList . concat . concat $ outputList :: S ('D3 4 4 3)
-    output    = snd $ runForwards layer input :: S ('D3 4 4 3)
+    refOutput  = LA.fromLists . concat $ outputList :: LA.Matrix RealNum
+    S3D output = snd $ runForwards layer input :: S ('D3 4 4 3)
 
     layer   = BiasConvolution filters bias mkListStore :: Convolution 'WithBias 'NoPadding 1 3 4 4 2 2
     filters = H.tr . H.fromList . concat . concat $ filtersList
     bias    = H.fromList biasList
     input   = S2D . H.fromList . concat $ inputList :: S ('D2 10 10)
 
-    inputList :: [[Double]]
+    inputList :: [[RealNum]]
     inputList = [[-1.8798149824142456,  0.1028530076146126,  1.8676880598068237,
                   -0.0617060922086239, -0.8356814980506897,  0.6487482190132141,
                    0.8218213915824890, -0.7828793525695801, -0.8224498033523560,
@@ -556,7 +560,7 @@ prop_bias_convolution_same_as_torch = withTests 1 $ property $ assert $ allClose
                  ]
                 ]
 
-    filtersList :: [[[Double]]]
+    filtersList :: [[[RealNum]]]
     filtersList = [[[ 0.0762235820293427, -0.0693399608135223,  0.1232089996337891, -0.1839968860149384]
                    ,[-0.2333435118198395,  0.0558746755123138,  0.1272304952144623,  0.1712160110473633]
                    ,[ 0.2303934693336487,  0.0637164115905762,  0.0874992907047272, -0.2228358089923859]
@@ -574,10 +578,10 @@ prop_bias_convolution_same_as_torch = withTests 1 $ property $ assert $ allClose
                    ]
                   ]
 
-    biasList :: [Double]
+    biasList :: [RealNum]
     biasList = [-0.1065079271793365,  0.1141500771045685, -0.0434862375259399]
 
-    outputList :: [[[Double]]]
+    outputList :: [[[RealNum]]]
     outputList = [[[-0.4326016604900360, -0.5381838679313660, -0.8197864294052124, -0.3077610433101654]
                   ,[-1.4160603284835815, -0.8261992335319519, -1.2307931184768677, -0.6055138707160950]
                   ,[-0.1438199430704117, -0.8861438035964966, -0.8439695835113525,  0.2755392491817474]

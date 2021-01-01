@@ -18,7 +18,6 @@ import           Data.Constraint
 import           Data.Proxy
 import           Data.Singletons.Prelude.List
 import           Data.Singletons.TypeLits
-import           Data.Typeable
 import qualified Data.Vector.Storable            as VS
 import qualified Data.Vector.Storable.Mutable    as VS (write)
 import           Grenade
@@ -1046,14 +1045,15 @@ prop_auto_diff = withDiscards 1500 . withTests 15000 . property $ do
   (target :: S (Last shapes))     <- forAllWith nice oneUp
   (tested :: S (Head shapes))     <- forAllWith nice oneUp
 
-  let (!tapes, !output) = runNetwork network input
-  let (_, !backgrad)    = runGradient network tapes target
-  let inputDiff         = input + tested * 0.00001
-  let expected          = maxVal ( backgrad * tested )
-  let (_, !outputDiff)  = runNetwork network inputDiff
-  let result            = maxVal ( outputDiff * target - output * target ) / 0.00001
+  let (!tapes, !output)   = runNetwork network input
+  let (_, !backgrad)      = runGradient network tapes target
+  let inputDiff           = input + tested * numericalGradDiff
+  let expected            = maxVal ( backgrad * tested )
+  let (_, !outputDiff)    = runNetwork network inputDiff
+  let result              = maxVal ( outputDiff * target - output * target ) / numericalGradDiff
+  let isWithinPrecisionOf = isWithinOf 2e-4
 
-  result ~~~ expected
+  result `isWithinPrecisionOf` expected
 
 -- Make a shape where all are 0 except for 1 value, which is 1.
 oneUp :: forall shape. ( SingI shape ) => Gen (S shape)
@@ -1106,28 +1106,6 @@ oneUp =
                                   VS.write ex' ix 1
                                   VS.freeze ex'
               maybe Gen.discard pure . fromStorable $ nx
-
-maxVal :: S shape -> RealNum
-maxVal ( S1D x ) = norm_Inf x
-maxVal ( S2D x ) = norm_Inf x
-maxVal ( S3D x ) = norm_Inf x
-maxVal ( S4D x ) = norm_Inf x
-
-(~~~) :: (Monad m, HasCallStack) => RealNum -> RealNum -> PropertyT m ()
-(~~~) x y =
-  if abs (x - y) < precision then
-    success
-  else
-    withFrozenCallStack $
-    failWith Nothing $ unlines [
-        "━━━ Not Simliar ━━━"
-        , show x
-        , show y
-        ]
-  where precision | nameF == show (typeRep (Proxy :: Proxy Float)) = 2e-2
-                  | otherwise = 2e-4
-infix 4 ~~~
-
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

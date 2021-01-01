@@ -22,7 +22,6 @@ import           Grenade.Core
 import           Hedgehog
 
 import           Test.Hedgehog.Compat
-import           Test.Hedgehog.Hmatrix
 
 import           Data.Serialize
 import           Data.Either

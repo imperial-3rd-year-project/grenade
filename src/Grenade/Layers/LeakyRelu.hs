@@ -99,6 +99,6 @@ instance OnnxOperator LeakyRelu where
 
 instance OnnxLoadable LeakyRelu where
   loadOnnxNode _ node = do
-    alpha <- readDoubleAttribute "alpha" node
+    alpha <- readFloatAttributeToRealNum "alpha" node
 
     return $ LeakyRelu alpha

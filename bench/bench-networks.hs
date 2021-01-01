@@ -10,7 +10,7 @@ main :: IO ()
 main = defaultMain
   [ env resnetEnv     $ \ ~(net, x) -> bench "Resnet18"        $ nf (runNet net) x
   , env tinyYoloV2Env $ \ ~(net, x) -> bench "TinyYoloV2"      $ nf (runNet net) x
-  , env superResEnv   $ \ ~(net, x) -> bench "SuperResoltuion" $ nf (runNet net) x
+  , env superResEnv   $ \ ~(net, x) -> bench "SuperResolution" $ nf (runNet net) x
   ]
 
 tinyYoloV2Env :: IO (TinyYoloV2, S ('D3 416 416 3))

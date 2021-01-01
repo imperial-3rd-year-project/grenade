@@ -22,18 +22,14 @@ import           GHC.TypeLits
 
 import           Grenade.Core
 import           Grenade.Layers.Add
-import           Grenade.Types
 
 import           Numeric.LinearAlgebra        hiding (R, konst, randomVector,
-                                               uniformSample, (===))
-import qualified Numeric.LinearAlgebra        as LA
+                                               uniformSample, (===), reshape)
 import qualified Numeric.LinearAlgebra.Data   as D
 import           Numeric.LinearAlgebra.Static (L, R)
 import qualified Numeric.LinearAlgebra.Static as H
 
 import           Hedgehog
-import qualified Hedgehog.Gen                 as Gen
-import qualified Hedgehog.Range               as Range
 
 import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
@@ -67,9 +63,9 @@ prop_add_per_channel_words_as_expected = property $ do
           bias          :: R 3       <- forAll randomVector
 
           let reshape = fromJust . H.create . (D.reshape width) . H.extract
-              c1 = reshape channel_one   :: L h w
-              c2 = reshape channel_two   :: L h w
-              c3 = reshape channel_three :: L h w
+              c1      = reshape channel_one   :: L h w
+              c2      = reshape channel_two   :: L h w
+              c3      = reshape channel_three :: L h w
 
               bias' = H.extract bias
 

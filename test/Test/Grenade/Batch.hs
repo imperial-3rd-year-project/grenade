@@ -13,6 +13,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Test.Grenade.Batch where
 
+import           Grenade.Types
 import           Grenade.Core.Shape
 import           Grenade.Core.Network
 import           Grenade.Core.Layer
@@ -26,9 +27,6 @@ import           Numeric.LinearAlgebra.Data as D hiding ((===))
 
 import           Hedgehog
 import           GHC.TypeLits
-import           Data.Proxy
-
-import           Test.Hedgehog.Compat
 
 type FFNetwork = Network '[ FullyConnected 3 5, FullyConnected 5 4 ] '[ 'D1 3, 'D1 5, 'D1 4 ]
 
@@ -45,7 +43,7 @@ prop_networkBatchFeedforward = property $ do
       outs' = map (\(S1D v) -> (D.toList . H.extract) v) outs
   outs' === [[986, 2312, 3638, 4964], [2336, 5462, 8588, 11714]]
 
-extractFCGrads :: Gradients '[FullyConnected 3 5, FullyConnected 5 4] -> [(Vector Double, Matrix Double)]
+extractFCGrads :: Gradients '[FullyConnected 3 5, FullyConnected 5 4] -> [(Vector RealNum, Matrix RealNum)]
 extractFCGrads ((FullyConnected' wB wN) :/> ((FullyConnected' wB' wN') :/> GNil))
   = [(H.extract wB, H.extract wN), (H.extract wB', H.extract wN')]
 
@@ -107,7 +105,7 @@ unwrapGradConv :: ( KnownNat c
               , KnownNat sR
               , KnownNat sC
               , KnownNat kF
-              , kF ~ (kR * kC * c)) => Convolution' 'WithoutBias 'NoPadding c f kR kC sR sC -> Matrix Double
+              , kF ~ (kR * kC * c)) => Convolution' 'WithoutBias 'NoPadding c f kR kC sR sC -> Matrix RealNum
 unwrapGradConv (Convolution' mat) = H.extract mat
 
 prop_convolutionBackprop = property $ do

@@ -13,6 +13,7 @@ import qualified Numeric.LinearAlgebra.Static as NLA
 
 import           Grenade
 import           Test.Hedgehog.Hmatrix
+import           Test.Hedgehog.Compat
 
 genShapes :: Gen [S ('D1 10)]
 genShapes =
@@ -29,7 +30,7 @@ prop_quadratic = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> 0.5 * (sum $ zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 prop_quadratic' :: Property
 prop_quadratic' = property $ do
@@ -42,7 +43,7 @@ prop_quadratic' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (-)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 prop_crossEntropy :: Property
 prop_crossEntropy = property $ do
@@ -54,7 +55,7 @@ prop_crossEntropy = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> -1 * (sum $ zipWith (\a b -> b * (log a) + (1 - b) * (log (1 - a))) x y)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 prop_crossEntropy' :: Property
 prop_crossEntropy' = property $ do
@@ -67,7 +68,7 @@ prop_crossEntropy' = property $ do
   let ys'    = map extractVec ys
   let f      = (zipWith (\a b -> (a - b) / ((1 - a) * a)))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 prop_exponential :: Property
 prop_exponential = property $ do
@@ -80,7 +81,7 @@ prop_exponential = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 prop_exponential' :: Property
 prop_exponential' = property $ do
@@ -95,7 +96,7 @@ prop_exponential' = property $ do
   let g      = \x y -> map ((t * (exp (1/t * sum (zipWith (\a b -> (a - b) ^ (2 :: Int)) x y)))) *)
   let f      = \x y -> map ((2 / t) *) $ zipWith (-) x y
   let costs' = zipWith (\x y -> g x y (f x y)) xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 prop_hellinger :: Property
 prop_hellinger = property $ do
@@ -107,7 +108,7 @@ prop_hellinger = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> (1 / (sqrt 2)) * (sum $ zipWith (\a b -> (sqrt a - sqrt b) ^ (2 :: Int)) x y)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 prop_hellinger' :: Property
 prop_hellinger' = property $ do
@@ -120,7 +121,7 @@ prop_hellinger' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (\a b -> ((sqrt a) - (sqrt b)) / ((sqrt 2) * (sqrt a)))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 prop_kullbackLeibler :: Property
 prop_kullbackLeibler = property $ do
@@ -132,7 +133,7 @@ prop_kullbackLeibler = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> sum $ zipWith (\a b -> b * log (b / a)) x y
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 prop_kullbackLeibler' :: Property
 prop_kullbackLeibler' = property $ do
@@ -145,7 +146,7 @@ prop_kullbackLeibler' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (\a b -> -(b / a))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 prop_genKullbackLeibler :: Property
 prop_genKullbackLeibler = property $ do
@@ -157,7 +158,7 @@ prop_genKullbackLeibler = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> (sum $ zipWith (\a b -> b * log (b / a)) x y) - (sum y) + (sum x)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 
 prop_genKullbackLeibler' :: Property
@@ -171,7 +172,7 @@ prop_genKullbackLeibler' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (\a b -> ((a - b) / a))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 
 prop_itakuraSaito :: Property
@@ -184,7 +185,7 @@ prop_itakuraSaito = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> sum $ zipWith (\a b -> (b/a) - (log (b/a)) - 1) x y
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 
 
@@ -199,7 +200,7 @@ prop_itakuraSaito' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (\a b -> ((a - b) / (a * a)))
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 
 
@@ -213,7 +214,7 @@ prop_categoricalCrossEntropy = property $ do
   let ys'    = map extractVec ys
   let f      = \x y -> -1 * (sum $ zipWith (\a b -> b * log a) x y)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListTo` costs'
 
 
 
@@ -228,7 +229,7 @@ prop_categoricalCrossEntropy' = property $ do
   let ys'    = map extractVec ys
   let f      = zipWith (\a b -> -b / a)
   let costs' = zipWith f xs' ys'
-  costs === costs'
+  costs `isSimilarListOfListsTo` costs'
 
 exampleShape :: (S ('D1 3), S ('D1 3))
 exampleShape = (gen predicted, gen true)
@@ -239,12 +240,10 @@ exampleShape = (gen predicted, gen true)
 
 prop_categoricalCrossEntropy_matchesActualValues :: Property
 prop_categoricalCrossEntropy_matchesActualValues = property $ do
-    let calculated = (uncurry categoricalCrossEntropy) exampleShape :: Double
+    let calculated = (uncurry categoricalCrossEntropy) exampleShape :: RealNum
     diff (abs (calculated - expectedResult)) (<) 0.01
     where
       expectedResult = 2.303
-
-
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

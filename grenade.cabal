@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 372f5eee98e328fee59ecac21ba9c7e041a8419a3f293eee41221f0cffaa4277
+-- hash: cf93faa736a21357388a013c35e6c36a7dd1804eb362343cbe1d57ef0c5c237e
 
 name:           grenade
 version:        0.1.1
@@ -66,7 +66,7 @@ flag fast
   default: False
 
 flag use-float
-  description: Use Double's instead of Float's for weights, biases, momentum, etc.
+  description: Use floats instead of doubles for weights, biases, momentum, etc.
   manual: True
   default: False
 
@@ -194,7 +194,7 @@ library
       Proto.Onnx_Fields
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-orphans -Wno-name-shadowing -fwarn-tabs
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-orphans -Wno-name-shadowing -fwarn-tabs -fno-warn-unrecognised-pragmas
   cc-options: -std=c99 -O3 -msse4.2 -Wall -Werror -DCABAL=1
   c-sources:
       cbits/im2col.c
@@ -255,7 +255,7 @@ library
     build-depends:
         hmatrix >=0.18 && <0.21
   if impl(ghc < 8.0)
-    ghc-options: -fno-warn-incomplete-patterns -fno-warn-unrecognised-pragmas
+    ghc-options: -fno-warn-incomplete-patterns
     cpp-options: -DType=*
   if impl(ghc >= 8.6)
     default-extensions: NoStarIsType
@@ -293,7 +293,6 @@ test-suite test
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM
       Test.Grenade.Recurrent.Layers.LSTM.Reference
-      Test.Grenade.Utils.LinearAlgebra
       Test.Hedgehog.Compat
       Test.Hedgehog.Hmatrix
       Test.Hedgehog.TypeLits
@@ -360,6 +359,16 @@ test-suite test
     cpp-options: -DType=*
   if impl(ghc >= 8.6)
     default-extensions: NoStarIsType
+  if flag(use-float)
+    cpp-options: -DUSE_FLOAT
+    cc-options: -DUSE_FLOAT
+    build-depends:
+        hmatrix-float
+  else
+    cpp-options: -DUSE_DOUBLE
+    cc-options: -DUSE_DOUBLE
+    build-depends:
+        hmatrix >=0.18 && <0.21
   default-language: Haskell2010
 
 benchmark bench

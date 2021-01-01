@@ -1,8 +1,6 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-{-# LANGUAGE OverloadedLabels      #-}
-{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
@@ -10,6 +8,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -33,6 +33,7 @@ import           Grenade.Core
 import           Grenade.Layers.Internal.BatchNorm
 import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx
+import           Grenade.Types
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
 
@@ -69,7 +70,7 @@ data BatchNorm :: Nat -- The number of channels of the tensor
             -> BatchNormParams channels             -- gamma and beta
             -> R channels                           -- running mean
             -> R channels                           -- running variance
-            -> Double                               -- epsilon
+            -> RealNum                              -- epsilon
             -> ListStore (BatchNormParams channels) -- momentum store
             -> BatchNorm channels rows columns momentum
 
@@ -232,20 +233,20 @@ instance (KnownNat rows, KnownNat momentum)
       in ([TestBatchNormTape], outs)
 
   runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar ε _) xs
-    = let [m]             = vectorToList runningMean :: [Double]
-          [v]             = vectorToList runningVar  :: [Double]
-          [g]             = vectorToList gamma       :: [Double]
-          [b]             = vectorToList beta        :: [Double]
+    = let [m]             = vectorToList runningMean :: [RealNum]
+          [v]             = vectorToList runningVar  :: [RealNum]
+          [g]             = vectorToList gamma       :: [RealNum]
+          [b]             = vectorToList beta        :: [RealNum]
           mom             = (/ 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map extractV xs
 
-          sample_mean     = batchNormMean xs'                 :: Double
-          sample_var      = batchNormVariance xs'             :: Double
+          sample_mean     = batchNormMean xs'                 :: RealNum
+          sample_var      = batchNormVariance xs'             :: RealNum
 
-          m'              = mom * m + (1 - mom) * sample_mean :: Double
-          v'              = mom * v + (1 - mom) * sample_var  :: Double
-          std             = sqrt $ sample_var + ε             :: Double
+          m'              = mom * m + (1 - mom) * sample_mean :: RealNum
+          v'              = mom * v + (1 - mom) * sample_var  :: RealNum
+          std             = sqrt $ sample_var + ε             :: RealNum
 
           x_extracted     = map (\(S1D x) -> x) xs
           x_normalised    = map (dvmap (\a -> (a - sample_mean) / std)) x_extracted
@@ -292,20 +293,20 @@ instance (KnownNat rows, KnownNat columns, KnownNat momentum)
       in ([TestBatchNormTape], outs)
 
   runBatchForwards (BatchNorm True (BatchNormParams gamma beta) runningMean runningVar ε _) xs
-    = let [m]             = vectorToList runningMean :: [Double]
-          [v]             = vectorToList runningVar  :: [Double]
-          [g]             = vectorToList gamma       :: [Double]
-          [b]             = vectorToList beta        :: [Double]
+    = let [m]             = vectorToList runningMean :: [RealNum]
+          [v]             = vectorToList runningVar  :: [RealNum]
+          [g]             = vectorToList gamma       :: [RealNum]
+          [b]             = vectorToList beta        :: [RealNum]
           mom             = (/ 100) $ fromIntegral $ natVal (Proxy :: Proxy momentum)
 
           xs'             = map (sflatten . extractM2D) xs
 
-          sample_mean     = batchNormMean xs'                 :: Double
-          sample_var      = batchNormVariance xs'             :: Double
+          sample_mean     = batchNormMean xs'                 :: RealNum
+          sample_var      = batchNormVariance xs'             :: RealNum
 
-          m'              = mom * m + (1 - mom) * sample_mean :: Double
-          v'              = mom * v + (1 - mom) * sample_var  :: Double
-          std             = sqrt $ sample_var + ε             :: Double
+          m'              = mom * m + (1 - mom) * sample_mean :: RealNum
+          v'              = mom * v + (1 - mom) * sample_var  :: RealNum
+          std             = sqrt $ sample_var + ε             :: RealNum
 
           x_extracted     = map (\(S2D x) -> x) xs
           x_normalised    = map (dmmap (\a -> (a - sample_mean) / std)) x_extracted
@@ -387,7 +388,7 @@ instance OnnxOperator (BatchNorm channels rows columns momentum) where
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum) => OnnxLoadable (BatchNorm channels rows columns momentum) where
   loadOnnxNode inits node = case node ^. #input of
     [_, scale, b, mean, var] -> do
-      epsilon     <- readDoubleAttribute "epsilon" node
+      epsilon     <- readFloatAttributeToRealNum "epsilon" node
       loadedScale <- readInitializerVector inits scale
       loadedB     <- readInitializerVector inits b
       loadedMean  <- readInitializerVector inits mean
@@ -395,5 +396,5 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
 
       return $ BatchNorm False (BatchNormParams loadedScale loadedB) loadedMean loadedVar epsilon mkListStore
     _               -> onnxIncorrectNumberOfInputs
-    
+
 

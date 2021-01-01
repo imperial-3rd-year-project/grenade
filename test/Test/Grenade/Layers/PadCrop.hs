@@ -18,7 +18,6 @@ import           Numeric.LinearAlgebra.Static ( norm_Inf )
 
 import           Test.Hedgehog.Hmatrix
 
-import qualified Data.ByteString              as BS
 import           Data.Serialize
 import           Data.Either
 import           System.Random.MWC             (create)

@@ -36,7 +36,7 @@ coverage:
 
 bench:
   stage: bench 
-  script: cabal bench
+  script: cabal clean && cabal bench --flags="use-float"
   allow_failure: true
   when: manual
 

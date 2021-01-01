@@ -4,37 +4,37 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Grenade.Utils.Symbols (ValidDouble) where
+module Grenade.Utils.Symbols (ValidRealNum) where
 
 import GHC.TypeLits
 import Data.Type.Bool
 import Data.Kind (Constraint)
 import Data.Symbol.Ascii (ToList)
 
--- | Constraint for symbols representing doubles
-type family ValidDouble (x :: Symbol) :: Constraint where
-  ValidDouble x = ParseDouble x ~ 'True
+-- | Constraint for symbols representing RealNums
+type family ValidRealNum (x :: Symbol) :: Constraint where
+  ValidRealNum x = ParseRealNum x ~ 'True
 
 -- | Parse a number with an optional decimal point
-type family ParseDouble (sym :: Symbol) :: Bool where
-  ParseDouble sym = ParseDouble1 sym (ToList sym)
+type family ParseRealNum (sym :: Symbol) :: Bool where
+  ParseRealNum sym = ParseRealNum1 sym (ToList sym)
 
-type family ParseDouble1 (orig :: Symbol) (sym :: [Symbol]) :: Bool where
-  ParseDouble1 _ '[]        = TypeError ('Text "Parse error: empty string")
-  ParseDouble1 orig '["."]     = TypeError ('Text "Parse error: invalid form for value, try '0' instead in " ':<>: 'ShowType orig)
-  ParseDouble1 orig ("." ': _) = TypeError ('Text "Parse error: invalid form for value, try prepending a zero in " ':<>: 'ShowType orig)
-  ParseDouble1 orig xs      = ParseDouble2 orig xs 0
+type family ParseRealNum1 (orig :: Symbol) (sym :: [Symbol]) :: Bool where
+  ParseRealNum1 _ '[]        = TypeError ('Text "Parse error: empty string")
+  ParseRealNum1 orig '["."]     = TypeError ('Text "Parse error: invalid form for value, try '0' instead in " ':<>: 'ShowType orig)
+  ParseRealNum1 orig ("." ': _) = TypeError ('Text "Parse error: invalid form for value, try prepending a zero in " ':<>: 'ShowType orig)
+  ParseRealNum1 orig xs      = ParseRealNum2 orig xs 0
 
-type family ParseDouble2 (orig :: Symbol) (sym :: [Symbol]) (c :: Nat)  :: Bool where
+type family ParseRealNum2 (orig :: Symbol) (sym :: [Symbol]) (c :: Nat)  :: Bool where
   -- If we encounter more than 1 decimal point, raise an error
-  ParseDouble2 orig _ 2             = TypeError ('Text "Parse error: too many decimal points in " ':<>: 'ShowType orig)
+  ParseRealNum2 orig _ 2             = TypeError ('Text "Parse error: too many decimal points in " ':<>: 'ShowType orig)
   -- If the last character is a decimal point, then read won't parse this, so raise an error
-  ParseDouble2 orig '["."] _        = TypeError ('Text "Parse error: invalid form for value, try removing the decimal point in " ':<>: 'ShowType orig)
-  ParseDouble2 _ '[] _              = 'True
+  ParseRealNum2 orig '["."] _        = TypeError ('Text "Parse error: invalid form for value, try removing the decimal point in " ':<>: 'ShowType orig)
+  ParseRealNum2 _ '[] _              = 'True
   -- If we see a decimal point, increment the counter
-  ParseDouble2 orig ((".") ': xs) c = ParseDouble2 orig xs (c + 1)
+  ParseRealNum2 orig ((".") ': xs) c = ParseRealNum2 orig xs (c + 1)
   -- Check that the current character is a digit and then parse the rest
-  ParseDouble2 orig (x ': xs)     c = (IsDigit orig x) && (ParseDouble2 orig xs c)
+  ParseRealNum2 orig (x ': xs)     c = (IsDigit orig x) && (ParseRealNum2 orig xs c)
 
 type family IsDigit (orig :: Symbol) (sym :: Symbol) :: Bool where
   IsDigit _ "0" = 'True

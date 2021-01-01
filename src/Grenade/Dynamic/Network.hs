@@ -139,6 +139,7 @@ networkFromSpecificationWith wInit spec = do
         (D3Sing SNat SNat SNat, D1Sing SNat)           -> return $ SpecConcreteNetwork3D1D net
         (D3Sing SNat SNat SNat, D2Sing SNat SNat)      -> return $ SpecConcreteNetwork3D2D net
         (D3Sing SNat SNat SNat, D3Sing SNat SNat SNat) -> return $ SpecConcreteNetwork3D3D net
+        _                                              -> error "Input or output shape of network is not supported currently"
 
 -- | Create a network according to the given specification. See @DynamicNetwork@. This version uses UniformInit and the system random number generator. WARNING: This also allows to build unsafe
 -- networks where input and output layers do not match! Thus use with care! Furthermore, if you need to specify the actual I/O types, see @networkFromSpecificationWith@ for implementation details!

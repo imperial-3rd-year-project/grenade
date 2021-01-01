@@ -15,10 +15,6 @@ module Test.Grenade.Layers.Reshape where
 import           Data.Proxy
 import           Data.Singletons ()
 
-#if MIN_VERSION_base(4,9,0)
-import           Data.Kind (Type)
-#endif
-
 import           GHC.TypeLits
 import           Grenade.Layers.Reshape
 import           Grenade.Core
@@ -30,8 +26,6 @@ import           Test.Hedgehog.Hmatrix
 
 import           Data.Serialize
 import           Data.Either
-import qualified Numeric.LinearAlgebra.Static as H
-import           Numeric.LinearAlgebra.Data   hiding ((===))
 import           System.Random.MWC             (create)
 
 prop_can_reshape_2d_to_1d :: Property

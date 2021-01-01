@@ -15,7 +15,7 @@ import           Data.Word
 
 import           Debug.Trace
 
-import           Numeric.LinearAlgebra.Data           (flatten)
+import           Numeric.LinearAlgebra
 import qualified Numeric.LinearAlgebra.Devel          as U
 import qualified Numeric.LinearAlgebra.Static         as SA
 
@@ -29,10 +29,12 @@ import           Grenade.Demos.MNIST                  hiding (runNet')
 import           Grenade.Layers.Internal.Shrink
 
 runNet' :: MNIST -> S ('D2 28 28) -> String
-runNet' net m = (\(S1D ps) -> let (p, i) = (getProb . V.toList) (SA.extract ps)
-                              in "This number is " ++ show i ++ " with probability " ++ show (p * 100) ++ "%") $ runNet net m
+runNet' net m 
+  = let S1D ps = runNet net m
+        (p, i) = (getProb . V.toList) (SA.extract ps)
+    in  "This number is " ++ show i ++ " with probability " ++ show (p * 100) ++ "%"
   where
-    getProb :: (Show a, Ord a) => [a] -> (a, Int)
+    getProb :: [RealNum] -> (RealNum, Int)
     getProb xs = maximumBy (comparing fst) (zip xs [0..])
 
 data MouseState = MouseDown | MouseUp
@@ -42,7 +44,7 @@ renderCanvas :: Canvas -> Picture
 renderCanvas (Canvas (S2D !arr) _ _)
     = bitmapOfForeignPtr 224 224 (BitmapFormat BottomToTop PxABGR) (unsafeCoerce ptr) False
   where
-    convColor :: Double -> Word32
+    convColor :: RealNum -> Word32
     convColor p = let p'  =  convert p :: Word32
                       !w  =  unsafeShiftL p' 24
                          .|. unsafeShiftL p' 16
@@ -80,8 +82,10 @@ handleInput _ c = c
 draw :: S ('D2 224 224) -> Int -> Int -> S ('D2 224 224)
 draw (S2D arr) x y = S2D $ fromMaybe (error "") $ SA.create m
   where
-    m = U.mapMatrixWithIndex f (SA.extract arr)
+    m = U.mapMatrixWithIndex f arr'
+    arr' = SA.extract arr :: Matrix RealNum
 
+    f :: (Int, Int) -> RealNum -> RealNum
     f (x', y') p = if (x - x') ^ (2 :: Int) + (y - y') ^ (2 :: Int) <= 50 then 0 else p
 
 main :: IO ()

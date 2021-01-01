@@ -267,7 +267,7 @@ naiveFullyConnectedBackprop w (tape, out) = (w', b', d)
     d  = (H.tr w) H.#> out
 
 -- Implementation reference: https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf
-naiveLRNForwards :: Double -> Double -> Double -> Int -> [[[Double]]] -> [[[Double]]]
+naiveLRNForwards :: RealNum -> RealNum -> RealNum -> Int -> [[[RealNum]]] -> [[[RealNum]]]
 naiveLRNForwards a b k n values = [
     [[ g ch ro co | co <- [0..length (values!!ch!!ro) - 1] ] | ro <- [0..length (values!!ch) - 1]] | ch <- [0..cs-1]
   ]
@@ -277,20 +277,20 @@ naiveLRNForwards a b k n values = [
     g ch ro co = (f ch ro co) / den
       where
         den  = den' ** b
-        sub = floor ((fromIntegral n) / 2     :: Double)
-        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        sub = floor ((fromIntegral n) / 2     :: RealNum)
+        add = floor ((fromIntegral n - 1) / 2 :: RealNum)
         lower = maximum [0, ch - sub]
         upper = minimum [cs - 1, ch + add]
         summation = sum [ (f j ro co) ** 2 | j <- [lower..upper]]
         den' = k + a * summation
 
-naiveLRNBackwards :: Double         -- a
-                    -> Double       -- b
-                    -> Double       -- k
+naiveLRNBackwards :: RealNum         -- a
+                    -> RealNum       -- b
+                    -> RealNum       -- k
                     -> Int          -- n
-                    -> [[[Double]]] -- inputs
-                    -> [[[Double]]] -- backpropagated error
-                    -> [[[Double]]] -- error to propagate further
+                    -> [[[RealNum]]] -- inputs
+                    -> [[[RealNum]]] -- backpropagated error
+                    -> [[[RealNum]]] -- error to propagate further
 naiveLRNBackwards a b k n values errs = [
     [[ ng ch ro co | co <- [0..length (values!!ch!!ro) - 1] ] | ro <- [0..length (values!!ch) - 1]] | ch <- [0..cs-1]
   ]
@@ -300,8 +300,8 @@ naiveLRNBackwards a b k n values errs = [
     nf ch ro co = errs!!ch!!ro!!co
     c ch ro co = den
       where
-        sub = floor ((fromIntegral n) / 2     :: Double)
-        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        sub = floor ((fromIntegral n) / 2     :: RealNum)
+        add = floor ((fromIntegral n - 1) / 2 :: RealNum)
         lower = maximum [0, ch - sub]
         upper = minimum [cs - 1, ch + add]
         summation = sum [ (f j ro co) ** 2 | j <- [lower..upper]]
@@ -312,7 +312,7 @@ naiveLRNBackwards a b k n values errs = [
         t2 = 2 * b * a * (f ch ro co) * (c ch ro co) ** (-b - 1) * s
         s  = sum [(f q ro co) * (nf q ro co) | q <- [lower..upper]]
 
-        sub = floor ((fromIntegral n) / 2     :: Double)
-        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        sub = floor ((fromIntegral n) / 2     :: RealNum)
+        add = floor ((fromIntegral n - 1) / 2 :: RealNum)
         lower = maximum [0, ch - sub]
         upper = minimum [cs - 1, ch + add]

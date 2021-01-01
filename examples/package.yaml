@@ -25,7 +25,7 @@ flags:
     manual: false
     default: false
   use-float:
-    description: Use Double's instead of Float's for weights, biases, momentum, etc.
+    description: Use floats instead of doubles for weights, biases, momentum, etc.
     manual: true
     default: false
 

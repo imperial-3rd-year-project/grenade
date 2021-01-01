@@ -37,6 +37,7 @@ import           Grenade.Layers.Internal.Update
 import           Grenade.Onnx
 import           Grenade.Utils.LinearAlgebra
 import           Grenade.Utils.ListStore
+import           Grenade.Types
 
 import           Lens.Micro
 
@@ -82,7 +83,7 @@ instance (KnownNat i, KnownNat o, KnownNat (i * o)) => UpdateLayer (FullyConnect
   reduceGradient grads = FullyConnected' (dvmap (/l) bs) (dmmap (/l) as)
     where
       FullyConnected' bs as = foldl1' (\(FullyConnected' bs as) (FullyConnected' bs' as') -> FullyConnected' (bs + bs') (as + as')) grads
-      l = fromIntegral $ length grads :: Double
+      l = fromIntegral $ length grads :: RealNum
 
 instance (KnownNat i, KnownNat o, KnownNat (i * o)) => LayerOptimizerData (FullyConnected i o) (Optimizer 'SGD) where
   type MomentumDataType (FullyConnected i o) (Optimizer 'SGD) = FullyConnected' i o
@@ -157,7 +158,7 @@ instance (KnownNat i, KnownNat o) => OnnxLoadable (FullyConnected i o) where
       -- node `doesNotHaveAttribute` "transA"
       -- node `doesNotHaveAttribute` "transB"
 
-      let beta = fromRight 1 (readDoubleAttribute "beta" node)
+      let beta = fromRight 1 (readFloatAttributeToRealNum "beta" node)
       loadedB <- readInitializerMatrix inits b
       loadedC <- readInitializerVector inits c
 

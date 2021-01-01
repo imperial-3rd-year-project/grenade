@@ -36,7 +36,7 @@ flags:
     manual: false
     default: false
   use-float:
-    description: Use Double's instead of Float's for weights, biases, momentum, etc.
+    description: Use floats instead of doubles for weights, biases, momentum, etc.
     manual: true
     default: false
 
@@ -139,9 +139,10 @@ library:
     -Wno-orphans
     -Wno-name-shadowing
     -fwarn-tabs
+    -fno-warn-unrecognised-pragmas
   when:
     - condition: impl(ghc < 8.0)
-      ghc-options:       -fno-warn-incomplete-patterns -fno-warn-unrecognised-pragmas
+      ghc-options:       -fno-warn-incomplete-patterns
       cpp-options:       -DType=*
 
     - condition: impl(ghc >= 8.6)
@@ -180,6 +181,17 @@ tests:
         cpp-options:       -DType=*
       - condition: impl(ghc >= 8.6)
         default-extensions: NoStarIsType
+      - condition: flag(use-float)
+        then:
+          dependencies:
+            - hmatrix-float
+          cpp-options: -DUSE_FLOAT
+          cc-options: -DUSE_FLOAT
+        else:
+          dependencies:
+            - hmatrix                         >= 0.18        && < 0.21
+          cpp-options: -DUSE_DOUBLE
+          cc-options: -DUSE_DOUBLE
     dependencies:
     - grenade
     - ad
