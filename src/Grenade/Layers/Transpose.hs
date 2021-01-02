@@ -43,6 +43,9 @@ data Transpose :: Nat
           => !(R dimensions)
           -> Transpose dimensions input output
 
+instance Show (Transpose dimensions input output) where
+  show (Transpose mat) = "Transpose " ++ show mat
+
 instance UpdateLayer (Transpose dimensions input output) where
   type Gradient (Transpose dimensions input output) = ()
   runUpdate _ x _  = x

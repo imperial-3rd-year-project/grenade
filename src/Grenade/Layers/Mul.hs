@@ -32,6 +32,7 @@ import           Lens.Micro                   ((^.))
 import           Grenade.Core
 import           Grenade.Onnx
 
+-- | A layer allowing for element wise multiplication with broadcasting
 data Mul :: Nat -- The number of channels of the bias
          -> Nat -- The number of rows of the bias
          -> Nat -- The number of columns of the bias
@@ -41,6 +42,9 @@ data Mul :: Nat -- The number of channels of the bias
           , KnownNat columns )
           => R (channels * rows * columns)
           -> Mul channels rows columns
+
+instance Show (Mul c h w) where
+  show (Mul mat) = "Mul " ++ show mat
 
 instance UpdateLayer (Mul c h w) where
   type Gradient (Mul c h w) = ()
@@ -66,6 +70,7 @@ instance ( KnownNat c, KnownNat h, KnownNat w ) => Serialize (Mul c h w) where
     bias <- maybe (fail "Vector of incorrect size") return . H.create . LA.fromList =<< getListOf get
     return $ Mul bias
 
+-- | Currently, only multiplication by a single scalar is supported.
 instance ( KnownNat i, KnownNat j, KnownNat k ) => Layer (Mul 1 1 1) ('D3 i j k) ('D3 i j k) where
   type Tape (Mul 1 1 1) ('D3 i j k) ('D3 i j k) = ()
 
@@ -73,7 +78,7 @@ instance ( KnownNat i, KnownNat j, KnownNat k ) => Layer (Mul 1 1 1) ('D3 i j k)
     = let s  = H.extract b LA.! 0
       in  ((), S3D $  H.dmmap (s *) m)
 
-  runBackwards = undefined
+  runBackwards = error "runBackwards is not implemented for the Mul layer"
 
 instance OnnxOperator (Mul c h w) where
   onnxOpTypeNames _ = ["Mul"]

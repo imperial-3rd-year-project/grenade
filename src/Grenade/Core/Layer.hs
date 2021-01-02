@@ -76,7 +76,7 @@ class UpdateLayer x where
   -- | Update a layer with its gradient and learning parameters
   runUpdate   :: Optimizer opt -> x -> Gradient x -> x
 
-  -- | Update a layer with many Gradientsx1
+  -- | Update a layer with many Gradients
   runUpdates      :: Optimizer opt -> x -> [Gradient x] -> x
   runUpdates rate = foldl' (runUpdate rate)
 

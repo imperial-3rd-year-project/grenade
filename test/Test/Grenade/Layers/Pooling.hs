@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE GADTs               #-}
@@ -16,10 +17,16 @@ import           Data.Kind (Type)
 
 import           GHC.TypeLits
 import           Grenade.Layers.Pooling
+import           Grenade.Core
 
 import           Hedgehog
 
 import           Test.Hedgehog.Compat
+import           Test.Hedgehog.Hmatrix
+
+import           Data.Serialize
+import           Data.Either
+import           System.Random.MWC             (create)
 
 data OpaquePooling :: Type where
      OpaquePooling :: (KnownNat kh, KnownNat kw, KnownNat sh, KnownNat sw) => Pooling kh kw sh sw -> OpaquePooling
@@ -44,6 +51,32 @@ prop_pool_layer_witness =
     case onet of
       (OpaquePooling (Pooling :: Pooling kernelRows kernelCols strideRows strideCols)) ->
         assert True
+
+
+prop_pool_is_serializable :: Property
+prop_pool_is_serializable = withTests 1 $ property $ do
+  OpaquePooling (pool :: Pooling a b c d) <- blindForAll genOpaquePooling
+  let bs = encode pool
+      dec = decode bs :: Either String (Pooling a b c d)
+  assert $ isRight dec
+
+prop_can_randomise_pool :: Property
+prop_can_randomise_pool = withTests 1 $ property $ do
+  gen <- evalIO create
+  _ :: Pooling 5 12 8 3 <- evalIO $ createRandomWith UniformInit gen
+  success
+
+prop_can_show_pool :: Property
+prop_can_show_pool = withTests 1 $ property $ do
+  OpaquePooling pool <- blindForAll genOpaquePooling
+  show pool `seq` success
+
+prop_can_update_pool_and_use_in_batches :: Property
+prop_can_update_pool_and_use_in_batches = property $ do
+  OpaquePooling (pool :: Pooling a b c d) <- blindForAll genOpaquePooling
+  runUpdate defSGD pool () `seq` success
+  runUpdate defAdam pool () `seq` success
+  reduceGradient @(Pooling a b c d) [()] `seq` success
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

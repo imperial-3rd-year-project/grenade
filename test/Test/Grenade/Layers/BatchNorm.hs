@@ -84,7 +84,7 @@ prop_batchnorm_1D_forward_same_as_torch = withTests 1 $ property $ do
 
         mat' = H.fromList . concat . concat $ ref_out :: L 40 4
 
-    assert $ allClose y (S3D mat') 
+    assert $ allClose y (S3D mat')
   where
     weight = [ -0.9323,  1.0161,  0.1728,  0.3656, -0.6816,  0.0334,  0.8494, -0.6669, -0.1527, -0.7004 ]
     bias   = [  0.7582,  1.0068, -0.2532, -1.5240, -1.0370,  0.8442,  0.5867, -1.2567,  0.4283, -0.0001 ]

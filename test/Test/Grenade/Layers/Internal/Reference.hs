@@ -1,7 +1,11 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Test.Grenade.Layers.Internal.Reference where
 
 import           Grenade.Types
 import           Numeric.LinearAlgebra
+import qualified Numeric.LinearAlgebra.Static as H
+import           GHC.TypeLits
 
 im2col :: Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
 im2col nrows ncols srows scols m =
@@ -244,3 +248,71 @@ biasConvBackPropWithPadding input channels inRows inCols kernel filters kernelRo
       accums'       = [((c * inRows + x, y), dX' `atIndex` (c * padded_r + x + padt, y + padl)) | x <- [0..inRows-1], y <- [0..inCols-1], c <- [0..channels-1]]
       dX            = accum (konst 0 (channels * inRows, inCols)) (+) accums'
   in  (dX, dW, db)
+
+naiveFullyConnectedRunForwards :: forall i o. (KnownNat i, KnownNat o) 
+                               => H.L o i       -- Weights
+                               -> H.R o         -- Biases
+                               -> H.R i         -- Input
+                               -> (H.R i, H.R o)  -- (Tape, Output)
+naiveFullyConnectedRunForwards w b i = (i, b + (w H.#> i))
+
+naiveFullyConnectedBackprop :: forall i o. (KnownNat i, KnownNat o) 
+                            => H.L o i             -- Weights
+                            -> (H.R i, H.R o)        -- (Tape, Output)
+                            -> (H.L o i, H.R o, H.R i) -- (NablaW, NablaB, derivatives)
+naiveFullyConnectedBackprop w (tape, out) = (w', b', d)
+  where
+    b' = out
+    w' = H.outer out tape
+    d  = (H.tr w) H.#> out
+
+-- Implementation reference: https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf
+naiveLRNForwards :: Double -> Double -> Double -> Int -> [[[Double]]] -> [[[Double]]]
+naiveLRNForwards a b k n values = [
+    [[ g ch ro co | co <- [0..length (values!!ch!!ro) - 1] ] | ro <- [0..length (values!!ch) - 1]] | ch <- [0..cs-1]
+  ]
+  where
+    cs = length values
+    f ch ro co = values!!ch!!ro!!co
+    g ch ro co = (f ch ro co) / den
+      where
+        den  = den' ** b
+        sub = floor ((fromIntegral n) / 2     :: Double)
+        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        lower = maximum [0, ch - sub]
+        upper = minimum [cs - 1, ch + add]
+        summation = sum [ (f j ro co) ** 2 | j <- [lower..upper]]
+        den' = k + a * summation
+
+naiveLRNBackwards :: Double         -- a
+                    -> Double       -- b
+                    -> Double       -- k
+                    -> Int          -- n
+                    -> [[[Double]]] -- inputs
+                    -> [[[Double]]] -- backpropagated error
+                    -> [[[Double]]] -- error to propagate further
+naiveLRNBackwards a b k n values errs = [
+    [[ ng ch ro co | co <- [0..length (values!!ch!!ro) - 1] ] | ro <- [0..length (values!!ch) - 1]] | ch <- [0..cs-1]
+  ]
+  where
+    cs = length values
+    f  ch ro co = values!!ch!!ro!!co
+    nf ch ro co = errs!!ch!!ro!!co
+    c ch ro co = den
+      where
+        sub = floor ((fromIntegral n) / 2     :: Double)
+        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        lower = maximum [0, ch - sub]
+        upper = minimum [cs - 1, ch + add]
+        summation = sum [ (f j ro co) ** 2 | j <- [lower..upper]]
+        den = k + a * summation
+    ng ch ro co = t1 - t2
+      where
+        t1 = (c ch ro co) ** (-b) * (nf ch ro co)
+        t2 = 2 * b * a * (f ch ro co) * (c ch ro co) ** (-b - 1) * s
+        s  = sum [(f q ro co) * (nf q ro co) | q <- [lower..upper]]
+
+        sub = floor ((fromIntegral n) / 2     :: Double)
+        add = floor ((fromIntegral n - 1) / 2 :: Double)
+        lower = maximum [0, ch - sub]
+        upper = minimum [cs - 1, ch + add]

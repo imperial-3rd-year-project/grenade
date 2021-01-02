@@ -5,6 +5,10 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
 module Test.Hedgehog.Hmatrix where
 
@@ -13,6 +17,9 @@ import GHC.Stack (HasCallStack, withFrozenCallStack)
 import           Grenade
 import           Data.Singletons
 import           Data.Singletons.TypeLits
+
+import           GHC.TypeLits
+import           Data.Proxy
 
 import           Hedgehog (Gen, diff, MonadTest)
 import qualified Hedgehog.Gen as Gen
@@ -50,6 +57,9 @@ genOfShape =
     D3Sing r c d ->
       withKnownNat r $ withKnownNat c $ withKnownNat d $
         S3D <$> uniformSample
+    D4Sing r c d t ->
+      withKnownNat r $ withKnownNat c $ withKnownNat d $ withKnownNat t $
+        S4D <$> uniformSample
 
 nice :: S shape -> String
 nice (S1D x) = show . H.extract $ x
@@ -74,9 +84,19 @@ allCloseP xs ys p = case xs - ys of
 allCloseV :: KnownNat n => H.R n -> H.R n -> Bool 
 allCloseV xs ys = H.norm_Inf (xs - ys) < 0.0001
 
+allCloseL :: [Double] -> [Double] -> Bool
+allCloseL xs ys = all ((<= 0.0001) . abs) (zipWith (-) xs ys)
+
 -- | generate a 2D list with random elements
 genLists :: Int -> Int -> Gen [[Double]]
 genLists height width = Gen.list (Range.singleton height) $ Gen.list (Range.singleton width) (Gen.double (Range.constant (-2.0) 2.0))
+
+genLists3D :: Int -> Int -> Int -> Gen [[[Double]]]
+genLists3D depth height width 
+  = Gen.list (Range.singleton depth) $ 
+      Gen.list (Range.singleton height) $ 
+        Gen.list (Range.singleton width) 
+          (Gen.double (Range.constant (-2.0) 2.0))
 
 extractVec :: KnownNat n => S ('D1 n) -> [Double]
 extractVec (S1D vec) = toList $ H.extract vec
@@ -85,11 +105,18 @@ extractMat :: (KnownNat a, KnownNat b) => S ('D2 a b) -> [[Double]]
 extractMat (S2D mat) = toLists $ H.extract mat
 extractMat _ = error "Expected 2D matrix"
 
+extractMat3D :: (KnownNat a, KnownNat b, KnownNat c) => S ('D3 a b c) -> [[Double]]
+extractMat3D (S3D mat) = toLists $ H.extract mat
+
+extractMat4D :: (KnownNat a, KnownNat b, KnownNat c, KnownNat d, KnownNat (a * b * c)) => S ('D4 a b c d) -> [[Double]]
+extractMat4D (S4D mat) = toLists $ H.extract mat
+
 elementsEqual :: SingI shape => S shape -> Bool 
 elementsEqual m = case m of 
   S1D x -> listSameElements . toList $ H.extract x
   S2D x -> listSameElements . concat . toLists $ H.extract x
   S3D x -> listSameElements . concat . toLists $ H.extract x
+  S4D x -> listSameElements . concat . toLists $ H.extract x
 
 listSameElements :: Eq a => [a] -> Bool
 listSameElements []  = True 

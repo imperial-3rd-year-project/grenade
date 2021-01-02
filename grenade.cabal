@@ -260,7 +260,9 @@ test-suite test
       Test.Grenade.Layers.Nonlinear
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling
+      Test.Grenade.Layers.Reshape
       Test.Grenade.Layers.Transpose
+      Test.Grenade.Layers.Trivial
       Test.Grenade.Loss
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM
@@ -269,6 +271,7 @@ test-suite test
       Test.Hedgehog.Compat
       Test.Hedgehog.Hmatrix
       Test.Hedgehog.TypeLits
+      Test.Utils.Rnf
       Paths_grenade
   hs-source-dirs:
       test

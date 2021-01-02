@@ -14,7 +14,9 @@ import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
 import qualified Test.Grenade.Layers.LeakyRelu
 import qualified Test.Grenade.Layers.LRN
+import qualified Test.Grenade.Layers.Reshape
 import qualified Test.Grenade.Layers.Transpose
+import qualified Test.Grenade.Layers.Trivial
 
 import qualified Test.Grenade.Layers.Internal.Convolution
 import qualified Test.Grenade.Layers.Internal.Pooling
@@ -44,7 +46,9 @@ main
     , Test.Grenade.Layers.PadCrop.tests
     , Test.Grenade.Layers.LRN.tests
     , Test.Grenade.Layers.LeakyRelu.tests
+    , Test.Grenade.Layers.Reshape.tests
     , Test.Grenade.Layers.Transpose.tests
+    , Test.Grenade.Layers.Trivial.tests
 
     , Test.Grenade.Layers.Internal.Convolution.tests
     , Test.Grenade.Layers.Internal.Pooling.tests

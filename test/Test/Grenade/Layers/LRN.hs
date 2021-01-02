@@ -2,22 +2,33 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Test.Grenade.Layers.LRN where
 
 import           Data.Singletons               ()
 import           GHC.TypeLits
 import           Hedgehog
+import           Data.Proxy
+import           Data.Kind (Type)
 import           Test.Hedgehog.Hmatrix
+import           Test.Grenade.Layers.Internal.Reference
+import qualified System.Random.MWC as MWC
+import           Control.DeepSeq
+import           Control.Exception (evaluate)
+import           Test.Hedgehog.Compat
+import           Data.Serialize
+import           Data.Either
 
 import           Grenade.Core
 import           Grenade.Layers.LRN
 import           Numeric.LinearAlgebra.Data as NLD hiding ((===))
-import           Numeric.LinearAlgebra.Static as S hiding ((===))
+import           Numeric.LinearAlgebra.Static as H hiding ((===))
 
 expectedDepth1
   = [
@@ -64,15 +75,8 @@ expectedDepth3
       [7.14527441542452734780, 8.11923556976295479615, 9.08612680142306139430]
     ]
 
-getOutput :: (KnownSymbol a, KnownSymbol b, KnownSymbol k, KnownNat n) => LRN a b k n -> [[Double]] -> S.L 9 3 -> (S ('D3 3 3 3), S ('D3 3 3 3))
-getOutput l e inp = (o, (S3D (eMat :: S.L 9 3)))
-  where
-  (_, o :: (S ('D3 3 3 3))) = runForwards l ((S3D inp) :: (S ('D3 3 3 3)))
-  Just eMat = S.create $ NLD.fromLists e
-
-
-prop_lrn_forwards :: Property
-prop_lrn_forwards = property $ do
+prop_lrn_forwards_fixed :: Property
+prop_lrn_forwards_fixed = property $ do
   let ch1 = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
       ch2 = map (map (0.1 +)) ch1
       ch3 = map (map (0.1 +)) ch2
@@ -81,15 +85,88 @@ prop_lrn_forwards = property $ do
       lrn   = LRN :: (LRN "0.0001" "0.75" "1" 1)
       lrn'  = LRN :: (LRN "0.0001" "0.75" "1" 2)
       lrn'' = LRN :: (LRN "0.0001" "0.75" "1" 3)
-      Just inp = (S.create mat) :: Maybe (S.L 9 3)
+      Just inp = (H.create mat) :: Maybe (H.L 9 3)
       (out,   expMat)   = getOutput lrn   expectedDepth1 inp
       (out',  expMat')  = getOutput lrn'  expectedDepth2 inp 
       (out'', expMat'') = getOutput lrn'' expectedDepth3 inp
   assert $ allCloseP out   expMat   0.000001
   assert $ allCloseP out'  expMat'  0.000001
   assert $ allCloseP out'' expMat'' 0.000001
+  where
+    -- Helper function to 
+    getOutput :: (KnownSymbol a, KnownSymbol b, KnownSymbol k, KnownNat n) => LRN a b k n -> [[Double]] -> H.L 9 3 -> (S ('D3 3 3 3), S ('D3 3 3 3))
+    getOutput l e inp = (o, (S3D (eMat :: H.L 9 3)))
+      where
+      (_, o :: (S ('D3 3 3 3))) = runForwards l ((S3D inp) :: (S ('D3 3 3 3)))
+      Just eMat = H.create $ NLD.fromLists e
 
+
+data OpaqueLRN :: Type where
+  OpaqueLRN :: (KnownNat i) => LRN "0.0001" "0.75" "1" i -> OpaqueLRN
+
+genOpaqueLRN :: Gen OpaqueLRN
+genOpaqueLRN = do
+  s :: Integer <- choose 1 7
+  let Just s' = someNatVal s
+  case s' of
+      SomeNat (Proxy :: Proxy i') ->
+          return . OpaqueLRN $ (LRN :: LRN "0.0001" "0.75" "1" i')
+
+prop_lrn_forwards :: Property 
+prop_lrn_forwards = property $ do
+  OpaqueLRN (lrn :: LRN "0.0001" "0.75" "1" n) <- blindForAll genOpaqueLRN
+  let n' = natVal (Proxy :: Proxy n)
+  source <- forAll $ genLists3D 5 11 7 -- 5 channels, 11 rows, 7 columns
+  let inp = S3D (H.fromList $ (concat . concat) source) :: S ('D3 11 7 5)
+      (_, o :: (S ('D3 11 7 5))) = runForwards lrn inp
+      out = naiveLRNForwards 0.0001 0.75 1 (fromIntegral n') source
+  
+  assert $ allClose o (S3D (H.fromList $ (concat . concat) out))
+
+prop_lrn_backwards :: Property 
+prop_lrn_backwards = property $ do
+  OpaqueLRN (lrn :: LRN "0.0001" "0.75" "1" n) <- blindForAll genOpaqueLRN
+  let n' = natVal (Proxy :: Proxy n)
+  source <- forAll $ genLists3D 5 11 7 -- 5 channels, 11 rows, 7 columns
+  let inp = S3D (H.fromList $ (concat . concat) source) :: S ('D3 11 7 5)
+      (tape, o :: (S ('D3 11 7 5))) = runForwards lrn inp
+      ((),    d :: (S ('D3 11 7 5))) = runBackwards lrn tape o
+      out = naiveLRNForwards 0.0001 0.75 1 (fromIntegral n') source
+      back = naiveLRNBackwards 0.0001 0.75 1 (fromIntegral n') source out
+
+  assert $ allClose d (S3D (H.fromList $ (concat . concat) back))
+
+prop_lrn_show :: Property
+prop_lrn_show = withTests 1 $ property $ do
+  let lrn = LRN :: (LRN "0.0001" "0.75" "1" 1)
+  (show lrn) `seq` success
+
+prop_lrn_rnf :: Property
+prop_lrn_rnf = withTests 1 $ property $ do
+  let lrn = LRN :: (LRN "0.0001" "0.75" "1" 1)
+  (r :: ()) <- evalIO $ evaluate $ rnf lrn
+  r `seq` success
+
+prop_lrn_run_update :: Property
+prop_lrn_run_update = withTests 1 $ property $ do
+  source <- forAll $ genLists 12 17
+  gen <- evalIO MWC.create
+  (lrn :: LRN "0.0001" "0.75" "1" 1) <- evalIO $ createRandomWith UniformInit gen
+  let mat = (NLD.fromLists source) :: NLD.Matrix Double
+      Just inp = (H.create mat) :: Maybe (H.L 12 17)
+      (tape, o :: (S ('D3 3 17 4))) = runForwards lrn ((S3D inp) :: (S ('D3 3 17 4)))
+      (grad, _ :: (S ('D3 3 17 4))) = runBackwards lrn tape o
+  (runUpdate defSGD lrn grad) `seq` (runUpdate defAdam lrn grad) `seq` success
+  (reduceGradient @(LRN "0.0001" "0.75" "1" 1) [grad]) `seq` success
+
+prop_lrn_serializable :: Property
+prop_lrn_serializable = withTests 1 $ property $ do
+  gen <- evalIO MWC.create
+  (lrn :: LRN "0.0001" "0.75" "1" 1) <- evalIO $ createRandomWith UniformInit gen
+  let bs  = encode lrn
+      dec = decode bs :: Either String (LRN "0.0001" "0.75" "1" 1)
+  assert $ isRight dec
+  (put lrn) `seq` success
 
 tests :: IO Bool
 tests = checkParallel $$(discover)
-

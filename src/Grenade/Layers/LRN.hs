@@ -24,7 +24,6 @@ import           GHC.TypeLits
 import           Data.Proxy
 import           Data.Serialize
 
-import qualified Numeric.LinearAlgebra.Data as NLD
 import qualified Numeric.LinearAlgebra          as LA
 import           Numeric.LinearAlgebra.Static
 
@@ -80,92 +79,88 @@ instance ( KnownNat inputRows
          ) => Layer (LRN a b k n) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols channels) where
   
   type Tape (LRN a b k n) ('D3 inputRows inputCols channels) ('D3 inputRows inputCols channels) 
-    = (S ('D3 inputRows inputCols channels), Matrix RealNum)
+    = (L (inputRows * channels) inputCols, L (inputRows * channels) inputCols)
 
-  runForwards LRN (S3D input) = ((S3D input, sums), S3D normalized)
+  runForwards LRN (S3D input) = ((input, sums), S3D normalized)
     where
       normalized :: L (inputRows * channels) inputCols
-      normalized = build buildMat
-
+      normalized = build buildNormalizedMatrix
+      
       ex = extract input :: Matrix RealNum
+      channels = fromIntegral $ natVal (Proxy :: Proxy channels)  :: Int
+      rows     = fromIntegral $ natVal (Proxy :: Proxy inputRows) :: Int
 
-      sums :: Matrix RealNum 
-      sums = NLD.build (n, m) buildSums
-        where
-          h = natVal (Proxy :: Proxy inputRows)
-          w = natVal (Proxy :: Proxy inputCols)
-          c = natVal (Proxy :: Proxy channels)
-          n = fromInteger $ h * c
-          m = fromInteger w
-
-      buildSums :: Double -> Double -> Double
-      buildSums row col = c
-        where
-          i = floor $ row / (fromIntegral rs)
-          x = floor $ row - (fromIntegral (i * rs))
-          y = floor col
-          c = k + a * summation
-          sub = floor ((fromIntegral n) / 2     :: Double)
-          add = floor ((fromIntegral n - 1) / 2 :: Double)
-          lower = maximum [0, i - sub]
-          upper = minimum [cs - 1, i + add]
-          summation = sum [ (elem j x y) ** 2 | j <- [lower..upper]]
-
-      buildMat :: Double -> Double -> Double
-      buildMat row col = num / den
-        where
-          i = floor $ row / (fromIntegral rs)
-          x = floor $ row - (fromIntegral (i * rs))
-          y = floor col
-          num = elem i x y
-          den = c ** b
-          c = access sums cs i x y
-
-      elem :: Int -> Int -> Int -> Double
-      elem = access ex cs
-
-      cs = fromIntegral $ natVal (Proxy :: Proxy channels)
-      rs = fromIntegral $ natVal (Proxy :: Proxy inputRows)
       n  = natVal (Proxy :: Proxy n)
       a  = (read $ symbolVal (Proxy :: Proxy a)) :: Double
       b  = (read $ symbolVal (Proxy :: Proxy b)) :: Double
       k  = (read $ symbolVal (Proxy :: Proxy k)) :: Double
 
-  runBackwards LRN (S3D input, sums) (S3D err) = ((), S3D err')
-    where
-      ex   = extract input  :: Matrix RealNum
-      exr  = extract err    :: Matrix RealNum
-      err' = build buildMat
-
-      buildMat :: Double -> Double -> Double
-      buildMat row col = exrixy * (c ** (-b)) - 2 * b * a * (c ** (-b - 1)) * sum'
+      sums  = build buildSums
+      sums' = extract sums
+      
+      buildSums :: Double -> Double -> Double
+      buildSums i j = k + a * summation
         where
-          i = floor $ row / (fromIntegral rs)
-          x = floor $ row - (fromIntegral (i * rs))
-          y = floor col
+          i' = floor i :: Int
+          j' = floor j :: Int
+          ch = i' `div` rows :: Int
+          ro = i' `mod` rows :: Int
+          co = j'
+          
           sub = floor ((fromIntegral n) / 2     :: Double)
           add = floor ((fromIntegral n - 1) / 2 :: Double)
-          lower = maximum [0, i - sub]
-          upper = minimum [cs - 1, i + add]
-          c = access sums cs i x y
-          sum' = elem i x y * sum [ elem j x y * elem' j | j <- [lower..upper]]
+          lower = maximum [0, ch - sub]
+          upper = minimum [channels - 1, ch + add]
+          summation = sum [ (ex `LA.atIndex` (q * rows + ro, co)) ** 2 | q <- [lower..upper]]
 
-          exrixy = access exr cs i x y
-          elem' j = access exr cs j x y
+      -- Calculates the normalised values for each cell of the input based
+      -- on the cross-channel sums of the surrounding cells
+      buildNormalizedMatrix :: Double -> Double -> Double
+      buildNormalizedMatrix i j = val
+        where
+          i' = floor i :: Int
+          j' = floor j :: Int
+          
+          f = ex `LA.atIndex` (i', j')
+          val = f / den
+          
+          den  = den' ** b
+          den' = sums' `LA.atIndex` (i', j')
 
-      elem :: Int -> Int -> Int -> Double
-      elem = access ex cs
-
-      cs = fromIntegral $ natVal (Proxy :: Proxy channels)
-      rs = fromIntegral $ natVal (Proxy :: Proxy inputRows)
+  runBackwards LRN (input, sums) (S3D err) = ((), S3D err')
+    where
+      ex    = extract input :: Matrix RealNum
+      exr   = extract err   :: Matrix RealNum
+      sums' = extract sums  :: Matrix RealNum
+      
+      channels = fromIntegral $ natVal (Proxy :: Proxy channels)  :: Int
+      rows     = fromIntegral $ natVal (Proxy :: Proxy inputRows) :: Int
+      
       n  = natVal (Proxy :: Proxy n)
       a  = (read $ symbolVal (Proxy :: Proxy a)) :: Double
       b  = (read $ symbolVal (Proxy :: Proxy b)) :: Double
+      
+      err' = build buildErrorMatrix
+      
+      buildErrorMatrix :: Double -> Double -> Double
+      buildErrorMatrix i j = res
+        where
+          i' = floor i :: Int
+          j' = floor j :: Int
+          ch = i' `div` rows
+          ro = i' `mod` rows
+          co = j'
 
-access :: Matrix RealNum -> Int -> Int -> Int -> Int -> Double
-access ex cs j x y = ex LA.! (block + x) LA.! y
-  where
-    block = j * cs
+          sub = floor ((fromIntegral n) / 2     :: Double)
+          add = floor ((fromIntegral n - 1) / 2 :: Double)
+          lower = maximum [0, ch - sub]
+          upper = minimum [channels - 1, ch + add]
+
+          s  = (ex `LA.atIndex` (i', j')) * s'
+          s' = sum [ (ex `LA.atIndex` (q * rows + ro, co)) * (exr `LA.atIndex` (q * rows + ro, co)) | q <- [lower..upper] ]
+          c  = sums' `LA.atIndex` (i', j')
+          
+          res = (exr `LA.atIndex` (i', j')) * (c ** (-b)) - 2 * b * a * (c ** (-b - 1)) * s
 
 instance OnnxOperator (LRN a b k n) where
   onnxOpTypeNames _ = ["LRN"]
