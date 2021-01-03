@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Tanh (
+module Grenade.Dynamic.Layers.Dropout (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecTanh)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecDropout)
 
-instance ToDynamicLayer SpecTanh where
+instance ToDynamicLayer SpecDropout where

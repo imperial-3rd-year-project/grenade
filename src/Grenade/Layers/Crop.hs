@@ -133,11 +133,3 @@ instance ( KnownNat cropLeft
 
 instance RandomLayer (Crop l t r b) where
   createRandomWith _ _ = return Crop
-
-
--------------------- GNum instances --------------------
-
-instance GNum (Crop l t r b) where
-  _ |* x = x
-  _ |+ x = x
-  gFromRational _ = Crop

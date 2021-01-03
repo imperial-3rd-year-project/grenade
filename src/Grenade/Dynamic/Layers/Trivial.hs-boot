@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Sinusoid (
+module Grenade.Dynamic.Layers.Trivial (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecSinusoid)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecTrivial)
 
-instance ToDynamicLayer SpecSinusoid where
+instance ToDynamicLayer SpecTrivial where

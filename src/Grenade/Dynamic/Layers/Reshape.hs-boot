@@ -1,20 +1,17 @@
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Deconvolution (
+module Grenade.Dynamic.Layers.Reshape
+  (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecDeconvolution)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecReshape)
 
-instance ToDynamicLayer SpecDeconvolution where
+instance ToDynamicLayer SpecReshape where

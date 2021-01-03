@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Convolution (
+module Grenade.Dynamic.Layers.Tanh (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecConvolution)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecTanh)
 
-instance ToDynamicLayer SpecConvolution where
+instance ToDynamicLayer SpecTanh where

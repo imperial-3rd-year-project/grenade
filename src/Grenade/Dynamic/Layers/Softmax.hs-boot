@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Trivial (
+module Grenade.Dynamic.Layers.Softmax (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecTrivial)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecSoftmax)
 
-instance ToDynamicLayer SpecTrivial where
+instance ToDynamicLayer SpecSoftmax where

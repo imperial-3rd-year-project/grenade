@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.LeakyRelu (
+module Grenade.Dynamic.Layers.Logit (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecLeakyRelu)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecLogit)
 
-instance ToDynamicLayer SpecLeakyRelu where
+instance ToDynamicLayer SpecLogit where

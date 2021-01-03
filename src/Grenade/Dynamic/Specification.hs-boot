@@ -44,6 +44,15 @@ class FromDynamicLayer x where
 class (Show spec) => ToDynamicLayer spec where
   toDynamicLayer :: (PrimBase m) => WeightInitMethod -> Gen (PrimState m) -> spec -> m SpecNetwork
 
+-- | Grenade Num class.
+--
+-- This allows for instance scalar multiplication of the weights, which is useful for slowly adapting networks, e.g. NN'
+-- <- \tau * NN' + (1-\tau) * NN. Or one could sum up some gradients in parallel and apply them at once: @applyUpdate lp
+-- net $ foldl1 (|+) ...@aq.
+class GNum a where
+  (|*) :: Rational -> a -> a
+  (|+) :: a -> a -> a
+  gFromRational :: Rational -> a
 
 ----------------------------------------
 -- Return value of toDynamicLayer

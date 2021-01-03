@@ -12,11 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Dropout (
+module Grenade.Dynamic.Layers.Convolution (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecDropout)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecConvolution)
 
-instance ToDynamicLayer SpecDropout where
-
-
+instance ToDynamicLayer SpecConvolution where

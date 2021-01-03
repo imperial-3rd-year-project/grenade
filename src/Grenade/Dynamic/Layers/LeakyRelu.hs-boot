@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.FullyConnected (
+module Grenade.Dynamic.Layers.LeakyRelu (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecFullyConnected)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecLeakyRelu)
 
-instance ToDynamicLayer SpecFullyConnected where
+instance ToDynamicLayer SpecLeakyRelu where

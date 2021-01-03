@@ -29,7 +29,7 @@ test:
 
 coverage:
   stage: coverage
-  script: hpc report dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/tix/grenade-0.1.1/grenade-0.1.1.tix --hpcdir=dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/mix/grenade-0.1.1/
+  script: hpc report dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/tix/grenade-0.1.1/grenade-0.1.1.tix --hpcdir=dist-newstyle/build/x86_64-linux/ghc-8.10.2/grenade-0.1.1/hpc/vanilla/mix/grenade-0.1.1/ --exclude=Grenade:Dynamic --exclude=Grenade:Recurrent --exclude=Grenade:Proto
   dependencies:
     - test
   coverage: '/.*expressions used.*/'

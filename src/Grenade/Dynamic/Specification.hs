@@ -10,6 +10,8 @@
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
+
 {-|
 Module      : Grenade.Dynamic.Specification
 Description : Specifying network architectures for dynamically creating nets.
@@ -22,6 +24,7 @@ module Grenade.Dynamic.Specification
   , ToDynamicLayer (..)
   , SpecNetwork (..)
   , SpecNet (..)
+  , GNum (..)
   -- Layer specific data types
   , Dimensions
   , SpecFullyConnected(..)
@@ -41,42 +44,122 @@ module Grenade.Dynamic.Specification
   ) where
 
 import           Control.DeepSeq
-import           Data.Constraint               (Dict (..))
+import           Data.Constraint                       (Dict (..))
 import           Data.Proxy
-import           Data.Reflection               (reifyNat)
+import           Data.Reflection                       (reifyNat)
 import           Data.Serialize
 import           Data.Singletons
 import           Data.Singletons.Prelude.List
-import           Data.Typeable                 as T
-import           GHC.Generics
+import           Data.Typeable                         as T
+import           GHC.Generics                          hiding (R)
 import           GHC.TypeLits
-import           Unsafe.Coerce                 (unsafeCoerce)
+import           Unsafe.Coerce                         (unsafeCoerce)
 #if MIN_VERSION_base(4,9,0)
-import           Data.Kind                     (Type)
+import           Data.Kind                             (Type)
 #endif
 #ifndef FLYCHECK
-import {-# SOURCE #-} Grenade.Layers.Convolution    ()
-import {-# SOURCE #-} Grenade.Layers.Deconvolution  ()
-import {-# SOURCE #-} Grenade.Layers.Dropout        ()
-import {-# SOURCE #-} Grenade.Layers.Elu            ()
-import {-# SOURCE #-} Grenade.Layers.FullyConnected ()
-import {-# SOURCE #-} Grenade.Layers.Gelu           ()
-import {-# SOURCE #-} Grenade.Layers.LeakyRelu      ()
-import {-# SOURCE #-} Grenade.Layers.Logit          ()
-import {-# SOURCE #-} Grenade.Layers.Relu           ()
-import {-# SOURCE #-} Grenade.Layers.Reshape        ()
-import {-# SOURCE #-} Grenade.Layers.Sinusoid       ()
-import {-# SOURCE #-} Grenade.Layers.Softmax        ()
-import {-# SOURCE #-} Grenade.Layers.Tanh           ()
-import {-# SOURCE #-} Grenade.Layers.Trivial        ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Convolution    ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Deconvolution  ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Dropout        ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Elu            ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.FullyConnected ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Gelu           ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.LeakyRelu      ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Logit          ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Relu           ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Reshape        ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Sinusoid       ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Softmax        ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Tanh           ()
+import {-# SOURCE #-} Grenade.Dynamic.Layers.Trivial        ()
 #endif
 
+import           Control.Monad.Primitive               (PrimBase, PrimState)
+import           Control.Parallel.Strategies
+import           Numeric.LinearAlgebra.Static          (L, R)
+import qualified Numeric.LinearAlgebra.Static          as H
+import           System.Random.MWC                     (Gen)
 
-import           Control.Monad.Primitive       (PrimBase, PrimState)
 import           Grenade.Core
 import           Grenade.Types
-import           System.Random.MWC             (Gen)
+import           Grenade.Utils.ListStore
 
+--------------------------------------------------
+
+-- | Grenade Num class.
+--
+-- This allows for instance scalar multiplication of the weights, which is useful for slowly adapting networks, e.g. NN'
+-- <- \tau * NN' + (1-\tau) * NN. Or one could sum up some gradients in parallel and apply them at once: @applyUpdate lp
+-- net $ foldl1 (|+) ...@aq.
+class GNum a where
+  (|*) :: Rational -> a -> a
+  (|+) :: a -> a -> a
+  gFromRational :: Rational -> a
+
+infixl 7 |*
+infixr 5 |+
+
+instance (SingI i) => GNum (Network '[] '[ i]) where
+  _ |* NNil = NNil
+  _ |+ NNil = NNil
+  gFromRational _ = NNil
+
+instance (SingI i, SingI o, Layer x i o, NFData (Network xs (o ': rs)), GNum x, GNum (Network xs (o ': rs))) => GNum (Network (x ': xs) (i ': o ': rs)) where
+  s |* (x :~> xs) =
+    let x' = (s |* x)
+        xs' = (s |* xs) `using` rdeepseq
+     in x' :~> xs'
+  (x :~> xs) |+ (y :~> ys) =
+    let x' = (x |+ y)
+        xs' = (xs |+ ys) `using` rdeepseq
+     in x' :~> xs'
+  gFromRational r = gFromRational r :~> gFromRational r
+
+instance GNum (Gradients '[]) where
+  _ |* GNil = GNil
+  _ |+ GNil = GNil
+  gFromRational _ = GNil
+
+instance (GNum a) => GNum [a] where
+  r |* xs = fmap (r |*) xs
+  xs |+ ys = zipWith (|+) xs ys
+  gFromRational _ = error "Cannot create a list of elements using gFromRational"
+
+instance (UpdateLayer x, GNum (Gradient x), GNum (Gradients xs), NFData (Gradients xs)) => GNum (Gradients (x ': xs)) where
+  s |* (x :/> xs) =
+    let x' = (s |* x)
+        xs' = (s |* xs) `using` rdeepseq
+     in x' :/> xs'
+  (x :/> xs) |+ (y :/> ys) =
+    let x' = (x |+ y)
+        xs' = (xs |+ ys) `using` rdeepseq
+     in x' :/> xs'
+  gFromRational r = gFromRational r :/> gFromRational r
+
+instance GNum () where
+  _ |* () = ()
+  _ |+ () = ()
+  gFromRational _ = ()
+
+instance (GNum a, GNum b) => GNum (a, b) where
+  s |* (a, b) = (s |* a, s |* b)
+  (a1, b1) |+ (a2, b2) = (a1 |+ a2, b1 |+ b2)
+  gFromRational v = (gFromRational v, gFromRational v)
+
+instance (KnownNat m) => GNum (R m) where
+  s |* vec = H.dvmap (fromRational s *) vec
+  (|+) = (+)
+  gFromRational = fromRational
+
+instance (KnownNat m, KnownNat n) => GNum (L m n) where
+  s |* mat = H.dmmap (fromRational s *) mat
+  (|+) = (+)
+  gFromRational = fromRational
+
+instance (GNum a) => GNum (ListStore a) where
+  s |* (ListStore n xs) = ListStore n $ map (fmap (s |*)) xs
+  (ListStore n1 xs) |+ (ListStore n2 ys) = ListStore (max n1 n2) $ zipWith (\x y -> (|+) <$> x <*> y) xs ys
+  gFromRational _ = mkListStore
 
 -- | Create a runtime dynamic specification of a network. Dynamic layers (and networks), for storing and restoring specific network structures (e.g. in saving the network structures to a DB and
 -- restoring it from there) or simply generating them at runtime. This does not store the weights and biases! They have to be handled separately (see Serialize)!

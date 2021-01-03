@@ -187,5 +187,3 @@ tripleFromSomeShape someShape =
         D1Sing r@SNat               -> (natVal r, 1, 1)
         D2Sing r@SNat c@SNat        -> (natVal r, natVal c, 1)
         D3Sing r@SNat c@SNat d@SNat -> (natVal r, natVal c, natVal d)
-
-

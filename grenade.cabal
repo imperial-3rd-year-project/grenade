@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 19ca9effdfecbf86f15bd9bc6c9c59c59c5ab07111138b42295abf5f0e23f92f
+-- hash: bc6e89da2715da01e2ac253a626d8784d914b8e21ebe16511444c92e48467cd2
 
 name:           grenade
 version:        0.1.1
@@ -88,7 +88,29 @@ library
       Grenade.Dynamic
       Grenade.Dynamic.Build
       Grenade.Dynamic.Internal.Build
+      Grenade.Dynamic.Layers
+      Grenade.Dynamic.Layers.Concat
+      Grenade.Dynamic.Layers.Convolution
+      Grenade.Dynamic.Layers.Crop
+      Grenade.Dynamic.Layers.Deconvolution
+      Grenade.Dynamic.Layers.Dropout
+      Grenade.Dynamic.Layers.Elu
+      Grenade.Dynamic.Layers.FullyConnected
+      Grenade.Dynamic.Layers.Gelu
+      Grenade.Dynamic.Layers.LeakyRelu
+      Grenade.Dynamic.Layers.Logit
+      Grenade.Dynamic.Layers.Merge
+      Grenade.Dynamic.Layers.Pad
+      Grenade.Dynamic.Layers.Pooling
+      Grenade.Dynamic.Layers.Relu
+      Grenade.Dynamic.Layers.Reshape
+      Grenade.Dynamic.Layers.Sinusoid
+      Grenade.Dynamic.Layers.Softmax
+      Grenade.Dynamic.Layers.Tanh
+      Grenade.Dynamic.Layers.Trivial
       Grenade.Dynamic.Network
+      Grenade.Dynamic.Recurrent.Layers.BasicRecurrent
+      Grenade.Dynamic.Recurrent.Layers.LSTM
       Grenade.Dynamic.Specification
       Grenade.Layers
       Grenade.Layers.Add

@@ -18,23 +18,16 @@ module Grenade.Layers.Softmax (
     Softmax (..)
   , softmax
   , softmax'
-  , SpecSoftmax (..)
-  , specSoftmax
-  , softmaxLayer
   ) where
 
 import           Data.Serialize
 
 import           Control.DeepSeq                (NFData (..))
-import           Data.Reflection                (reifyNat)
-import           Data.Singletons
 import           GHC.Generics                   (Generic)
 import           GHC.TypeLits
 import           Numeric.LinearAlgebra.Static   as LAS
 
 import           Grenade.Core
-import           Grenade.Dynamic
-import           Grenade.Dynamic.Internal.Build
 
 -- | A Softmax layer
 --
@@ -78,36 +71,3 @@ softmax' x grad =
   in  g #> grad
     where
   sm = softmax x
-
--------------------- DynamicNetwork instance --------------------
-
-instance FromDynamicLayer Softmax where
-  fromDynamicLayer inp _ Softmax = case tripleFromSomeShape inp of
-    (rows, 1, 1) -> SpecNetLayer $ SpecSoftmax rows
-    _ -> error "Error in specification: The layer Softmax may only be used with 1D input!"
-
-instance ToDynamicLayer SpecSoftmax where
-  toDynamicLayer _ _ (SpecSoftmax rows) =
-    reifyNat rows $ \(_ :: (KnownNat i) => Proxy i) ->
-    return $ SpecLayer Softmax (sing :: Sing ('D1 i)) (sing :: Sing ('D1 i))
-
-
--- | Create a specification for a elu layer.
-specSoftmax :: Integer -> SpecNet
-specSoftmax = SpecNetLayer . SpecSoftmax
-
-
--- | Add a Softmax layer to your build.
-softmaxLayer :: BuildM ()
-softmaxLayer = buildRequireLastLayerOut Is1D >>= buildAddSpec . SpecNetLayer . SpecSoftmax . fst3
-  where
-    fst3 (x, _, _) = x
-
--------------------- GNum instances --------------------
-
-
-instance GNum Softmax where
-  _ |* Softmax = Softmax
-  _ |+ Softmax = Softmax
-  gFromRational _ = Softmax
-

@@ -90,10 +90,3 @@ setListStore opt _ (ListStore n xs) inp
 getIndices :: Optimizer o -> [Int]
 getIndices OptSGD{}  = [0]
 getIndices OptAdam{} = [1,2]
-
-
-instance (GNum a) => GNum (ListStore a) where
-  s |* (ListStore n xs) = ListStore n $ map (fmap (s |*)) xs
-  (ListStore n1 xs) |+ (ListStore n2 ys) = ListStore (max n1 n2) $ zipWith (\x y -> (|+) <$> x <*> y) xs ys
-  gFromRational _ = mkListStore
-

@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Elu (
+module Grenade.Dynamic.Layers.Deconvolution (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecElu)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecDeconvolution)
 
-instance ToDynamicLayer SpecElu where
+instance ToDynamicLayer SpecDeconvolution where

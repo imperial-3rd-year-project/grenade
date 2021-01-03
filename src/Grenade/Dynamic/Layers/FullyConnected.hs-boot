@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Logit (
+module Grenade.Dynamic.Layers.FullyConnected (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecLogit)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecFullyConnected)
 
-instance ToDynamicLayer SpecLogit where
+instance ToDynamicLayer SpecFullyConnected where

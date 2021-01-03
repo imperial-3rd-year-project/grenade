@@ -12,9 +12,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Grenade.Layers.Gelu (
+module Grenade.Dynamic.Layers.Relu (
   ) where
 
-import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecGelu)
+import {-# SOURCE #-} Grenade.Dynamic.Specification (ToDynamicLayer, SpecRelu)
 
-instance ToDynamicLayer SpecGelu where
+instance ToDynamicLayer SpecRelu where

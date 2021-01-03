@@ -28,7 +28,6 @@ module Grenade.Core.Network (
   , CreatableNetwork (..)
   , Gradients (..)
   , Tapes (..)
-  , GNum (..)
   , FoldableGradient (..)
 
   , l2Norm
@@ -393,77 +392,3 @@ instance (i ~ (Head subshapes), o ~ (Last subshapes)) => Layer (Network sublayer
   type Tape (Network sublayers subshapes) i o = Tapes sublayers subshapes
   runForwards  = runNetwork
   runBackwards = runGradient
-
-
---------------------------------------------------
-
--- | Grenade Num class.
---
--- This allows for instance scalar multiplication of the weights, which is useful for slowly adapting networks, e.g. NN'
--- <- \tau * NN' + (1-\tau) * NN. Or one could sum up some gradients in parallel and apply them at once: @applyUpdate lp
--- net $ foldl1 (|+) ...@aq.
-class GNum a where
-  (|*) :: Rational -> a -> a
-  (|+) :: a -> a -> a
-  gFromRational :: Rational -> a
-
-infixl 7 |*
-infixr 5 |+
-
-instance (SingI i) => GNum (Network '[] '[ i]) where
-  _ |* NNil = NNil
-  _ |+ NNil = NNil
-  gFromRational _ = NNil
-
-instance (SingI i, SingI o, Layer x i o, NFData (Network xs (o ': rs)), GNum x, GNum (Network xs (o ': rs))) => GNum (Network (x ': xs) (i ': o ': rs)) where
-  s |* (x :~> xs) =
-    let x' = (s |* x)
-        xs' = (s |* xs) `using` rdeepseq
-     in x' :~> xs'
-  (x :~> xs) |+ (y :~> ys) =
-    let x' = (x |+ y)
-        xs' = (xs |+ ys) `using` rdeepseq
-     in x' :~> xs'
-  gFromRational r = gFromRational r :~> gFromRational r
-
-instance GNum (Gradients '[]) where
-  _ |* GNil = GNil
-  _ |+ GNil = GNil
-  gFromRational _ = GNil
-
-instance (GNum a) => GNum [a] where
-  r |* xs = fmap (r |*) xs
-  xs |+ ys = zipWith (|+) xs ys
-  gFromRational _ = error "Cannot create a list of elements using gFromRational"
-
-instance (UpdateLayer x, GNum (Gradient x), GNum (Gradients xs), NFData (Gradients xs)) => GNum (Gradients (x ': xs)) where
-  s |* (x :/> xs) =
-    let x' = (s |* x)
-        xs' = (s |* xs) `using` rdeepseq
-     in x' :/> xs'
-  (x :/> xs) |+ (y :/> ys) =
-    let x' = (x |+ y)
-        xs' = (xs |+ ys) `using` rdeepseq
-     in x' :/> xs'
-  gFromRational r = gFromRational r :/> gFromRational r
-
-instance GNum () where
-  _ |* () = ()
-  _ |+ () = ()
-  gFromRational _ = ()
-
-instance (GNum a, GNum b) => GNum (a, b) where
-  s |* (a, b) = (s |* a, s |* b)
-  (a1, b1) |+ (a2, b2) = (a1 |+ a2, b1 |+ b2)
-  gFromRational v = (gFromRational v, gFromRational v)
-
-instance (KnownNat m) => GNum (R m) where
-  s |* vec = dvmap (fromRational s *) vec
-  (|+) = (+)
-  gFromRational = fromRational
-
-instance (KnownNat m, KnownNat n) => GNum (L m n) where
-  s |* mat = dmmap (fromRational s *) mat
-  (|+) = (+)
-  gFromRational = fromRational
-
