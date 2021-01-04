@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 261015ba9f99b9661295799651ddd4f9d903c1aca8ea4839aea437d4b22dccc2
+-- hash: 1b42421c9f7b9eb9caf9e864765db73ac706b7f99b1683bdadb13f879bb72fef
 
 name:           grenade
 version:        0.1.1
@@ -84,7 +84,6 @@ library
       Grenade.Core.Runner
       Grenade.Core.Shape
       Grenade.Core.Training
-      Grenade.Core.TrainingTypes
       Grenade.Core.WeightInitialization
       Grenade.Demos.MNIST
       Grenade.Dynamic

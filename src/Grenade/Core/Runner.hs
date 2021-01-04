@@ -18,12 +18,12 @@ module Grenade.Core.Runner (
 
 import           Data.Singletons.Prelude
 
-import           Grenade.Utils.LinearAlgebra (nsum)
+import           Grenade.Core.Loss
 import           Grenade.Core.Network
 import           Grenade.Core.Optimizer
 import           Grenade.Core.Shape
-import           Grenade.Core.TrainingTypes
 import           Grenade.Types
+import           Grenade.Utils.LinearAlgebra (nsum)
 
 -- | Perform reverse automatic differentiation on the network
 --   for the current input and expected output.
@@ -37,6 +37,7 @@ backPropagate network input target (LossFunction l) =
         (grads, _)      = runGradient network tapes (l output target)
     in  grads
 
+-- | Calculate the loss of a given input as a scalar
 validate :: Network layers shapes
          -> S (Head shapes)
          -> S (Last shapes)
@@ -60,6 +61,7 @@ train optimizer net input target (LossFunction l) =
         net'            = applyUpdate optimizer net grads
     in (net', nsum loss)
 
+-- | Update a network with new weights after training with a batch of instances.
 batchTrain :: Optimizer opt
            -> Network layers shapes
            -> [S (Head shapes)]

@@ -10,6 +10,7 @@ progress.
 
 module Grenade.Core.Loss (
     LossMetric (..)
+  , LossFunction(..)
   , quadratic
   , quadratic'
   , crossEntropy
@@ -31,10 +32,21 @@ module Grenade.Core.Loss (
 import           Data.Singletons              (SingI)
 
 import           Grenade.Core.Shape
-import           Grenade.Core.TrainingTypes
 import           Grenade.Utils.LinearAlgebra
 
 import           Grenade.Types
+
+data LossMetric = Quadratic
+                | CrossEntropy
+                | Exponential
+                | Hellinger
+                | KullbackLeibler
+                | GenKullbackLeibler
+                | ItakuraSaito
+                | CategoricalCrossEntropy
+  deriving Show
+
+newtype LossFunction shape = LossFunction (shape -> shape -> shape)
 
 quadratic :: SingI s => S s -> S s -> RealNum
 quadratic x y = 0.5 * nsum ((x - y) ^ (2 :: Integer))
