@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cf93faa736a21357388a013c35e6c36a7dd1804eb362343cbe1d57ef0c5c237e
+-- hash: 261015ba9f99b9661295799651ddd4f9d903c1aca8ea4839aea437d4b22dccc2
 
 name:           grenade
 version:        0.1.1
@@ -127,11 +127,11 @@ library
       Grenade.Layers.Gelu
       Grenade.Layers.GlobalAvgPool
       Grenade.Layers.Inception
+      Grenade.Layers.Internal.Activations
       Grenade.Layers.Internal.Add
       Grenade.Layers.Internal.BatchNorm
       Grenade.Layers.Internal.Convolution
       Grenade.Layers.Internal.Hmatrix
-      Grenade.Layers.Internal.LeakyRelu
       Grenade.Layers.Internal.Pad
       Grenade.Layers.Internal.Pooling
       Grenade.Layers.Internal.Shrink

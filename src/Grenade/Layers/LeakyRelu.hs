@@ -25,12 +25,12 @@ import           Data.Maybe                     (fromJust)
 import           Data.Serialize
 import           GHC.Generics                   (Generic)
 import           GHC.TypeLits
-import qualified Numeric.LinearAlgebra.Static   as LAS
+import qualified Numeric.LinearAlgebra.Static   as H
 
 import           Grenade.Core
 import           Grenade.Onnx
 import           Grenade.Types
-import           Grenade.Layers.Internal.LeakyRelu
+import           Grenade.Layers.Internal.Activations
 
 
 -- | A rectifying linear unit.
@@ -54,45 +54,44 @@ instance Serialize LeakyRelu where
 instance (KnownNat i) => Layer LeakyRelu ('D1 i) ('D1 i) where
   type Tape LeakyRelu ('D1 i) ('D1 i) = S ('D1 i)
 
-  runForwards (LeakyRelu alpha) (S1D y) = (S1D y, (S1D . LAS.unrow . fromJust . LAS.create) relu)
+  runForwards (LeakyRelu alpha) (S1D y) = (S1D y, (S1D . fromJust . H.create) relu)
     where
       w    = fromIntegral $ natVal (Proxy :: Proxy i)
-      y'   = (LAS.extract . LAS.row) y
-      relu = applyLeakyReluBulk 1 1 w alpha y'
+      relu = leakyRelu1d w alpha (H.extract y)
 
   runBackwards (LeakyRelu alpha) (S1D y) (S1D dEdy) = ((), S1D (relu' y * dEdy))
     where
-      relu' = LAS.dvmap (\a -> if a < 0 then alpha else 1)
+      relu' = H.dvmap (\a -> if a < 0 then alpha else 1)
 
 instance (KnownNat i, KnownNat j) => Layer LeakyRelu ('D2 i j) ('D2 i j) where
   type Tape LeakyRelu ('D2 i j) ('D2 i j) = S ('D2 i j)
 
-  runForwards (LeakyRelu alpha) (S2D y) = (S2D y, (S2D . fromJust . LAS.create) relu)
+  runForwards (LeakyRelu alpha) (S2D y) = (S2D y, (S2D . fromJust . H.create) relu)
     where
       h    = fromIntegral $ natVal (Proxy :: Proxy i)
       w    = fromIntegral $ natVal (Proxy :: Proxy j)
-      y'   = LAS.extract y
-      relu = applyLeakyReluBulk 1 h w alpha y'
+      y'   = H.extract y
+      relu = leakyRelu 1 h w alpha y'
 
   runBackwards (LeakyRelu alpha) (S2D y) (S2D dEdy) = ((), S2D (relu' y * dEdy))
     where
-      relu' = LAS.dmmap (\a -> if a < 0 then alpha else 1)
+      relu' = H.dmmap (\a -> if a < 0 then alpha else 1)
 
 instance (KnownNat i, KnownNat j, KnownNat k) => Layer LeakyRelu ('D3 i j k) ('D3 i j k) where
 
   type Tape LeakyRelu ('D3 i j k) ('D3 i j k) = S ('D3 i j k)
 
-  runForwards (LeakyRelu alpha) (S3D y) = (S3D y, (S3D . fromJust . LAS.create) relu)
+  runForwards (LeakyRelu alpha) (S3D y) = (S3D y, (S3D . fromJust . H.create) relu)
     where
       c    = fromIntegral $ natVal (Proxy :: Proxy k)
       h    = fromIntegral $ natVal (Proxy :: Proxy i)
       w    = fromIntegral $ natVal (Proxy :: Proxy j)
-      y'   = LAS.extract y
-      relu = applyLeakyReluBulk c h w alpha y'
+      y'   = H.extract y
+      relu = leakyRelu c h w alpha y'
 
   runBackwards (LeakyRelu alpha) (S3D y) (S3D dEdy) = ((), S3D (relu' y * dEdy))
     where
-      relu' = LAS.dmmap (\a -> if a < 0 then alpha else 1)
+      relu' = H.dmmap (\a -> if a < 0 then alpha else 1)
 
 instance OnnxOperator LeakyRelu where
   onnxOpTypeNames _ = ["LeakyRelu"]

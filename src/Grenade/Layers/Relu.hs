@@ -1,8 +1,8 @@
-{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -18,14 +18,17 @@ module Grenade.Layers.Relu (
     Relu (..)
   ) where
 
-import           Control.DeepSeq                (NFData (..))
+import           Control.DeepSeq                     (NFData (..))
+import           Data.Maybe                          (fromJust)
+import           Data.Proxy
 import           Data.Serialize
-import           GHC.Generics                   (Generic)
+import           GHC.Generics                        (Generic)
 import           GHC.TypeLits
-import qualified Numeric.LinearAlgebra.Static   as H
+
+import qualified Numeric.LinearAlgebra.Static        as H
 
 import           Grenade.Core
-
+import           Grenade.Layers.Internal.Activations
 import           Grenade.Onnx
 
 
@@ -50,9 +53,11 @@ instance Serialize Relu where
 instance (KnownNat i) => Layer Relu ('D1 i) ('D1 i) where
   type Tape Relu ('D1 i) ('D1 i) = S ('D1 i)
 
-  runForwards _ (S1D y) = (S1D y, S1D (relu y))
-    where
-      relu = H.dvmap (\a -> if a <= 0 then 0 else a)
+  runForwards _ (S1D y) =
+    let i   = fromIntegral $ natVal (Proxy :: Proxy i)
+        out = relu1d i (H.extract y)
+    in  (S1D y, S1D . fromJust . H.create $ out)
+
   runBackwards _ (S1D y) (S1D dEdy) = ((), S1D (relu' y * dEdy))
     where
       relu' = H.dvmap (\a -> if a <= 0 then 0 else 1)
@@ -60,9 +65,12 @@ instance (KnownNat i) => Layer Relu ('D1 i) ('D1 i) where
 instance (KnownNat i, KnownNat j) => Layer Relu ('D2 i j) ('D2 i j) where
   type Tape Relu ('D2 i j) ('D2 i j) = S ('D2 i j)
 
-  runForwards _ (S2D y) = (S2D y, S2D (relu y))
-    where
-      relu = H.dmmap (\a -> if a <= 0 then 0 else a)
+  runForwards _ (S2D y) =
+    let i   = fromIntegral $ natVal (Proxy :: Proxy i)
+        j   = fromIntegral $ natVal (Proxy :: Proxy j)
+        out = relu 1 i j (H.extract y)
+    in  (S2D y, S2D . fromJust . H.create $ out)
+
   runBackwards _ (S2D y) (S2D dEdy) = ((), S2D (relu' y * dEdy))
     where
       relu' = H.dmmap (\a -> if a <= 0 then 0 else 1)
@@ -71,9 +79,13 @@ instance (KnownNat i, KnownNat j, KnownNat k) => Layer Relu ('D3 i j k) ('D3 i j
 
   type Tape Relu ('D3 i j k) ('D3 i j k) = S ('D3 i j k)
 
-  runForwards _ (S3D y) = (S3D y, S3D (relu y))
-    where
-      relu = H.dmmap (\a -> if a <= 0 then 0 else a)
+  runForwards _ (S3D y) =
+    let i   = fromIntegral $ natVal (Proxy :: Proxy i)
+        j   = fromIntegral $ natVal (Proxy :: Proxy j)
+        k   = fromIntegral $ natVal (Proxy :: Proxy k)
+        out = relu k i j (H.extract y)
+    in  (S3D y, S3D . fromJust . H.create $ out)
+
   runBackwards _ (S3D y) (S3D dEdy) = ((), S3D (relu' y * dEdy))
     where
       relu' = H.dmmap (\a -> if a <= 0 then 0 else 1)
