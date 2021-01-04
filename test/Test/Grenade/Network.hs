@@ -23,7 +23,7 @@ import qualified Data.Vector.Storable.Mutable    as VS (write)
 import           Grenade
 import           Hedgehog
 import qualified Hedgehog.Gen                    as Gen
-import           Hedgehog.Internal.Property      (failWith)
+import           Hedgehog.Internal.Property      (failWith, Confidence(..))
 import           Hedgehog.Internal.Source
 
 #if MIN_VERSION_base(4,11,0)
@@ -1039,7 +1039,7 @@ genNetwork =
 --
 -- This is the most important test.
 prop_auto_diff :: Property
-prop_auto_diff = withDiscards 1500 . withTests 15000 . property $ do
+prop_auto_diff = withConfidence (Confidence 1000) . withDiscards 1500 . withTests 15000 . property $ do
   SomeNetwork (network :: Network layers shapes) <- forAll genNetwork
   (input  :: S (Head shapes))     <- forAllWith nice genOfShape
   (target :: S (Last shapes))     <- forAllWith nice oneUp

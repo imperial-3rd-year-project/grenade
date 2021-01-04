@@ -22,6 +22,8 @@ import qualified Hedgehog.Range                         as Range
 import qualified Test.Grenade.Layers.Internal.Reference as Reference
 import           Test.Hedgehog.Compat
 
+import           Grenade.Types
+
 prop_poolForwards_poolBackwards_behaves_as_reference =
   let ok extent kernel = [stride | stride <- [1..extent], (extent - kernel) `mod` stride == 0]
       output extent kernel stride = (extent - kernel) `div` stride + 1
@@ -45,7 +47,7 @@ prop_poolForwards_poolBackwards_behaves_as_reference =
 
 prop_same_pad_pool_behaves_as_reference_when_zero_pad =
   let output extent kernel_dim stride = (extent - kernel_dim) `div` stride + 1
-      kernel i s = let x = ceiling ((fromIntegral i :: Double) / (fromIntegral s :: Double)) in i - (x - 1) * s
+      kernel i s = let x = ceiling ((fromIntegral i :: RealNum) / (fromIntegral s :: RealNum)) in i - (x - 1) * s
   in  property $ do
         height   <- forAll $ choose 2 100
         width    <- forAll $ choose 2 100
@@ -58,8 +60,8 @@ prop_same_pad_pool_behaves_as_reference_when_zero_pad =
 
         input    <- forAll $ (height >< width) <$> Gen.list (Range.singleton $ height * width) (Gen.realFloat $ Range.linearFracFrom 0 (-100) 100)
 
-        guard $ output height kernel_h stride_h == (ceiling $ (fromIntegral height :: Double) / (fromIntegral stride_h :: Double))
-        guard $ output width kernel_w stride_w  == (ceiling $ (fromIntegral width :: Double)  / (fromIntegral stride_w :: Double))
+        guard $ output height kernel_h stride_h == (ceiling $ (fromIntegral height :: RealNum) / (fromIntegral stride_h :: RealNum))
+        guard $ output width kernel_w stride_w  == (ceiling $ (fromIntegral width :: RealNum)  / (fromIntegral stride_w :: RealNum))
 
         let outFast       = validPadPoolForwards 1 height width kernel_h kernel_w stride_h stride_w 0 0 0 0 input
         let outReference  = poolForward 1 height width kernel_h kernel_w stride_h stride_w input
