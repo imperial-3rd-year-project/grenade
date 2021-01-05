@@ -106,7 +106,7 @@ instance Ord (Optimizer o) where
 
 type instance Sing = SOpt
 
--- | TODO someone
+-- | The singleton type for Optimizers, it allows a singleton to be promoted to and from type level
 data SOpt (opt :: OptimizerAlgorithm) where
   SSGD :: SOpt 'SGD
   SAdam :: SOpt 'Adam

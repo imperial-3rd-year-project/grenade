@@ -9,8 +9,10 @@
 {-# LANGUAGE TypeOperators         #-}
 {-|
 Module      : Grenade.Layers.TinyYoloV2
-Description : TODO Theo
-TODO Theo
+Description : Type of the TinyYoloV2 network
+
+Implementation of the Tiny Yolo V2 network, as described in the paper "YOLO9000: Better, Faster, Stronger" 
+by Joseph Redmon and Ali Farhadi, https://arxiv.org/abs/1612.08242
 -}
 
 module Grenade.Networks.TinyYoloV2 where

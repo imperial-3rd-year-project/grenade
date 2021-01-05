@@ -16,9 +16,7 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-|
 Module      : Grenade.Layers.Convolution
-Description : TODO someone
-
-TODO someone 
+Description : Convolution layer with support for padding and bias
 -}
 
 module Grenade.Layers.Convolution where

@@ -17,8 +17,10 @@
 {-# LANGUAGE UndecidableInstances  #-}
 {-|
 Module      : Grenade.Layers.Add
-Description : Addition Layer
-TODO Theo
+Description : Layer to add some constant, with shape broadcasting
+Copyright   : (c) Theo Charalambous, 2020
+License     : BSD2
+Stability   : experimental
 -}
 
 module Grenade.Layers.Add where

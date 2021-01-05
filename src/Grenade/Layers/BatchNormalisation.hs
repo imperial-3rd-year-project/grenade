@@ -17,8 +17,14 @@
 {-# LANGUAGE UndecidableInstances  #-}
 {-|
 Module      : Grenade.Layers.BatchNormalisation
-Description : Defines the Batch Normalisation Layer
-TODO Theo what is Batch Norm
+Description : Batch normalization layer
+Copyright   : (c) Theo Charalambous, 2020
+License     : BSD2
+Stability   : experimental
+
+The layer follows the implementation as described in the paper:
+Sergey Ioffe and Christian Szegedy. Batch normalization:  Accelerating deep network training by reduc-ing internal covariate shift
+http://arxiv.org/abs/1502.03167
 -}
 
 module Grenade.Layers.BatchNormalisation where
