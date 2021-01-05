@@ -8,12 +8,22 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-|
-Module      : Grenade.Layers.ResNet18
-Description : TODO Theo
-TODO Theo
+Module      : Grenade.Networks
+Description : Resnet18 network type definition
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+
+Definition of the Resnet18 model compatible with the onnx file found at 
+<https://github.com/onnx/models/blob/master/vision/classification/resnet/model/resnet18-v2-7.onnx>
 -}
 
-module Grenade.Networks.ResNet18 where
+module Grenade.Networks.ResNet18 
+  (
+    ResNet18
+  , loadResNet
+  )
+where
 
 import           Grenade.Core
 import           Grenade.Layers
@@ -123,5 +133,6 @@ type ResNet18
       , 'D1 1000
       ]
 
+-- | Load the Resnet18 parameters from the onnx file
 loadResNet :: FilePath -> IO (Either OnnxLoadFailure ResNet18)
 loadResNet = loadOnnxModel

@@ -17,11 +17,20 @@
 {-# LANGUAGE UndecidableInstances  #-}
 {-|
 Module      : Grenade.Layers.Transpose
-Description : TODO Theo
-TODO Theo
+Description : Layer that transposes its input
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
 -}
 
-module Grenade.Layers.Transpose where
+module Grenade.Layers.Transpose 
+  (
+  -- * Layer Definition
+    Transpose (..)
+  
+  -- * Helper function
+  , initTranspose
+  ) where
 
 import           Control.DeepSeq                   (NFData (..))
 
@@ -59,6 +68,7 @@ instance UpdateLayer (Transpose dimensions input output) where
 instance ( KnownNat dimensions ) => RandomLayer (Transpose dimensions input output) where
   createRandomWith _ _ = pure initTranspose
 
+-- | Initialize a tranpose layer that is equivalent to the identity function
 initTranspose :: forall dimensions input output. ( KnownNat dimensions )
               => Transpose dimensions input output
 initTranspose =

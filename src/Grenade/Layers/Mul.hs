@@ -15,8 +15,22 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-
-module Grenade.Layers.Mul where
+{-|
+Module      : Grenade.Layers.Mul
+Description : Scalar multiplication with some constant, supporting scaling
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
+module Grenade.Layers.Mul 
+  (
+  -- * Layer Definition
+    Mul (..)
+  
+  -- * Helper function
+  , initMul 
+  )
+where
 
 import           Data.Kind                    (Type)
 import           Data.Proxy
@@ -54,6 +68,7 @@ instance UpdateLayer (Mul c h w) where
 instance (KnownNat c, KnownNat h, KnownNat w ) => RandomLayer (Mul c h w) where
   createRandomWith _ _ = pure initMul
 
+-- ^ Initialize a Mul layer with scale 1 
 initMul :: forall c h w. ( KnownNat c, KnownNat h, KnownNat w )
         => Mul c h w
 initMul =

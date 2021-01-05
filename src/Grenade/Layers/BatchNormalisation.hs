@@ -23,11 +23,24 @@ License     : BSD2
 Stability   : experimental
 
 The layer follows the implementation as described in the paper:
-Sergey Ioffe and Christian Szegedy. Batch normalization:  Accelerating deep network training by reduc-ing internal covariate shift
-http://arxiv.org/abs/1502.03167
+Sergey Ioffe and Christian Szegedy. Batch normalization:  Accelerating deep network training by reducing internal covariate shift
+<http://arxiv.org/abs/1502.03167>
 -}
 
-module Grenade.Layers.BatchNormalisation where
+module Grenade.Layers.BatchNormalisation 
+  (
+  -- * Layer Definition
+    BatchNorm (..)
+  , BatchNormParams(..)
+
+  -- * Differentation Types
+  , BatchNormTape(..)
+  , BatchNormGrad(..)
+
+  -- * Helper functions
+  , initBatchNorm
+  )
+where
 
 import           Control.DeepSeq
 import           Data.Kind                         (Type)
@@ -54,18 +67,21 @@ data BatchNormTape :: Nat -- The number of channels of the tensor
                    -> Nat -- The number of rows of the tensor
                    -> Nat -- The number of columns of the tensor
                    -> Type where
+  -- | there is no back propogation when using network for testing, so 
+  --   so the tape for automatic differentiation is empty
   TestBatchNormTape  :: ( KnownNat channels
                      , KnownNat rows
                      , KnownNat columns)
-                     => BatchNormTape channels rows columns
+                     => BatchNormTape channels rows columns -- ^ empty tape
 
+  -- | prevents having to calculate information twice during forward and backwards pass
   TrainBatchNormTape :: ( KnownNat channels
                      , KnownNat rows
                      , KnownNat columns)
-                     => [R (channels * rows * columns)]  -- xnorm
-                     -> R channels    -- std
-                     -> R channels    -- running mean
-                     -> R channels    -- running variance
+                     => [R (channels * rows * columns)]  -- ^ xnorm
+                     -> R channels                       -- ^ std
+                     -> R channels                       -- ^ running mean
+                     -> R channels                       -- ^ running variance
                      -> BatchNormTape channels rows columns
 
 data BatchNorm :: Nat -- The number of channels of the tensor
@@ -77,12 +93,12 @@ data BatchNorm :: Nat -- The number of channels of the tensor
                , KnownNat rows
                , KnownNat columns
                , KnownNat momentum)
-            => Bool                                 -- is running training
-            -> BatchNormParams channels             -- gamma and beta
-            -> R channels                           -- running mean
-            -> R channels                           -- running variance
-            -> RealNum                              -- epsilon
-            -> ListStore (BatchNormParams channels) -- momentum store
+            => Bool                                 -- ^ True: training, False: testing
+            -> BatchNormParams channels             -- ^ gamma and beta
+            -> R channels                           -- ^ running mean
+            -> R channels                           -- ^ running variance
+            -> RealNum                              -- ^ epsilon (used for numerical stability)
+            -> ListStore (BatchNormParams channels) -- ^ momentum store
             -> BatchNorm channels rows columns momentum
 
 data BatchNormParams :: Nat -> Type where
@@ -98,15 +114,14 @@ data BatchNormGrad :: Nat -- The number of channels of the tensor
   BatchNormGrad :: ( KnownNat channels
                    , KnownNat rows
                    , KnownNat columns)
-            => R channels -- running mean
-            -> R channels -- running variance
-            -> R channels -- dgamna
-            -> R channels -- dbeta
+            => R channels -- ^ running mean
+            -> R channels -- ^ running variance
+            -> R channels -- ^ derivative of loss wrt gamma
+            -> R channels -- ^ derivative of loss wrt beta
             -> BatchNormGrad channels rows columns
 
 
 -- | NFData instances
-
 instance NFData (BatchNormTape channels rows columns) where
   rnf TestBatchNormTape = ()
   rnf (TrainBatchNormTape xnorm std mean var) = rnf xnorm `seq` rnf std `seq` rnf mean `seq` rnf var
@@ -125,7 +140,6 @@ instance Show (BatchNorm channels rows columns momentum) where
   show _ = "Batch Normalization"
 
 -- Serialize instances
-
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => Serialize (BatchNorm channels rows columns momentum) where
 
@@ -159,7 +173,6 @@ instance KnownNat flattenSize => Serialize (BatchNormParams flattenSize) where
     return $ BatchNormParams gamma beta
 
 -- | Neural network operations
-
 instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat mom, KnownNat (channels * rows * columns))
   => UpdateLayer (BatchNorm channels rows columns mom) where
 
@@ -205,6 +218,9 @@ instance (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => RandomLayer (BatchNorm channels rows columns momentum) where
   createRandomWith _ _ = pure initBatchNorm
 
+-- | Initialize a batch norm layer with gamma set to zero for each channel and beta 
+--   set to one for each channel. Running mean is 0 and running var is 1. The default
+--   value for epsilon is 0.00001
 initBatchNorm :: forall channels rows columns momentum.
   (KnownNat channels, KnownNat rows, KnownNat columns, KnownNat momentum)
   => BatchNorm channels rows columns momentum

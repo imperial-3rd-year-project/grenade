@@ -1,4 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-|
+Module      : Grenade.Layers.Internal.Add
+Description : Fast addition functions that call efficient C function
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.BatchNorm (
     batchnorm
   ) where
@@ -14,6 +21,7 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 import           Grenade.Types
 
+-- | Efficient implementation of the forward propogation of batch normalization in testing mode.
 batchnorm :: Int -> Int -> Int -> RealNum -> Matrix RealNum
              -> Vector RealNum -> Vector RealNum -> Vector RealNum -> Vector RealNum 
              -> Matrix RealNum

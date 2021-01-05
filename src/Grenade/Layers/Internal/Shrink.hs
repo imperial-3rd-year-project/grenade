@@ -1,4 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-|
+Module      : Grenade.Layers.Internal.Shrink
+Description : Functions to shrink a matrix
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.Shrink (
     shrink_2d,
     shrink_2d_rgba
@@ -14,10 +21,14 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 import           Data.Word
 
-
 import           Grenade.Types
 
-shrink_2d :: Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+shrink_2d :: Int            -- ^ input rows
+          -> Int            -- ^ input cols
+          -> Int            -- ^ target rows
+          -> Int            -- ^ target cols
+          -> Matrix RealNum -- ^ input matrix
+          -> Matrix RealNum -- ^ shrinked matrix 
 shrink_2d rows cols rows' cols' m
  = let outMatSize      = rows' * cols'
        vec             = flatten m
@@ -34,7 +45,12 @@ shrink_2d rows cols rows' cols' m
      return (U.matrixFromVector U.RowMajor rows' cols' matVec)
 --{-# INLINE shrink_2d #-}
 
-shrink_2d_rgba :: Int -> Int -> Int -> Int -> S.Vector Word8 -> Matrix RealNum
+shrink_2d_rgba :: Int            -- ^ input rows
+               -> Int            -- ^ input cols
+               -> Int            -- ^ target rows
+               -> Int            -- ^ target cols
+               -> S.Vector Word8 -- ^ vector of word8s in the form rgba, like from a HTML canvas
+               -> Matrix RealNum -- shrinked matrix
 shrink_2d_rgba rows cols rows' cols' vec
   = let outMatSize = rows' * cols'
     in unsafePerformIO $ do 

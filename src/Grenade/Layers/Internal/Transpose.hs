@@ -1,4 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-|
+Module      : Grenade.Layers.Internal.Transpose
+Description : Functions to quickly transpose a matrix
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.Transpose (
   transpose4d
 ) where
@@ -17,7 +24,11 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 import           Grenade.Types
 
-transpose4d :: [Int] -> Vector RealNum -> Matrix RealNum -> Matrix RealNum
+-- | Transpose a 4d matrix, similarly to the tranpose function in numpy
+transpose4d :: [Int]           -- ^ original dimensions
+            -> Vector RealNum  -- ^ permutation vector
+            -> Matrix RealNum  -- ^ input matrix
+            -> Matrix RealNum  -- ^ transposed matrix
 transpose4d dims@[n, c, h, w] permsV m
   = let outMatSize = n * c * h * w
         outW       = dims !! (round $ permsV D.! 3)
