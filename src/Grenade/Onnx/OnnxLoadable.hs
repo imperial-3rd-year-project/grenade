@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeOperators        #-}
 {-|
 Module      : Grenade.Onnx.OnnxLoadable
-Description : TODO Jason
+Description : Typeclass for loading neural network layers from ONNX files.
 -}
 
 module Grenade.Onnx.OnnxLoadable (OnnxLoadable (..)) where
