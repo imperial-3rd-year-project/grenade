@@ -13,7 +13,11 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-|
+Module      : Grenade.Layers.LRN
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Layers.LRN 
   ( LRN(..)

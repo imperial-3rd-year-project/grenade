@@ -3,6 +3,11 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE GADTs                     #-}
+{-|
+Module      : Grenade.Core.TrainingTypes
+Description : Defines the types and default options for NN training
+
+-}
 
 module Grenade.Core.TrainingTypes where
 

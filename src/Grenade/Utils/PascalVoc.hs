@@ -1,5 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs     #-}
+{-|
+Module      : Grenade.Utils.PascalVoc
+Description : TODO Theo what is this for
+-}
 
 module Grenade.Utils.PascalVoc where
 
@@ -9,6 +13,7 @@ import           Data.List                    (elemIndices)
 import qualified Numeric.LinearAlgebra.Data   as NLA
 import qualified Numeric.LinearAlgebra.Static as H
 
+-- | List of possible labels of TinyYoloV2
 labels :: [String]
 labels
   = [ "aeroplane"
@@ -33,6 +38,7 @@ labels
     , "tvmonitor"
     ]
 
+-- | (x, y, w, h, confidence, label)
 type DetectedObject
   = ( Int -- x
     , Int -- y
@@ -42,8 +48,8 @@ type DetectedObject
     , String -- label
     )
 
--- Given the output of TinyYoloV2, finds all bounding boxes
--- with confidence higher than a threshold, and their labels
+-- | Given the output of TinyYoloV2, finds all bounding boxes
+--   with confidence higher than a threshold, and their labels
 processOutput :: S ('D3 13 13 125) -> Double -> [DetectedObject]
 processOutput (S3D mat) threshold = map toDetectedObject filtered
   where
@@ -65,6 +71,7 @@ processOutput (S3D mat) threshold = map toDetectedObject filtered
         i = head $ elemIndices m probs
     
 
+-- | TODO Theo
 getDetails :: NLA.Matrix Double -> Int -> Int -> Int -> (Double, Double, Double, Double, Double)
 getDetails out cy cx b = (tx, ty, tw, th, tc)
   where
@@ -76,6 +83,7 @@ getDetails out cy cx b = (tx, ty, tw, th, tc)
  
     tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)  --out NLA.! offset 4 NLA.! j
 
+-- | TODO Theo
 getProbs :: NLA.Matrix Double -> Int -> Int -> Int -> [Double]
 getProbs out cy cx b = probs
   where
@@ -84,9 +92,9 @@ getProbs out cy cx b = probs
 
 
 
--- Given a cell, 0 <= i, j <= 12, and a bounding box 0 <= box <= 4, gives
--- the x, y, width, height for the bounding box, the confidence score,
--- and the probability distribution over the 20 available classes
+-- | Given a cell, 0 <= i, j <= 12, and a bounding box 0 <= box <= 4, gives
+--   the x, y, width, height for the bounding box, the confidence score,
+--   and the probability distribution over the 20 available classes
 getBoundingBoxDesc :: NLA.Matrix Double -> Int -> Int -> Int -> (Double, Double, Double, Double, Double, [Double])
 getBoundingBoxDesc out cy cx b = (x, y, w, h, confidence * (maximum classes), classes)
   where

@@ -25,6 +25,14 @@ import           Numeric.Limits             (infinity)
 
 import           System.ProgressBar
 
+{-|
+Module      : Grenade.Core.Training
+Description : Contains method used for network training 
+
+-}
+
+
+-- | Fits the network to model the training data as good as possible
 fit :: (CreatableNetwork layers shapes
        , SingI (Last shapes))
        => [(S (Head shapes), S (Last shapes))]
@@ -40,6 +48,7 @@ fit trainRows validateRows TrainingOptions{ optimizer=opt, batchSize=bs, metrics
     (_, net, _) <- foldM (runEpoch opt trainData valData lossFnc ms bs) (net0, net0, infinity)  [1..epochs]
     return net
 
+-- | TODO Theo
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
@@ -71,10 +80,12 @@ runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize (net, minNet, minL
   let (newMinNet, newMinLoss) = if loss <= minLoss then (trained, loss) else (minNet, minLoss)
   return (trained, newMinNet, newMinLoss)
 
+-- | TODO Theo
 sgdUpdateLearningParameters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParameters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParameters o                     = o
 
+-- | TODO Theo
 combineTraining :: ProgressBar ()
                 -> Optimizer opt
                 -> LossFunction (S (Last shapes))
@@ -85,6 +96,7 @@ combineTraining pb !opt lossFnc (!net, loss) (!x, !y)
   = let (!net', loss') = train opt net x y lossFnc
     in incProgress pb 1 >> return (net', loss + loss')
 
+-- | TODO Theo
 combineBatchTraining :: ProgressBar ()
                      -> Optimizer opt
                      -> LossFunction (S (Last shapes))
@@ -98,6 +110,7 @@ combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
     in incProgress pb batchSize >> return (net', loss + loss')
 
 
+-- | Calculates the loss with respect to the given loss metric
 validate' :: SingI (Last shapes)
           => Network layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
 validate' net (TrainingData v vs) metric

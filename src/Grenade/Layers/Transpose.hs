@@ -15,6 +15,11 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-|
+Module      : Grenade.Layers.Transpose
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Layers.Transpose where
 

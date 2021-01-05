@@ -7,6 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-|
+Module      : Grenade.Layers.SuperResolution
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Networks.SuperResolution where
 

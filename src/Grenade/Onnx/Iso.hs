@@ -3,6 +3,10 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-|
+Module      : Grenade.Onnx.BypassLayer
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.Iso (Lift, Iso (..)) where
 
@@ -16,10 +20,12 @@ import Control.DeepSeq
 
 import Lens.Micro (over, _1)
 
+-- | TODO Jason
 class Iso f where
   to   :: a -> f a
   from :: f a -> a
 
+-- | TODO Jason
 newtype Lift a = Lift { unlift :: a }
 
 instance (UpdateLayer x, Iso f) => UpdateLayer (Lift (f x)) where

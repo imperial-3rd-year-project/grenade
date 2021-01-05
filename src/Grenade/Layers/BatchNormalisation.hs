@@ -15,6 +15,11 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-|
+Module      : Grenade.Layers.BatchNormalisation
+Description : Defines the Batch Normalisation Layer
+TODO Theo what is Batch Norm
+-}
 
 module Grenade.Layers.BatchNormalisation where
 

@@ -1,3 +1,8 @@
+{-|
+Module      : Grenade.Core.NetworkSettings
+Description : Defines datatype representing NN settings
+-}
+
 module Grenade.Core.NetworkSettings
     ( NetworkSettings(..)
 

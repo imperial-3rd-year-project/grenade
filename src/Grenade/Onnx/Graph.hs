@@ -10,6 +10,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TupleSections       #-}
+{-|
+Module      : Grenade.Onnx.Graph
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.Graph
   ( Composition (..)
@@ -36,6 +40,7 @@ import qualified Proto.Onnx                   as P
 
 data Composition = S | P
 
+-- | TODO Jason
 data SPG (s :: Composition) a where
   Node     :: a -> SPG s a
   Series   :: [SPG 'P a] -> SPG 'S a

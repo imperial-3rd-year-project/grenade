@@ -1,13 +1,18 @@
-
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 {-# LANGUAGE TypeFamilies        #-}
-
 {-# LANGUAGE OverloadedStrings   #-}
+{-|
+Module      : Grenade.Demos.MNIST
+Description : Example NN recognizing handwritten digits
 
+The MNIST database, is a database of handwritten digits
+with 700000 examples. A more comprehensive introduction 
+to the database together with the full dataset can be 
+found here: http://yann.lecun.com/exdb/mnist/
+-}
 module Grenade.Demos.MNIST where
 
 import qualified Data.ByteString              as B

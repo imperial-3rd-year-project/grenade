@@ -37,6 +37,7 @@ backPropagate network input target (LossFunction l) =
         (grads, _)      = runGradient network tapes (l output target)
     in  grads
 
+-- | TODO Theo
 validate :: Network layers shapes
          -> S (Head shapes)
          -> S (Last shapes)
@@ -60,6 +61,8 @@ train optimizer net input target (LossFunction l) =
         net'            = applyUpdate optimizer net grads
     in (net', nsum loss)
 
+-- | Similar to train, but it trains with a batch of data to increase 
+--   speed and reduce noise.
 batchTrain :: Optimizer opt
            -> Network layers shapes
            -> [S (Head shapes)]
