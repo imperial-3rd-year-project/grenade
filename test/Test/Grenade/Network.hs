@@ -23,6 +23,7 @@ import qualified Data.Vector.Storable.Mutable    as VS (write)
 import           Grenade
 import           Hedgehog
 import qualified Hedgehog.Gen                    as Gen
+import qualified Hedgehog.Range                  as Range
 import           Hedgehog.Internal.Property      (failWith, Confidence(..))
 import           Hedgehog.Internal.Source
 
@@ -71,11 +72,16 @@ genNetwork =
               case h of
                  D1Sing l@SNat ->
                    Gen.choice [
-                     pure (SomeNetwork (Tanh    :~> rest :: Network ( Tanh    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Logit   :~> rest :: Network ( Logit   ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Relu    :~> rest :: Network ( Relu    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Elu     :~> rest :: Network ( Elu     ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Softmax :~> rest :: Network ( Softmax ': layers ) ( h ': h ': hs )))
+                     pure (SomeNetwork (Tanh     :~> rest :: Network ( Tanh     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Logit    :~> rest :: Network ( Logit    ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Softmax  :~> rest :: Network ( Softmax  ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
+                   , do 
+                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Reshape to two dimensions
                         let divisors :: Integer -> [Integer]
                             divisors n = 1 : [x | x <- [2..(n-1)], n `rem` x == 0]
@@ -93,10 +99,15 @@ genNetwork =
                    ]
                  D2Sing r@SNat c@SNat ->
                    Gen.choice [
-                     pure (SomeNetwork (Tanh    :~> rest :: Network ( Tanh    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Logit   :~> rest :: Network ( Logit   ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Relu    :~> rest :: Network ( Relu    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Elu     :~> rest :: Network ( Elu     ': layers ) ( h ': h ': hs )))
+                     pure (SomeNetwork (Tanh     :~> rest :: Network ( Tanh     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Logit    :~> rest :: Network ( Logit    ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
+                   , do 
+                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Build a convolution layer with one filter output
                         -- Figure out some kernel sizes which work for this layer
                         -- There must be a better way than this...
@@ -618,10 +629,15 @@ genNetwork =
                    ]
                  D3Sing r@SNat c@SNat f@SNat ->
                    Gen.choice [
-                     pure (SomeNetwork (Tanh    :~> rest :: Network ( Tanh    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Logit   :~> rest :: Network ( Logit   ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Relu    :~> rest :: Network ( Relu    ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Elu     :~> rest :: Network ( Elu     ': layers ) ( h ': h ': hs )))
+                     pure (SomeNetwork (Tanh     :~> rest :: Network ( Tanh     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Logit    :~> rest :: Network ( Logit    ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
+                   , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
+                   , do 
+                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Build a convolution layer with one filter output
                         -- Figure out some kernel sizes which work for this layer
                         -- There must be a better way than this...

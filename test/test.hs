@@ -16,6 +16,7 @@ import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
 import qualified Test.Grenade.Layers.Pooling
 import qualified Test.Grenade.Layers.Reshape
+import qualified Test.Grenade.Layers.Tanh
 import qualified Test.Grenade.Layers.Transpose
 import qualified Test.Grenade.Layers.Trivial
 
@@ -61,6 +62,7 @@ main = do
     , Test.Grenade.Layers.LRN.tests
     , Test.Grenade.Layers.LeakyRelu.tests
     , Test.Grenade.Layers.Reshape.tests
+    , Test.Grenade.Layers.Tanh.tests
     , Test.Grenade.Layers.Transpose.tests
     , Test.Grenade.Layers.Trivial.tests
 

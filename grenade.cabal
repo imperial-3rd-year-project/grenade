@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c7a3b47aab62767fc2ea6d57a3d2ae8aa9235de1e35551d16803b5cff91743fe
+-- hash: be78a72a0e0f6c997750912f29b4b916f64cccc3e798fd45d117e8ea7e6caef0
 
 name:           grenade
 version:        0.1.1
@@ -293,6 +293,7 @@ test-suite test
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling
       Test.Grenade.Layers.Reshape
+      Test.Grenade.Layers.Tanh
       Test.Grenade.Layers.Transpose
       Test.Grenade.Layers.Trivial
       Test.Grenade.Loss
