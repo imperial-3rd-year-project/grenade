@@ -106,7 +106,8 @@ instance Ord (Optimizer o) where
 
 type instance Sing = SOpt
 
--- | TODO someone
+-- | Datatype to allow "pattern matching" on optimizers at the type level
+--   through the use the sing function from Singletons.
 data SOpt (opt :: OptimizerAlgorithm) where
   SSGD :: SOpt 'SGD
   SAdam :: SOpt 'Adam
