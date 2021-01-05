@@ -16,9 +16,10 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-|
 Module      : Grenade.Layers.Convolution
-Description : TODO someone
+Description : Convlutional Layer
 
-TODO someone 
+Convolutions with and without biases are supported, allowing for faster
+implementation when we know there is no bias.
 -}
 
 module Grenade.Layers.Convolution where
