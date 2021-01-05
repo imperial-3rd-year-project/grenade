@@ -7,6 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-|
+Module      : Grenade.Layers.ResNet18
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Networks.ResNet18 where
 

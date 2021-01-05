@@ -8,6 +8,11 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-|
+Module      : Grenade.Layers.GlobalAvgPool
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Layers.GlobalAvgPool where
 

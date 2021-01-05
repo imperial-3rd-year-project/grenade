@@ -1,4 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-|
+Module      : Grenade.Onnx.ActivationLayer
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.ActivationLayer (OnnxLoadableActivation (..), LoadActivation) where
 

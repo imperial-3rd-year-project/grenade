@@ -9,6 +9,10 @@
 {-# LANGUAGE DefaultSignatures    #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeOperators        #-}
+{-|
+Module      : Grenade.Onnx.OnnxLoadable
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.OnnxLoadable (OnnxLoadable (..)) where
 

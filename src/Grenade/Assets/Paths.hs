@@ -1,4 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
+{-|
+Module      : Grenade.Assets.Paths
+Descripton  : Deals with files for networks bundled with Grenade
+
+This module handles locating and downloading files for networks
+which are bundled with Grenade, irrespective of the storage
+format, and loading networks.
+
+-}
 
 module Grenade.Assets.Paths where
 
@@ -9,12 +18,6 @@ import           System.FilePath.Posix
 import           System.Process
 import           System.IO
 import           Control.Monad                (unless)
-
-{-|
-This module handles locating and downloading files for networks
-which are bundled with Grenade, irrespective of the storage
-format, and loading networks.
--}
 
 data BundledModel = MNIST | ResNet18 | TinyYoloV2 | SuperResolution
 

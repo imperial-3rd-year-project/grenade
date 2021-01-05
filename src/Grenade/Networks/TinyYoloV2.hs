@@ -7,6 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-|
+Module      : Grenade.Layers.TinyYoloV2
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Networks.TinyYoloV2 where
 

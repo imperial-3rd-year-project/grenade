@@ -1,12 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs     #-}
 
-{--
+{-|
+Module      : Grenade.Core.Loss
+Description : Defines losses and derivatives
+
 Module to define the loss functions and their derivatives.
 While only the derivatives are needed for backpropagation,
 the loss functions themselves may be useful for measuring
 progress.
---}
+-}
 
 module Grenade.Core.Loss (
     LossMetric (..)

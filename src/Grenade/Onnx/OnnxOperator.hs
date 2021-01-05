@@ -1,3 +1,8 @@
+{-|
+Module      : Grenade.Onnx.OnnxOperator
+Description : TODO Jason
+-}
+
 module Grenade.Onnx.OnnxOperator (OnnxOperator (..)) where
 
 import           Data.Proxy

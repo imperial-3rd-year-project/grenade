@@ -13,6 +13,11 @@
 {-# LANGUAGE PolyKinds             #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+{-|
+Module      : Grenade.Layers.PaddedPooling
+Description : TODO Theo
+TODO Theo
+-}
 
 module Grenade.Layers.PaddedPooling (
     PaddedPooling

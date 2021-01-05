@@ -1,5 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs     #-}
+{-|
+Module      : Grenade.Utils.PascalVoc
+Description : TODO Theo what is this for
+-}
 
 module Grenade.Utils.PascalVoc where
 
@@ -10,6 +14,7 @@ import qualified Numeric.LinearAlgebra.Static as H
 import           Grenade.Core.Shape
 import           Grenade.Types
 
+-- | List of possible labels of TinyYoloV2
 labels :: [String]
 labels
   = [ "aeroplane"
@@ -34,6 +39,7 @@ labels
     , "tvmonitor"
     ]
 
+-- | (x, y, w, h, confidence, label)
 type DetectedObject
   = ( Int -- x
     , Int -- y
@@ -65,7 +71,7 @@ processOutput (S3D mat) threshold = map toDetectedObject filtered
         m = maximum probs
         i = head $ elemIndices m probs
 
-
+-- | TODO
 getDetails :: NLA.Matrix RealNum -> Int -> Int -> Int -> (RealNum, RealNum, RealNum, RealNum, RealNum)
 getDetails out cy cx b = (tx, ty, tw, th, tc)
   where
@@ -77,6 +83,7 @@ getDetails out cy cx b = (tx, ty, tw, th, tc)
 
     tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)  --out NLA.! offset 4 NLA.! j
 
+-- | TODO
 getProbs :: NLA.Matrix RealNum -> Int -> Int -> Int -> [RealNum]
 getProbs out cy cx b = probs
   where

@@ -2,7 +2,10 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE FlexibleContexts     #-}
-
+{-|
+Module      : Grenade.Onnx.OnnxLoadFailure
+Description : Declares datatype storing useful load failure information
+-}
 module Grenade.Onnx.OnnxLoadFailure
   ( OnnxLoadFailure (..)
   , reason

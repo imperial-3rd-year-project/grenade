@@ -103,6 +103,7 @@ fit trainRows validateRows TrainingOptions{ optimizer, batchSize, validationFreq
     (_, net, _) <- foldM (runEpoch optimizer trainData valData lossFnc metrics batchSize verbose validationFreq) (net0, net0, infinity)  [1..epochs]
     return net
 
+-- | TODO Theo
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
@@ -140,6 +141,7 @@ runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize verbosity validati
   let (newMinNet, newMinLoss) = if loss <= minLoss then (trainedNet, loss) else (minNet, minLoss)
   return (trainedNet, newMinNet, newMinLoss)
 
+-- | TODO Theo
 sgdUpdateLearningParameters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParameters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParameters o                     = o
@@ -170,6 +172,7 @@ combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
       Nothing  -> return (net', loss + loss') 
       Just pb' -> incProgress pb' batchSize >> return (net', loss + loss')
 
+-- | Calculates the loss with respect to the given loss metric
 validate' :: SingI (Last shapes)
           => Network layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
 validate' net (TrainingData v vs) metric

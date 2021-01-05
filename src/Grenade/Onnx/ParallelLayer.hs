@@ -6,6 +6,10 @@
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
+{-|
+Module      : Grenade.Onnx.ParallelLayer
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.ParallelLayer (LoadParallel, OnnxLoadableParallel (..)) where
 

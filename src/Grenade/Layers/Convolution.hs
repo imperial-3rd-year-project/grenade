@@ -14,6 +14,12 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+{-|
+Module      : Grenade.Layers.Convolution
+Description : TODO someone
+
+TODO someone 
+-}
 
 module Grenade.Layers.Convolution where
 

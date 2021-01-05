@@ -1,4 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-|
+Module      : Grenade.Onnx.BypassLayer
+Description : TODO Jason
+-}
 
 module Grenade.Onnx.BypassLayer (OnnxLoadableBypass (..), LoadBypass) where
 

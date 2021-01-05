@@ -15,6 +15,11 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-|
+Module      : Grenade.Layers.Add
+Description : Addition Layer
+TODO Theo
+-}
 
 module Grenade.Layers.Add where
 
