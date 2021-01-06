@@ -77,10 +77,9 @@ genNetwork =
                    , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Softmax  :~> rest :: Network ( Softmax  ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
                    , do 
-                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        alpha <- genRealNum (Range.linearFrac 0 1)
                         pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Reshape to two dimensions
                         let divisors :: Integer -> [Integer]
@@ -103,10 +102,9 @@ genNetwork =
                    , pure (SomeNetwork (Logit    :~> rest :: Network ( Logit    ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
                    , do 
-                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        alpha <- genRealNum (Range.linearFrac 0 1)
                         pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Build a convolution layer with one filter output
                         -- Figure out some kernel sizes which work for this layer
@@ -633,10 +631,9 @@ genNetwork =
                    , pure (SomeNetwork (Logit    :~> rest :: Network ( Logit    ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Relu     :~> rest :: Network ( Relu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Elu      :~> rest :: Network ( Elu      ': layers ) ( h ': h ': hs )))
-                   , pure (SomeNetwork (Gelu     :~> rest :: Network ( Gelu     ': layers ) ( h ': h ': hs )))
                    , pure (SomeNetwork (Sinusoid :~> rest :: Network ( Sinusoid ': layers ) ( h ': h ': hs )))
                    , do 
-                        alpha <- Gen.double (Range.linearFrac 0 1)
+                        alpha <- genRealNum (Range.linearFrac 0 1)
                         pure (SomeNetwork (LeakyRelu alpha :~> rest :: Network ( LeakyRelu ': layers) ( h ': h ': hs)))
                    , do -- Build a convolution layer with one filter output
                         -- Figure out some kernel sizes which work for this layer
@@ -1067,7 +1064,7 @@ prop_auto_diff = withConfidence (Confidence 1000) . withDiscards 1500 . withTest
   let expected            = maxVal ( backgrad * tested )
   let (_, !outputDiff)    = runNetwork network inputDiff
   let result              = maxVal ( outputDiff * target - output * target ) / numericalGradDiff
-  let isWithinPrecisionOf = isWithinOf 2e-4
+  let isWithinPrecisionOf = isWithinOf 1e-3
 
   result `isWithinPrecisionOf` expected
 

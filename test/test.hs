@@ -8,14 +8,19 @@ import qualified Test.Grenade.Network
 import qualified Test.Grenade.Layers.Add
 import qualified Test.Grenade.Layers.BatchNorm
 import qualified Test.Grenade.Layers.Convolution
+import qualified Test.Grenade.Layers.Elu
 import qualified Test.Grenade.Layers.FullyConnected
+import qualified Test.Grenade.Layers.Logit
 import qualified Test.Grenade.Layers.LeakyRelu
 import qualified Test.Grenade.Layers.LRN
 import qualified Test.Grenade.Layers.Mul
 import qualified Test.Grenade.Layers.Nonlinear
 import qualified Test.Grenade.Layers.PadCrop
 import qualified Test.Grenade.Layers.Pooling
+import qualified Test.Grenade.Layers.Relu
 import qualified Test.Grenade.Layers.Reshape
+import qualified Test.Grenade.Layers.Sinusoid
+import qualified Test.Grenade.Layers.Softmax
 import qualified Test.Grenade.Layers.Tanh
 import qualified Test.Grenade.Layers.Transpose
 import qualified Test.Grenade.Layers.Trivial
@@ -53,15 +58,20 @@ main = do
     , Test.Grenade.Batch.tests
     , Test.Grenade.Layers.Add.tests
     , Test.Grenade.Layers.BatchNorm.tests
-    , Test.Grenade.Layers.Pooling.tests
     , Test.Grenade.Layers.Convolution.tests
+    , Test.Grenade.Layers.Elu.tests
     , Test.Grenade.Layers.FullyConnected.tests
+    , Test.Grenade.Layers.Logit.tests
+    , Test.Grenade.Layers.LeakyRelu.tests
+    , Test.Grenade.Layers.LRN.tests
     , Test.Grenade.Layers.Mul.tests
     , Test.Grenade.Layers.Nonlinear.tests
     , Test.Grenade.Layers.PadCrop.tests
-    , Test.Grenade.Layers.LRN.tests
-    , Test.Grenade.Layers.LeakyRelu.tests
+    , Test.Grenade.Layers.Pooling.tests
+    , Test.Grenade.Layers.Relu.tests
     , Test.Grenade.Layers.Reshape.tests
+    , Test.Grenade.Layers.Sinusoid.tests
+    , Test.Grenade.Layers.Softmax.tests
     , Test.Grenade.Layers.Tanh.tests
     , Test.Grenade.Layers.Transpose.tests
     , Test.Grenade.Layers.Trivial.tests

@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: be78a72a0e0f6c997750912f29b4b916f64cccc3e798fd45d117e8ea7e6caef0
+-- hash: 05a4898b8baa3189f15cc866c29346cb1fdb16cd7c0dfd8114f84acc083b5c72
 
 name:           grenade
 version:        0.1.1
@@ -281,18 +281,23 @@ test-suite test
       Test.Grenade.Layers.Add
       Test.Grenade.Layers.BatchNorm
       Test.Grenade.Layers.Convolution
+      Test.Grenade.Layers.Elu
       Test.Grenade.Layers.FullyConnected
       Test.Grenade.Layers.Internal.Convolution
       Test.Grenade.Layers.Internal.Pooling
       Test.Grenade.Layers.Internal.Reference
       Test.Grenade.Layers.Internal.Transpose
       Test.Grenade.Layers.LeakyRelu
+      Test.Grenade.Layers.Logit
       Test.Grenade.Layers.LRN
       Test.Grenade.Layers.Mul
       Test.Grenade.Layers.Nonlinear
       Test.Grenade.Layers.PadCrop
       Test.Grenade.Layers.Pooling
+      Test.Grenade.Layers.Relu
       Test.Grenade.Layers.Reshape
+      Test.Grenade.Layers.Sinusoid
+      Test.Grenade.Layers.Softmax
       Test.Grenade.Layers.Tanh
       Test.Grenade.Layers.Transpose
       Test.Grenade.Layers.Trivial

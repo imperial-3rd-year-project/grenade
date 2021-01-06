@@ -9,11 +9,15 @@
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 module Test.Grenade.Layers.LeakyRelu where
 
+import           Data.Either
 import           Data.Proxy
+import           Data.Serialize
 
 import           GHC.TypeLits
 
@@ -26,6 +30,8 @@ import qualified Numeric.LinearAlgebra.Static as H
 
 import           Hedgehog
 import qualified Hedgehog.Range               as Range
+
+import           System.Random.MWC                        (create)
 
 import           Test.Hedgehog.Compat
 import           Test.Hedgehog.Hmatrix
@@ -56,5 +62,26 @@ prop_leaky_relu_correct_on_3D_array = property $ do
 
       H.extract inp' === H.extract out
 
+
+
+prop_leaky_relu_is_serializable :: Property 
+prop_leaky_relu_is_serializable = withTests 1 $ property $ do
+    gen <- evalIO create
+    leakyReluLayer :: LeakyRelu <- evalIO $ createRandomWith UniformInit gen
+    let enc = encode leakyReluLayer
+        dec = decode enc :: Either String LeakyRelu
+    assert $ isRight dec
+
+
+prop_can_update_leaky_relu_and_use_in_batches :: Property 
+prop_can_update_leaky_relu_and_use_in_batches = property $ do
+    gen <- evalIO create
+    layer :: LeakyRelu <- evalIO $ createRandomWith UniformInit gen
+    runUpdate defSGD layer () `seq` success
+    runUpdate defAdam layer () `seq` success
+    reduceGradient @LeakyRelu [()] `seq` success 
+    
+    
 tests :: IO Bool
 tests = checkParallel $$(discover)
+
