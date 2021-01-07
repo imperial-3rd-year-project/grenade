@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-|
 Module      : Grenade.Onnx.ActivationLayer
-Description : TODO Jason
+Description : Wrapper for automatically deriving OnnxLoadable instances for layers with no attributes.
 -}
 
 module Grenade.Onnx.ActivationLayer (OnnxLoadableActivation (..), LoadActivation) where

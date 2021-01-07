@@ -8,7 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-|
 Module      : Grenade.Onnx.ParallelLayer
-Description : TODO Jason
+Description : Wrapper for automatically deriving OnnxLoadable instances for parallel layers like Concat.
 -}
 
 module Grenade.Onnx.ParallelLayer (LoadParallel, OnnxLoadableParallel (..)) where

@@ -1,6 +1,6 @@
 {-|
 Module      : Grenade.Onnx.OnnxOperator
-Description : TODO Jason
+Description : Typeclass for matching network layers to ONNX Operator names.
 -}
 
 module Grenade.Onnx.OnnxOperator (OnnxOperator (..)) where

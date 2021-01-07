@@ -112,7 +112,8 @@ deriving instance Show (S n)
 -- In singletons 2.6 Sing switched from a data family to a type family.
 type instance Sing = SShape
 
--- | TODO someone 
+-- | Datatype to allow "pattern matching" on shapes at the type level through
+--   the use the sing function from Singletons.
 data SShape :: Shape -> Type where
   D1Sing :: Sing a -> SShape ('D1 a)
   D2Sing :: Sing a -> Sing b -> SShape ('D2 a b)
@@ -263,8 +264,10 @@ nk x = case (sing :: Sing x) of
   D4Sing SNat SNat SNat SNat ->
     S4D (H.konst x)
 
--- | TODO Jason
-visualise2D :: S ('D2 a b) -> RealNum -> String
+-- | Prints out the contents of a matrix with entries between zero and the max value
+visualise2D :: S ('D2 a b)  -- ^ input matrix
+            -> RealNum      -- ^ maximum element value
+            -> String       -- ^ pretty printed matrix
 visualise2D (S2D mm) max = 
   let m  = H.extract mm
       ms = NLAD.toLists m
