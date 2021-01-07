@@ -2,10 +2,17 @@
 {-# LANGUAGE GADTs     #-}
 {-|
 Module      : Grenade.Utils.PascalVoc
-Description : TODO Theo what is this for
+Description : Utilities for networks trained on the PASCAL VOC dataset
+
+This module provides utilities for post-processing the output for networks
+which have been trained on the PASCAL VOC data set, in particular TinyYOLOv2.
 -}
 
-module Grenade.Utils.PascalVoc where
+module Grenade.Utils.PascalVoc (
+    labels
+  , DetectedObject
+  , processOutput
+  ) where
 
 import           Data.List                    (elemIndices)
 import qualified Numeric.LinearAlgebra.Data   as NLA
@@ -14,7 +21,7 @@ import qualified Numeric.LinearAlgebra.Static as H
 import           Grenade.Core.Shape
 import           Grenade.Types
 
--- | List of possible labels of TinyYoloV2
+-- | List of possible labels in PASCAL VOC
 labels :: [String]
 labels
   = [ "aeroplane"
@@ -39,18 +46,18 @@ labels
     , "tvmonitor"
     ]
 
--- | (x, y, w, h, confidence, label)
+-- | (left, right, top, bottom, confidence, label)
 type DetectedObject
-  = ( Int -- x
-    , Int -- y
-    , Int -- w
-    , Int -- h
-    , RealNum -- confidence
-    , String -- label
+  = ( Int     -- ^ left of bounding box
+    , Int     -- ^ right of bounding box
+    , Int     -- ^ top of bounding box
+    , Int     -- ^ bottom of bounding box
+    , RealNum -- ^ confidence
+    , String  -- ^ label
     )
 
--- Given the output of TinyYoloV2, finds all bounding boxes
--- with confidence higher than a threshold, and their labels
+-- | Given the output of TinyYoloV2, finds all bounding boxes
+--   with confidence higher than a threshold, and their labels
 processOutput :: S ('D3 13 13 125) -> RealNum -> [DetectedObject]
 processOutput (S3D mat) threshold = map toDetectedObject filtered
   where
@@ -70,27 +77,6 @@ processOutput (S3D mat) threshold = map toDetectedObject filtered
       where
         m = maximum probs
         i = head $ elemIndices m probs
-
--- | TODO
-getDetails :: NLA.Matrix RealNum -> Int -> Int -> Int -> (RealNum, RealNum, RealNum, RealNum, RealNum)
-getDetails out cy cx b = (tx, ty, tw, th, tc)
-  where
-    channel = b * 25
-    tx = NLA.atIndex out (channel       * 13 + cy, cx)   -- out NLA.! offset 0 NLA.! j
-    ty = NLA.atIndex out ((channel + 1) * 13 + cy, cx)  --out NLA.! offset 1 NLA.! j
-    tw = NLA.atIndex out ((channel + 2) * 13 + cy, cx)  --out NLA.! offset 2 NLA.! j
-    th = NLA.atIndex out ((channel + 3) * 13 + cy, cx)  --out NLA.! offset 3 NLA.! j
-
-    tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)  --out NLA.! offset 4 NLA.! j
-
--- | TODO
-getProbs :: NLA.Matrix RealNum -> Int -> Int -> Int -> [RealNum]
-getProbs out cy cx b = probs
-  where
-    channel = b * 25
-    probs = [NLA.atIndex out ((channel + c) * 13 + cy, cx) | c <- [5..24] ]
-
-
 
 -- Given a cell, 0 <= i, j <= 12, and a bounding box 0 <= box <= 4, gives
 -- the x, y, width, height for the bounding box, the confidence score,
