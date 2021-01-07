@@ -48,12 +48,12 @@ labels
 
 -- | (left, right, top, bottom, confidence, label)
 type DetectedObject
-  = ( Int     -- ^ left of bounding box
-    , Int     -- ^ right of bounding box
-    , Int     -- ^ top of bounding box
-    , Int     -- ^ bottom of bounding box
-    , RealNum -- ^ confidence
-    , String  -- ^ label
+  = ( Int     -- left of bounding box
+    , Int     -- right of bounding box
+    , Int     -- top of bounding box
+    , Int     -- bottom of bounding box
+    , RealNum -- confidence
+    , String  -- label
     )
 
 -- | Given the output of TinyYoloV2, finds all bounding boxes
