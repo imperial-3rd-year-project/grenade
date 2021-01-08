@@ -13,9 +13,16 @@
 {-# LANGUAGE PolyKinds             #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+{-|
+Module      : Grenade.Layers.PaddedPooling
+Description : Pooling layer that pads the input before pooling 
+License     : BSD2
+Stability   : experimental
+-}
 
 module Grenade.Layers.PaddedPooling (
-    PaddedPooling
+  -- * Layer Definition
+    PaddedPooling(..)
   ) where
 
 import           Data.Proxy

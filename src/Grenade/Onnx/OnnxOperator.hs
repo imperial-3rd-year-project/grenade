@@ -1,3 +1,8 @@
+{-|
+Module      : Grenade.Onnx.OnnxOperator
+Description : Typeclass for matching network layers to ONNX Operator names.
+-}
+
 module Grenade.Onnx.OnnxOperator (OnnxOperator (..)) where
 
 import           Data.Proxy

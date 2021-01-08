@@ -9,7 +9,7 @@
 {-|
 Module      : Grenade.Core.Training
 Description : Training functions for neural networks
-Copyright   : (c) Theo Charalambous, 2020
+Maintainer  : Theo Charalambous
 License     : BSD2
 Stability   : experimental
 
@@ -103,6 +103,8 @@ fit trainRows validateRows TrainingOptions{ optimizer, batchSize, validationFreq
     (_, net, _) <- foldM (runEpoch optimizer trainData valData lossFnc metrics batchSize verbose validationFreq) (net0, net0, infinity)  [1..epochs]
     return net
 
+-- | Train a single epoch, running the forward an backward propogation for each batch (or each example, if 
+--   the batch size is 1). 
 runEpoch :: SingI (Last shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
@@ -140,6 +142,8 @@ runEpoch opt (TrainingData t ts) valData lossFnc ms batchSize verbosity validati
   let (newMinNet, newMinLoss) = if loss <= minLoss then (trainedNet, loss) else (minNet, minLoss)
   return (trainedNet, newMinNet, newMinLoss)
 
+-- | Update the SGD regularisation, this is to encourage smaller weights to be learnt over time and encourage
+--   more sharing between features.
 sgdUpdateLearningParameters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParameters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParameters o                     = o
@@ -170,6 +174,7 @@ combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
       Nothing  -> return (net', loss + loss') 
       Just pb' -> incProgress pb' batchSize >> return (net', loss + loss')
 
+-- | Calculates the loss with respect to the given loss metric
 validate' :: SingI (Last shapes)
           => Network layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
 validate' net (TrainingData v vs) metric

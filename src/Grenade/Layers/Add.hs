@@ -15,8 +15,22 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-|
+Module      : Grenade.Layers.Add
+Description : Layer to add some constant, with shape broadcasting
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 
-module Grenade.Layers.Add where
+module Grenade.Layers.Add 
+  (
+  -- * Layer instances
+    Add (..)
+
+  -- * Helper functions
+  , initAdd
+  ) where
 
 import           Control.DeepSeq              (NFData (..))
 
@@ -54,6 +68,7 @@ instance UpdateLayer (Add c h w) where
 instance (KnownNat c, KnownNat h, KnownNat w ) => RandomLayer (Add c h w) where
   createRandomWith _ _ = pure initAdd
 
+-- | Initialize an Add layer with 0 bias
 initAdd :: forall c h w. ( KnownNat c, KnownNat h, KnownNat w )
         => Add c h w
 initAdd =
@@ -70,6 +85,9 @@ instance ( KnownNat c, KnownNat h, KnownNat w ) => Serialize (Add c h w) where
     bias <- maybe (fail "Vector of incorrect size") return . H.create . LA.fromList =<< getListOf get
     return $ Add bias
 
+-- | A three dimensions image can have a vector added to it with size equal to the number of channels
+--   of the image, this corresponds to adding the nth element of the bias to every pixel of the nth 
+--   channel of the input image
 instance ( KnownNat i, KnownNat j, KnownNat k ) => Layer (Add k 1 1) ('D3 i j k) ('D3 i j k) where
   type Tape (Add k 1 1) ('D3 i j k) ('D3 i j k) = ()
 

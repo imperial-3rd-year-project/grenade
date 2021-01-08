@@ -13,8 +13,15 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-
+{-|
+Module      : Grenade.Layers.SamePadPooling
+Description : Pooling layer that supports SAME_UPPER padding
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.SamePadPooling (
+  -- * Layer Definition
     SamePadPooling (..)
   ) where
 

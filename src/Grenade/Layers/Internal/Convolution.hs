@@ -1,12 +1,20 @@
 {-# LANGUAGE BangPatterns             #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# HLINT ignore "Use camelCase"      #-}
-
+{-|
+Module      : Grenade.Layers.Internal.Add
+Description : Fast functions for performing convolutions and helper functions
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.Convolution (
+  -- * im2col functions
     im2col
   , col2im
   , col2vid
   , vid2col
+
+  -- * convolution functions
   , forwardConv2d
   , forwardBiasConv2d
   , backwardConv2d
@@ -28,14 +36,30 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 import Grenade.Layers.Internal.Hmatrix
 
-col2vid :: Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+-- | Rearrange the matrix columns into blocks, calculates the number of channels automatically.
+col2vid :: Int            -- ^ kernel rows
+        -> Int            -- ^ kernel columns 
+        -> Int            -- ^ stride rows
+        -> Int            -- ^ stride columns
+        -> Int            -- ^ input height
+        -> Int            -- ^ input width
+        -> Matrix RealNum -- ^ input matrix
+        -> Matrix RealNum -- ^ output matrix 
 col2vid kernelRows kernelColumns strideRows strideColumns height width dataCol =
   let channels = cols dataCol `div` (kernelRows * kernelColumns)
       outRows  = (height - kernelRows) `div` strideRows + 1
       outCols  = (width - kernelColumns) `div` strideColumns + 1
   in  col2im_c channels height width kernelRows kernelColumns strideRows strideColumns 0 0 outRows outCols dataCol
 
-col2im :: Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+-- | Rearrange the matrix columns into blocks, assumes there is only one channel
+col2im :: Int            -- ^ kernel rows
+       -> Int            -- ^ kernel columns 
+       -> Int            -- ^ stride rows
+       -> Int            -- ^ stride columns
+       -> Int            -- ^ input height
+       -> Int            -- ^ input width
+       -> Matrix RealNum -- ^ input matrix
+       -> Matrix RealNum -- ^ output matrix 
 col2im kernelRows kernelColumns strideRows strideColumns height width dataCol =
   let channels = 1
       outRows  = (height - kernelRows) `div` strideRows + 1
@@ -61,15 +85,28 @@ foreign import ccall unsafe
     col2im_cpu
       :: Ptr RealNum -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Ptr RealNum -> IO ()
 
-vid2col :: Int -> Int -> Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+-- | Rearrange the matrix blocks into columns, calculates the number of channels automatically.
+vid2col :: Int            -- ^ kernel rows
+        -> Int            -- ^ kernel columns 
+        -> Int            -- ^ stride rows
+        -> Int            -- ^ stride columns
+        -> Int            -- ^ input height
+        -> Int            -- ^ input width
+        -> Matrix RealNum -- ^ input matrix
+        -> Matrix RealNum -- ^ output matrix 
 vid2col kernelRows kernelColumns strideRows strideColumns height width dataVid =
   let channels = rows dataVid `div` height
       rowOut          = (height - kernelRows) `div` strideRows + 1
       colOut          = (width - kernelColumns) `div` strideColumns + 1
   in  im2col_c channels height width kernelRows kernelColumns strideRows strideColumns 0 0 dataVid rowOut colOut
 
-
-im2col :: Int -> Int -> Int -> Int -> Matrix RealNum -> Matrix RealNum
+-- | Rearrange the matrix blocks into columns, assumes there is only one channel
+im2col :: Int            -- ^ kernel rows
+       -> Int            -- ^ kernel columns 
+       -> Int            -- ^ stride rows
+       -> Int            -- ^ stride columns
+       -> Matrix RealNum -- ^ input matrix
+       -> Matrix RealNum -- ^ output matrix 
 im2col kernelRows kernelColumns strideRows strideColumns dataIm =
   let channels = 1
       height = rows dataIm
@@ -103,25 +140,46 @@ foreign import ccall unsafe
     in_place_add_per_channel_cpu
       :: Ptr RealNum -> Int -> Int -> Int -> Ptr RealNum -> IO ()
 
-forwardConv2d :: Matrix RealNum -> Int -> Int -> Int
-              -> Matrix RealNum -> Int -> Int -> Int
-              -> Int -> Int
-              -> Int -> Int
-              -> Int -> Int
-              -> Matrix RealNum
+-- | Efficient implementation of convolutions using the im2col trick as popularised by Caffe
+forwardConv2d :: Matrix RealNum -- ^ input
+              -> Int            -- ^ input channels
+              -> Int            -- ^ input rows
+              -> Int            -- ^ input columns
+              -> Matrix RealNum -- ^ kernel
+              -> Int            -- ^ kernel filters
+              -> Int            -- ^ kernel rows
+              -> Int            -- ^ kernel columns
+              -> Int            -- ^ stride height
+              -> Int            -- ^ stride width
+              -> Int            -- ^ output rows
+              -> Int            -- ^ output columns
+              -> Int            -- ^ pad left
+              -> Int            -- ^ pad top
+              -> Matrix RealNum -- ^ output of convolution
 forwardConv2d input channels rows cols kernel filters kernelRows kernelCols strideRows strideCols outRows outCols padLeft padTop
   = let dataCol  = im2col_c channels rows cols kernelRows kernelCols strideRows strideCols padLeft padTop input outRows outCols
         gemmM    = LA.tr kernel LA.<> dataCol
         dataVid  = reshapeMatrix (filters * outRows) outCols gemmM
     in  dataVid
 
-forwardBiasConv2d :: Matrix RealNum -> Int -> Int -> Int  -- input
-                  -> Vector RealNum                       -- bias
-                  -> Matrix RealNum -> Int -> Int -> Int  -- kernel
-                  -> Int -> Int                           -- strides
-                  -> Int -> Int                           -- out dims
-                  -> Int -> Int                           -- padl padt
-                  -> Matrix RealNum
+-- | Efficient implementation of convolutions using the im2col trick as popularised by Caffe
+--   also adds some bias to the functions, note that it does it in place to prevent unnecessary allocation.
+forwardBiasConv2d :: Matrix RealNum -- ^ input
+                  -> Int            -- ^ input channels
+                  -> Int            -- ^ input rows
+                  -> Int            -- ^ input columns
+                  -> Vector RealNum -- ^ bias
+                  -> Matrix RealNum -- ^ kernel
+                  -> Int            -- ^ kernel filters
+                  -> Int            -- ^ kernel rows
+                  -> Int            -- ^ kernel columns
+                  -> Int            -- ^ stride height
+                  -> Int            -- ^ stride width
+                  -> Int            -- ^ output rows
+                  -> Int            -- ^ output columns
+                  -> Int            -- ^ pad left
+                  -> Int            -- ^ pad top
+                  -> Matrix RealNum -- ^ output of convolution
 forwardBiasConv2d input channels rows cols bias kernel filters kernelRows kernelCols strideRows strideCols outRows outCols padLeft padTop =
   let outSize         = outRows * outCols * filters
   in  unsafePerformIO $ do
@@ -138,12 +196,25 @@ forwardBiasConv2d input channels rows cols bias kernel filters kernelRows kernel
     let matVec = U.unsafeFromForeignPtr0 xPtr outSize
     return $ U.matrixFromVector U.RowMajor (outRows * filters) outCols matVec
 
-backwardConv2d :: Matrix RealNum -> Int -> Int -> Int -- input
-               -> Matrix RealNum -> Int -> Int -> Int -- kernel
-               -> Int -> Int                          -- stride
-               -> Int -> Int -> Int -> Int            -- padl padt padr padb
-               -> Matrix RealNum -> Int -> Int        -- dout
-               -> (Matrix RealNum, Matrix RealNum)    -- (din, dkernels)
+-- | Efficient implementation of the backward pass for convolutions using the im2col trick as popularised by Caffe
+backwardConv2d :: Matrix RealNum -- ^ input
+               -> Int            -- ^ input channels
+               -> Int            -- ^ input rows
+               -> Int            -- ^ input columns
+               -> Matrix RealNum -- ^ kernel
+               -> Int            -- ^ kernel filters
+               -> Int            -- ^ kernel rows
+               -> Int            -- ^ kernel columns
+               -> Int            -- ^ stride height
+               -> Int            -- ^ stride width
+               -> Int            -- ^ pad left
+               -> Int            -- ^ pad top
+               -> Int            -- ^ pad right
+               -> Int            -- ^ pad bottom
+               -> Matrix RealNum -- ^ derivative wrt out of layer
+               -> Int            -- ^ output rows
+               -> Int            -- ^ output columns
+               -> (Matrix RealNum, Matrix RealNum)    -- ^ (derivated wrt input, derivative wrt kernel)
 backwardConv2d input channels rows cols kernel filters kernelRows kernelCols strideRows strideCols padl padt padr padb dout outRows outCols =
   let dout'  = LA.reshape (outRows * outCols) $ LA.flatten dout
       dX_col = kernel LA.<> dout'
@@ -156,12 +227,25 @@ backwardConv2d input channels rows cols kernel filters kernelRows kernelCols str
       dw     = LA.tr $ reshapeMatrix filters (kernelRows * kernelCols * channels) dw_col 
   in (dX, dw) 
 
-backwardBiasConv2d :: Matrix RealNum -> Int -> Int -> Int -- input
-                   -> Matrix RealNum -> Int -> Int -> Int -- kernel
-                   -> Int -> Int                          -- stride
-                   -> Int -> Int -> Int -> Int            -- padl padt padr padb
-                   -> Matrix RealNum -> Int -> Int        -- dout
-                   -> (Matrix RealNum, Matrix RealNum, Vector RealNum)    -- din, dkernels
+-- | Efficient implementation of the backward pass for convolutions using the im2col trick as popularised by Caffe
+backwardBiasConv2d :: Matrix RealNum    -- ^ input
+                   -> Int -- ^ input channels
+                   -> Int -- ^ input rows
+                   -> Int -- ^ input columns
+                   -> Matrix RealNum -- ^ kernel
+                   -> Int -- ^ kernel filters
+                   -> Int -- ^ kernel rows
+                   -> Int -- ^ kernel columns
+                   -> Int -- ^ stride height
+                   -> Int -- ^ stride width
+                   -> Int -- ^ pad left
+                   -> Int -- ^ pad top
+                   -> Int -- ^ pad right
+                   -> Int -- ^ pad bottom
+                   -> Matrix RealNum -- ^ derivative wrt out of layer
+                   -> Int -- ^ output rows
+                   -> Int -- ^ output columns
+                   -> (Matrix RealNum, Matrix RealNum, Vector RealNum)  -- ^ (derivated wrt input, derivative wrt kernel, derivative wrt bias)
 backwardBiasConv2d input channels rows cols kernel filters kernelRows kernelCols strideRows strideCols padl padt padr padb dout outRows outCols =
   let (dX, dw) = backwardConv2d input channels rows cols kernel filters kernelRows kernelCols strideRows strideCols padl padt padr padb dout outRows outCols
       dB       = sum_over_channels_c dout filters outRows outCols

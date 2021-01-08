@@ -9,6 +9,10 @@
 {-# LANGUAGE DefaultSignatures    #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeOperators        #-}
+{-|
+Module      : Grenade.Onnx.OnnxLoadable
+Description : Typeclass for loading neural network layers from ONNX files.
+-}
 
 module Grenade.Onnx.OnnxLoadable (OnnxLoadable (..)) where
 

@@ -112,6 +112,8 @@ deriving instance Show (S n)
 -- In singletons 2.6 Sing switched from a data family to a type family.
 type instance Sing = SShape
 
+-- | Datatype to allow "pattern matching" on shapes at the type level through
+--   the use the sing function from Singletons.
 data SShape :: Shape -> Type where
   D1Sing :: Sing a -> SShape ('D1 a)
   D2Sing :: Sing a -> Sing b -> SShape ('D2 a b)
@@ -247,7 +249,7 @@ n2 f (S2D x) (S2D y) = S2D (f x y)
 n2 f (S3D x) (S3D y) = S3D (f x y)
 n2 f (S4D x) (S4D y) = S4D (f x y)
 
--- Helper function for creating the number instances
+-- | Helper function for creating the number instances
 nk :: forall x. SingI x => RealNum -> S x
 nk x = case (sing :: Sing x) of
   D1Sing SNat ->
@@ -262,7 +264,10 @@ nk x = case (sing :: Sing x) of
   D4Sing SNat SNat SNat SNat ->
     S4D (H.konst x)
 
-visualise2D :: S ('D2 a b) -> RealNum -> String
+-- | Prints out the contents of a matrix with entries between zero and the max value
+visualise2D :: S ('D2 a b)  -- ^ input matrix
+            -> RealNum      -- ^ maximum element value
+            -> String       -- ^ pretty printed matrix
 visualise2D (S2D mm) max = 
   let m  = H.extract mm
       ms = NLAD.toLists m
@@ -274,6 +279,7 @@ visualise2D (S2D mm) max =
       px = (fmap . fmap) render ms
   in unlines px
 
+-- | TODO Theo
 splitChannels :: forall rows columns channels.
                  (KnownNat rows, KnownNat columns)
                  => S ('D3 rows columns channels) -> [S ('D2 rows columns)]
@@ -284,6 +290,7 @@ splitChannels (S3D x)
         ms  = map (S2D . fromJust . H.create . NLA.fromRows) rs' :: [S ('D2 rows columns)]
     in ms
 
+-- | TODO Theo
 combineChannels :: forall rows columns channels.
                  (KnownNat rows, KnownNat columns, KnownNat channels)
                  => [S ('D2 rows columns)] -> S ('D3 rows columns channels)

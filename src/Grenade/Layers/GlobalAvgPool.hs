@@ -8,8 +8,24 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-|
+Module      : Grenade.Layers.GlobalAvgPool
+Description : Global Average Pooling
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
 
-module Grenade.Layers.GlobalAvgPool where
+The layer follows the implementation as introduced in the paper:
+Min Lin, Qiang Chen, Shuicheng Yan. Network In Network
+<https://arxiv.org/abs/1312.4400>
+-}
+
+module Grenade.Layers.GlobalAvgPool 
+  (
+  -- * Layer definition
+    GlobalAvgPool (..)
+  )
+where
 
 import           Control.DeepSeq                (NFData (..))
 import           Data.Serialize
@@ -39,6 +55,8 @@ instance Serialize GlobalAvgPool where
   put _ = return ()
   get   = return GlobalAvgPool
 
+-- | Performing a global average pool on a 1d vector will take the average of the elements and
+--   return a vector of size 1
 instance (KnownNat i) => Layer GlobalAvgPool ('D1 i) ('D1 1) where
   type Tape GlobalAvgPool ('D1 i) ('D1 1) = S ('D1 i)
 
@@ -50,6 +68,8 @@ instance (KnownNat i) => Layer GlobalAvgPool ('D1 i) ('D1 1) where
 
   runBackwards = undefined
 
+-- | Performing a global average pool on a 2d matrix will take the average of the elements
+--   and return a matrix of size 1x1
 instance (KnownNat i, KnownNat j) => Layer GlobalAvgPool ('D2 i j) ('D2 1 1) where
   type Tape GlobalAvgPool ('D2 i j) ('D2 1 1) = S ('D2 i j)
 
@@ -62,6 +82,8 @@ instance (KnownNat i, KnownNat j) => Layer GlobalAvgPool ('D2 i j) ('D2 1 1) whe
 
   runBackwards = undefined
 
+-- | Performing a global average pool on a 3d matrix with k channels will take the average of the elements
+--   channel-wise and return a 3d matrix with k channels each of size 1x1
 instance (KnownNat i, KnownNat j, KnownNat k) => Layer GlobalAvgPool ('D3 i j k) ('D3 1 1 k) where
 
   type Tape GlobalAvgPool ('D3 i j k) ('D3 1 1 k) = S ('D3 i j k)

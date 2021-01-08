@@ -1,4 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-|
+Module      : Grenade.Onnx.BypassLayer
+Description : Wrapper for automatically deriving OnnxLoadable instances for layers consuming no nodes.
+-}
 
 module Grenade.Onnx.BypassLayer (OnnxLoadableBypass (..), LoadBypass) where
 

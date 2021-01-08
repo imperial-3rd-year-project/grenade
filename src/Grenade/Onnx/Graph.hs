@@ -10,6 +10,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TupleSections       #-}
+{-|
+Module      : Grenade.Onnx.Graph
+Description : Data type representing Onnx graphs along with functions to construct these.
+-}
 
 module Grenade.Onnx.Graph
   ( Composition (..)
@@ -36,6 +40,11 @@ import qualified Proto.Onnx                   as P
 
 data Composition = S | P
 
+-- | Data type representing series-parallel graphs.
+--
+--   Using the DataKinds extension, we can specify whether a constructor is
+--   composing graphs in series or in parallel, hence the term construction
+--   is verified by the type system to be correct.
 data SPG (s :: Composition) a where
   Node     :: a -> SPG s a
   Series   :: [SPG 'P a] -> SPG 'S a

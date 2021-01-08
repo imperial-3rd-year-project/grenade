@@ -1,4 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-|
+Module      : Grenade.Layers.Internal.Add
+Description : Fast addition functions that call efficient C function
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.Add (
   addPerChannel
 ) where
@@ -14,6 +21,9 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 import           Grenade.Types
 
+-- | Add the nth element to a vector to every pixel in the nth channel of a matrix.
+--   It assumes that the size of the vector and the number of channels in the matrix 
+--   are both equal to channels.
 addPerChannel :: Int -> Int -> Int -> Matrix RealNum -> Vector RealNum -> Matrix RealNum
 addPerChannel channels rows cols m b
   = let outMatSize      = rows * cols * channels

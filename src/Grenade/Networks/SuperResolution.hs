@@ -7,8 +7,23 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-|
+Module      : Grenade.Networks
+Description : SuperResolution network type definition
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
 
-module Grenade.Networks.SuperResolution where
+Definition of the SuperResolution v10 model compatible with the onnx file found at 
+<https://github.com/onnx/models/blob/master/vision/super_resolution/sub_pixel_cnn_2016/model/super-resolution-10.onnx>
+-}
+
+module Grenade.Networks.SuperResolution 
+  (
+    SuperResolution
+  , loadSuperResolution
+  )
+where
 
 import           Grenade.Core
 import           Grenade.Layers

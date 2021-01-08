@@ -62,6 +62,9 @@ train optimizer net input target (LossFunction l) =
     in (net', nsum loss)
 
 -- | Update a network with new weights after training with a batch of instances.
+--   This reduces computational complexity and improves gradient descent since 
+--   less parameter updates and performed per epoch, and averaging the gradients leads
+--   to a smoother gradient descent. 
 batchTrain :: Optimizer opt
            -> Network layers shapes
            -> [S (Head shapes)]

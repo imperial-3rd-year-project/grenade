@@ -4,7 +4,19 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-|
 
+Module      : Grenade.Layers.Dropout
+Description : Defines the Dropout Layer
+
+Dropout is a regularization method used to prevent overfitting 
+of the network to the training dataset. 
+It works by randomly "dropping out", i.e. ignoring, outputs of 
+a percentage of neurons.
+This is strategy is effective in preventing overfitting as it 
+forces a NN not to rely on a single feature for computing the 
+output of a neural network
+-}
 module Grenade.Layers.Dropout (
     Dropout (..)
   , randomDropout

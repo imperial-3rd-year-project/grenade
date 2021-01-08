@@ -13,10 +13,21 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-|
+Module      : Grenade.Layers.LRN
+Description : LRN layer
+Maintainer  : Aprova Varshney
+License     : BSD2
+Stability   : experimental
+
+LRN is a non trainable layer which normalises the output of a neuron based on the values in a 
+neighborhood around it, especially useful when non-normalised activation functions such as ReLU are utilised.
+-}
 
 module Grenade.Layers.LRN 
-  ( LRN(..)
+  ( 
+  -- * Layer Definition  
+    LRN(..)
   ) where
 
 import           Control.DeepSeq

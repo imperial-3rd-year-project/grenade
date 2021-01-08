@@ -1,7 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns     #-}
-
-
+{-|
+Module      : Grenade.Layers.Internal.Hmatrix
+Description : Faster implementations of HMatrix functions
+Maintainer  : Theo Charalambous
+License     : BSD2
+Stability   : experimental
+-}
 module Grenade.Layers.Internal.Hmatrix (
     reshapeMatrix
   ) where
