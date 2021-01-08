@@ -88,7 +88,7 @@ defaultAdamOptions = TrainingOptions { optimizer      = defAdam
                                      }
 
 -- | Given training data and validation data, fits a network to that dataset
-fit :: (CreatableNetwork layers shapes
+fit :: (CreatableNetwork layers shapes, RunnableNetwork layers shapes
        , SingI (Last shapes))
        => [(S (Head shapes), S (Last shapes))]  -- ^ training data
        -> [(S (Head shapes), S (Last shapes))]  -- ^ validation data
@@ -105,7 +105,7 @@ fit trainRows validateRows TrainingOptions{ optimizer, batchSize, validationFreq
 
 -- | Train a single epoch, running the forward an backward propogation for each batch (or each example, if 
 --   the batch size is 1). 
-runEpoch :: SingI (Last shapes)
+runEpoch :: (SingI (Last shapes), RunnableNetwork layers shapes)
          => Optimizer opt
          -> TrainingData (S (Head shapes)) (S (Last shapes))
          -> TrainingData (S (Head shapes)) (S (Last shapes))
@@ -148,7 +148,8 @@ sgdUpdateLearningParameters :: Optimizer opt -> Optimizer opt
 sgdUpdateLearningParameters (OptSGD rate mom reg) = OptSGD rate mom (reg * 10)
 sgdUpdateLearningParameters o                     = o
 
-combineTraining :: Maybe (ProgressBar ())
+combineTraining :: RunnableNetwork layers shapes
+                => Maybe (ProgressBar ())
                 -> Optimizer opt
                 -> LossFunction (S (Last shapes))
                 -> (Network layers shapes, RealNum)
@@ -160,7 +161,8 @@ combineTraining pb !opt lossFnc (!net, loss) (!x, !y)
       Nothing  -> return (net', loss + loss')
       Just pb' -> incProgress pb' 1 >> return (net', loss + loss')
 
-combineBatchTraining :: Maybe (ProgressBar ())
+combineBatchTraining :: RunnableNetwork layers shapes
+                     => Maybe (ProgressBar ())
                      -> Optimizer opt
                      -> LossFunction (S (Last shapes))
                      -> Int
@@ -175,7 +177,7 @@ combineBatchTraining pb !opt lossFnc batchSize (!net, loss) ts
       Just pb' -> incProgress pb' batchSize >> return (net', loss + loss')
 
 -- | Calculates the loss with respect to the given loss metric
-validate' :: SingI (Last shapes)
+validate' :: (SingI (Last shapes), RunnableNetwork layers shapes)
           => Network layers shapes -> TrainingData (S (Head shapes)) (S (Last shapes)) -> LossMetric -> RealNum
 validate' net (TrainingData v vs) metric
   = case metric of

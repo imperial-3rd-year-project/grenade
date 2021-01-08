@@ -47,7 +47,7 @@ import           Numeric.LinearAlgebra.Static    (extract, norm_Inf)
 import           Unsafe.Coerce
 
 data SomeNetwork :: Type where
-    SomeNetwork :: ( SingI shapes, SingI (Head shapes), SingI (Last shapes), Show (Network layers shapes) ) => Network layers shapes -> SomeNetwork
+    SomeNetwork :: ( SingI shapes, SingI (Head shapes), SingI (Last shapes), Show (Network layers shapes), RunnableNetwork layers shapes ) => Network layers shapes -> SomeNetwork
 
 instance Show SomeNetwork where
   show (SomeNetwork net) = show net

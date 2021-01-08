@@ -26,13 +26,13 @@ for non-recurrent neural networks.
 module Grenade.Core.Network (
     Network (..)
   , CreatableNetwork (..)
+  , RunnableNetwork (..)
   , Gradients (..)
   , Tapes (..)
   , FoldableGradient (..)
 
   , l2Norm
   , clipByGlobalNorm
-  , runNetwork
   , batchRunNetwork
   , runGradient
   , batchRunGradient
@@ -176,28 +176,24 @@ instance NFData (BatchTapes '[] '[i]) where
 instance (NFData ([Tape x i h]), NFData (BatchTapes xs (h ': hs))) => NFData (BatchTapes (x ': xs) (i ': h ': hs)) where
   rnf (t :\\> ts) = rnf t `seq` rnf ts
 
+class RunnableNetwork layers shapes where
+  -- | Running a network forwards with some input data.
+  --
+  --   This gives the output, and the Wengert tape required for back
+  --   propagation.
+  runNetwork :: Network layers shapes
+             -> S (Head shapes)
+             -> (Tapes layers shapes, S (Last shapes))
 
--- | Running a network forwards with some input data.
---
---   This gives the output, and the Wengert tape required for back
---   propagation.
-runNetwork :: forall layers shapes.
-              Network layers shapes
-           -> S (Head shapes)
-           -> (Tapes layers shapes, S (Last shapes))
-runNetwork = go
-    where
-  go  :: forall js ss. (Last js ~ Last shapes)
-      => Network ss js
-      -> S (Head js)
-      -> (Tapes ss js, S (Last js))
-  go (layer :~> n) !x =
-    let !(tape, forward) = runForwards layer x
-        !(tapes, answer) = go n forward
+instance RunnableNetwork '[] '[i] where
+  runNetwork NNil          !x = (TNil, x)
+
+instance (RunnableNetwork xs (h ': hs), Layer x i h)
+      => RunnableNetwork (x ': xs) (i ': h ': hs) where
+  runNetwork (layer :~> n) !x =
+    let (tape, !forward) = runForwards layer x
+        (tapes, !answer) = runNetwork n forward
     in  (tape :\> tapes, answer)
-
-  go NNil !x
-      = (TNil, x)
 
 -- | Running a network forwards with a batch input data.
 --
@@ -388,7 +384,8 @@ instance CreatableNetwork sublayers subshapes => RandomLayer (Network sublayers 
 -- | Ultimate composition.
 --
 --   This allows a complete network to be treated as a layer in a larger network.
-instance (i ~ (Head subshapes), o ~ (Last subshapes)) => Layer (Network sublayers subshapes) i o where
+instance (i ~ (Head subshapes), o ~ (Last subshapes), RunnableNetwork sublayers subshapes)
+      => Layer (Network sublayers subshapes) i o where
   type Tape (Network sublayers subshapes) i o = Tapes sublayers subshapes
   runForwards  = runNetwork
   runBackwards = runGradient

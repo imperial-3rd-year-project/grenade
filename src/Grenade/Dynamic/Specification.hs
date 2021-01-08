@@ -196,6 +196,7 @@ data SpecNetwork :: Type where
        , Typeable layers
        , Typeable shapes
        , CreatableNetwork layers shapes
+       , RunnableNetwork layers shapes
        )
     => !(Network layers shapes)
     -> SpecNetwork

@@ -27,7 +27,8 @@ import           Grenade.Utils.LinearAlgebra (nsum)
 
 -- | Perform reverse automatic differentiation on the network
 --   for the current input and expected output.
-backPropagate :: Network layers shapes
+backPropagate :: RunnableNetwork layers shapes
+              => Network layers shapes
               -> S (Head shapes)
               -> S (Last shapes)
               -> LossFunction (S (Last shapes))
@@ -38,7 +39,8 @@ backPropagate network input target (LossFunction l) =
     in  grads
 
 -- | Calculate the loss of a given input as a scalar
-validate :: Network layers shapes
+validate :: RunnableNetwork layers shapes
+         => Network layers shapes
          -> S (Head shapes)
          -> S (Last shapes)
          -> (S (Last shapes) -> S (Last shapes) -> RealNum)
@@ -48,12 +50,13 @@ validate network input target l
     in  l output target
 
 -- | Update a network with new weights after training with an instance.
-train :: Optimizer opt
-       -> Network layers shapes
-       -> S (Head shapes)
-       -> S (Last shapes)
-       -> LossFunction (S (Last shapes))
-       -> (Network layers shapes, RealNum)
+train :: RunnableNetwork layers shapes
+      => Optimizer opt
+      -> Network layers shapes
+      -> S (Head shapes)
+      -> S (Last shapes)
+      -> LossFunction (S (Last shapes))
+      -> (Network layers shapes, RealNum)
 train optimizer net input target (LossFunction l) =
     let (tapes, output) = runNetwork net input
         loss            = l output target
@@ -65,7 +68,8 @@ train optimizer net input target (LossFunction l) =
 --   This reduces computational complexity and improves gradient descent since 
 --   less parameter updates and performed per epoch, and averaging the gradients leads
 --   to a smoother gradient descent. 
-batchTrain :: Optimizer opt
+batchTrain :: RunnableNetwork layers shapes
+           => Optimizer opt
            -> Network layers shapes
            -> [S (Head shapes)]
            -> [S (Last shapes)]
@@ -80,5 +84,9 @@ batchTrain optimizer net inputs targets (LossFunction l) =
     in (net', abs loss)
 
 -- | Run the network with input and return the given output.
-runNet :: Network layers shapes -> S (Head shapes) -> S (Last shapes)
+runNet :: RunnableNetwork layers shapes
+       => Network layers shapes
+       -> S (Head shapes)
+       -> S (Last shapes)
 runNet net = snd . runNetwork net
+{-# INLINE runNet #-}

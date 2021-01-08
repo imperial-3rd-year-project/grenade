@@ -79,6 +79,7 @@ type GeneralConcreteNetworkInstances layers shapes
      , Typeable layers
      , Typeable shapes
      , CreatableNetwork layers shapes
+     , RunnableNetwork layers shapes
      )
 
 

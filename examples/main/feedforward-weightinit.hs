@@ -40,7 +40,7 @@ buildNetViaInterface =
 
 
 netTrain ::
-     (SingI (Last shapes), MonadRandom m, KnownNat len1, KnownNat len2, Head shapes ~ 'D1 len1, Last shapes ~ 'D1 len2)
+     (SingI (Last shapes), MonadRandom m, KnownNat len1, KnownNat len2, RunnableNetwork layers shapes, Head shapes ~ 'D1 len1, Last shapes ~ 'D1 len2)
   => Network layers shapes
   -> Optimizer o
   -> Int
@@ -59,7 +59,7 @@ netTrain net0 op n = do
 
   where trainEach (!network, _) (i,o) = train op network i o quadratic'
 
-netScore :: (KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
+netScore :: (RunnableNetwork layers shapes, KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
 netScore network = do
     let testIns = [ [ (x,y)  | x <- [0..50] ]
                              | y <- [0..20] ]
@@ -79,7 +79,7 @@ netScore network = do
 normx :: S ('D1 1) -> RealNum
 normx (S1D r) = SA.mean r
 
-testValues :: (KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
+testValues :: (RunnableNetwork layers shapes, KnownNat len, Head shapes ~ 'D1 len, Last shapes ~ 'D1 1) => Network layers shapes -> IO ()
 testValues network = do
   inps <- replicateM 1000 $ do
       s  <- getRandom
