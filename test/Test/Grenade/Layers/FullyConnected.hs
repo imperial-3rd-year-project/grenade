@@ -36,7 +36,6 @@ import           Numeric.LinearAlgebra.Static (R)
 import qualified Numeric.LinearAlgebra.Static as H
 
 import           Grenade.Core
-import           Grenade.Core.Optimizer
 import           Grenade.Layers.FullyConnected
 import           Grenade.Utils.ListStore
 

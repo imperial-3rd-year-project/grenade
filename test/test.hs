@@ -25,7 +25,8 @@ import qualified Test.Grenade.Layers.Internal.Transpose
 
 import qualified Test.Grenade.Recurrent.Layers.LSTM
 
-import           Grenade.Types
+import qualified Test.Grenade.Sys.Networks
+import qualified Test.Grenade.Sys.Training
 
 import           System.Exit
 import           System.IO
@@ -63,6 +64,9 @@ main = do
     , Test.Grenade.Layers.Internal.Transpose.tests
 
     , Test.Grenade.Recurrent.Layers.LSTM.tests
+    
+    , Test.Grenade.Sys.Networks.tests
+    , Test.Grenade.Sys.Training.tests
     ]
 
 disorderMain :: [IO Bool] -> IO ()

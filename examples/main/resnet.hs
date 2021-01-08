@@ -43,7 +43,6 @@ loadResNetImage path = do
         redM   = H.dmmap (\a -> (a - 0.485) / 0.229) . H.tr $ H.fromList reds   :: H.L 224 224
         greenM = H.dmmap (\a -> (a - 0.456) / 0.224) . H.tr $ H.fromList greens :: H.L 224 224
         blueM  = H.dmmap (\a -> (a - 0.406) / 0.225) . H.tr $ H.fromList blues  :: H.L 224 224
-
         mat    = redM H.=== greenM H.=== blueM
 
     return (S3D mat)

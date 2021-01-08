@@ -41,6 +41,13 @@ extra-source-files:
     cbits/transpose.c
     cbits/leaky_relu.h
     cbits/leaky_relu.c
+    test/Test/Grenade/Sys/Images/cheetah_Cb
+    test/Test/Grenade/Sys/Images/cheetah_Cr
+    test/Test/Grenade/Sys/Images/cheetah_Y0
+    test/Test/Grenade/Sys/Images/dog
+    test/Test/Grenade/Sys/Images/dog.png
+    test/Test/Grenade/Sys/Images/person
+    test/Test/Grenade/Sys/Images/person.jpeg
 data-files:
     assets/mnistModel
 
@@ -209,7 +216,7 @@ library
   build-depends:
       MonadRandom >=0.4 && <0.6
     , array
-    , base >=4.7 && <5
+    , base >=4.8 && <5
     , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
@@ -292,6 +299,9 @@ test-suite test
       Test.Grenade.Network
       Test.Grenade.Recurrent.Layers.LSTM
       Test.Grenade.Recurrent.Layers.LSTM.Reference
+      Test.Grenade.Sys.Networks
+      Test.Grenade.Sys.Training
+      Test.Grenade.Sys.Utils
       Test.Hedgehog.Compat
       Test.Hedgehog.Hmatrix
       Test.Hedgehog.TypeLits
@@ -306,7 +316,7 @@ test-suite test
       MonadRandom >=0.4 && <0.6
     , ad
     , array
-    , base >=4.7 && <5
+    , base >=4.8 && <5
     , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
@@ -383,7 +393,7 @@ benchmark bench
   build-depends:
       MonadRandom >=0.4 && <0.6
     , array
-    , base >=4.7 && <5
+    , base >=4.8 && <5
     , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
@@ -444,7 +454,7 @@ benchmark bench-layers
   build-depends:
       MonadRandom >=0.4 && <0.6
     , array
-    , base >=4.7 && <5
+    , base >=4.8 && <5
     , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*
@@ -505,7 +515,7 @@ benchmark bench-networks
   build-depends:
       MonadRandom >=0.4 && <0.6
     , array
-    , base >=4.7 && <5
+    , base >=4.8 && <5
     , bifunctors
     , binary >=0.8
     , bytestring ==0.10.*

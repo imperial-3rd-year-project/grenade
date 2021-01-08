@@ -122,10 +122,10 @@ prop_can_reshape_1d_to_3d = property $ do
 
 prop_can_reshape_3d_to_4d :: Property
 prop_can_reshape_3d_to_4d = withTests 1 $ property $ do
-  height      :: Int <- forAll $ choose 2 100
-  width       :: Int <- forAll $ choose 2 100
-  channels    :: Int <- forAll $ choose 2 100
-  temp        :: Int <- forAll $ choose 2 100
+  height      :: Int <- forAll $ choose 2 20
+  width       :: Int <- forAll $ choose 2 20
+  channels    :: Int <- forAll $ choose 2 20
+  temp        :: Int <- forAll $ choose 2 20
   let tup = (someNatVal (fromIntegral height), someNatVal (fromIntegral width), someNatVal (fromIntegral channels), someNatVal (fromIntegral temp))
   case tup of
     (Just (SomeNat (Proxy :: Proxy h)), Just (SomeNat (Proxy :: Proxy w)), Just (SomeNat (Proxy :: Proxy c)), Just (SomeNat (Proxy :: Proxy t))) -> do
@@ -139,10 +139,10 @@ prop_can_reshape_3d_to_4d = withTests 1 $ property $ do
 
 prop_can_reshape_4d_to_3d :: Property
 prop_can_reshape_4d_to_3d = withTests 1 $ property $ do
-  height      :: Int <- forAll $ choose 2 100
-  width       :: Int <- forAll $ choose 2 100
-  channels    :: Int <- forAll $ choose 2 100
-  temp        :: Int <- forAll $ choose 2 100
+  height      :: Int <- forAll $ choose 2 20
+  width       :: Int <- forAll $ choose 2 20
+  channels    :: Int <- forAll $ choose 2 20
+  temp        :: Int <- forAll $ choose 2 20
   let tup = (someNatVal (fromIntegral height), someNatVal (fromIntegral width), someNatVal (fromIntegral channels), someNatVal (fromIntegral temp))
   case tup of
     (Just (SomeNat (Proxy :: Proxy h)), Just (SomeNat (Proxy :: Proxy w)), Just (SomeNat (Proxy :: Proxy c)), Just (SomeNat (Proxy :: Proxy t))) -> do
