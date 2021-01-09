@@ -8,6 +8,12 @@
 
 module Test.Grenade.Sys.Training where
 
+-- TODO: These tests are unreliable and are not included.
+-- In particular, there needs to be more investigation
+-- into how to fix the seed that fit uses for random generation
+-- or otherwise expose the combineTraining functions from the
+-- Training module.
+
 import qualified Numeric.LinearAlgebra.Data   as D
 import qualified Numeric.LinearAlgebra.Static as H
 import           GHC.TypeLits

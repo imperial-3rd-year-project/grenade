@@ -69,13 +69,13 @@ main = do
     , Test.Grenade.Layers.Internal.Transpose.tests
 
     , Test.Grenade.Recurrent.Layers.LSTM.tests
-    
-    , Test.Grenade.Sys.Networks.tests
-    , Test.Grenade.Sys.Training.tests
 
     , Test.Grenade.Onnx.Network.tests
     , Test.Grenade.Onnx.Graph.tests
-
+    
+    , Test.Grenade.Sys.Networks.tests
+    -- See note in Test/Grenade/Sys/Training.hs
+    -- , Test.Grenade.Sys.Training.tests
     ]
 
 disorderMain :: [IO Bool] -> IO ()
