@@ -48,8 +48,6 @@ import           Control.Parallel.Strategies
 import           Data.Serialize
 import           Data.Singletons
 import           Data.Singletons.Prelude
-import           GHC.TypeLits                      (KnownNat)
-import           Numeric.LinearAlgebra.Static
 import           System.Random.MWC
 #if MIN_VERSION_base(4,9,0)
 import           Data.Kind                         (Type)

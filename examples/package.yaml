@@ -33,7 +33,6 @@ flags:
 dependencies:
   - grenade
   - base
-  - binary
   - attoparsec
   - bytestring
   - cereal

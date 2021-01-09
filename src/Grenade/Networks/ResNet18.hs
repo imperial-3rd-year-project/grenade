@@ -87,16 +87,6 @@ type ResNet18ShrinkBlock inSize outSize inChannels outChannels
       '[ Lift (LoadParallel (Merge (ResNet18BranchShrinkLeft inSize outSize inChannels outChannels) (ResNet18BranchShrinkRight inSize outSize inChannels outChannels))), Lift (LoadActivation Relu)]
       '[ 'D3 inSize inSize inChannels, 'D3 outSize outSize outChannels, 'D3 outSize outSize outChannels ]
 
-type ResNetTest
-  = Network
-      '[ Convolution 'WithoutBias ('Padding 3 3 3 3) 3 64 7 7 2 2 
-       , Lift (LoadActivation Relu)
-       ]
-      '[ 'D3 224 224 3
-       , 'D3 112 112 64
-       , 'D3 112 112 64
-       ]
-
 type ResNet18
   = Network
      '[ Convolution 'WithoutBias ('Padding 3 3 3 3) 3 64 7 7 2 2

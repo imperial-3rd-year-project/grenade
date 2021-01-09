@@ -8,8 +8,8 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-|
 Module      : Grenade.Core.Shape
 Description : Dependently typed shapes of data which are passed between layers of a network
@@ -30,6 +30,7 @@ module Grenade.Core.Shape (
 
   , randomOfShape
   , fromStorable
+  , fromStorableMatrix
   , nk
   , visualise2D
   , splitChannels
@@ -50,6 +51,7 @@ import           Data.Singletons.TypeLits
 import           Data.Vector.Storable         (Vector)
 import qualified Data.Vector.Storable         as V
 import           GHC.TypeLits                 hiding (natVal)
+import           Numeric.LinearAlgebra        (Matrix)
 import qualified Numeric.LinearAlgebra        as NLA
 import qualified Numeric.LinearAlgebra.Data   as NLAD
 import           Numeric.LinearAlgebra.Static
@@ -71,7 +73,7 @@ data Shape
   -- ^ Two dimensional matrix. Row, Column.
   | D3 Nat Nat Nat
   -- ^ Three dimensional matrix. Row, Column, Channels.
-  | D4 Nat Nat Nat Nat 
+  | D4 Nat Nat Nat Nat
   -- ^ Four dimensional matrix. Depth, Channels, Row, Column
 
 -- | Concrete data structures for a Shape.
@@ -93,7 +95,7 @@ data S (n :: Shape) where
          , KnownNat (rows * channels) )
       => L (rows * channels) columns
       -> S ('D3 rows columns channels)
-  
+
   S4D :: ( KnownNat rows
          , KnownNat columns
          , KnownNat channels
@@ -192,7 +194,7 @@ randomOfShape = do
 
     D3Sing SNat SNat SNat ->
         S3D (H.uniformSample seed (-1) 1)
-    
+
     D4Sing SNat SNat SNat SNat ->
         S4D (H.uniformSample seed (-1) 1)
 
@@ -222,6 +224,32 @@ fromStorable xs = case sing :: Sing x of
              then H.create $ NLA.reshape columns v
              else Nothing
 
+-- | Generate a shape from a Storable Matrix.
+--
+--   Returns Nothing if the matrix is of the wrong size (or one dimensional)
+fromStorableMatrix :: forall x. SingI x => Matrix RealNum -> Maybe (S x)
+fromStorableMatrix xs = case sing :: Sing x of
+    D1Sing SNat ->
+      Nothing
+
+    D2Sing SNat SNat ->
+      S2D <$> mkL xs
+
+    D3Sing SNat SNat SNat ->
+      S3D <$> mkL xs
+
+    D4Sing SNat SNat SNat SNat ->
+      S4D <$> mkL xs
+  where
+    mkL :: forall rows columns. (KnownNat rows, KnownNat columns)
+        => Matrix RealNum -> Maybe (L rows columns)
+    mkL m =
+      let rows    = fromIntegral $ natVal (Proxy :: Proxy rows)
+          columns = fromIntegral $ natVal (Proxy :: Proxy columns)
+          (h, w)  = NLA.size m
+      in  if rows == h && columns == w
+             then H.create m
+             else Nothing
 
 instance SingI x => Serialize (S x) where
   put i = (case i of
@@ -260,7 +288,7 @@ nk x = case (sing :: Sing x) of
 
   D3Sing SNat SNat SNat ->
     S3D (H.konst x)
-  
+
   D4Sing SNat SNat SNat SNat ->
     S4D (H.konst x)
 
@@ -268,7 +296,7 @@ nk x = case (sing :: Sing x) of
 visualise2D :: S ('D2 a b)  -- ^ input matrix
             -> RealNum      -- ^ maximum element value
             -> String       -- ^ pretty printed matrix
-visualise2D (S2D mm) max = 
+visualise2D (S2D mm) max =
   let m  = H.extract mm
       ms = NLAD.toLists m
       render n' | n' <= 0.2 * max  = ' '
