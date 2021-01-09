@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2b76fa9fa8612aa5f6872d77f74e2f10896154c7e8bde190387672a7b68b1ec0
+-- hash: f621d4f5acde105f18e65573689c81e7b935d2c48d69821dcfc3351be197a7d9
 
 name:           grenade-examples
 version:        0.0.1.0
@@ -49,6 +49,7 @@ executable circle
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -88,6 +89,7 @@ executable feedforward
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -127,6 +129,7 @@ executable feedforward-weightinit
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , constraints
@@ -168,6 +171,7 @@ executable gan-mnist
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -207,6 +211,7 @@ executable mnist
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -246,6 +251,7 @@ executable mnist-load
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -285,6 +291,7 @@ executable recurrent
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -324,6 +331,7 @@ executable resnet
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -363,6 +371,7 @@ executable shakespeare
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -402,6 +411,7 @@ executable superres
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers
@@ -441,6 +451,7 @@ executable yolo
       MonadRandom
     , attoparsec
     , base
+    , binary
     , bytestring
     , cereal
     , containers

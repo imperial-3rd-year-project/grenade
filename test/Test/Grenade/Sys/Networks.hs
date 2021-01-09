@@ -70,7 +70,7 @@ prop_yolo_loads_and_finds_objects = withTests 1 $ property $ do
 
   let Just img'  = img
       Right net' = net
-      probs = processOutput (runNet net' img') 0.3
+      probs = processOutput (runNet net' img') 0.3 2.0
       -- Values taken from running the TinyYolov2 network bundled
       -- with grenade through the ONNX inference runtime Python
       -- module

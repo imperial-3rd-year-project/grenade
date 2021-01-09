@@ -2,10 +2,10 @@
 {-# LANGUAGE GADTs     #-}
 {-|
 Module      : Grenade.Utils.PascalVoc
-Description : TODO Theo what is this for
+Description : Post-processing for TinyYoloV2
 -}
 
-module Grenade.Utils.PascalVoc where
+module Grenade.Utils.PascalVoc (DetectedObject, labels, processOutput) where
 
 import           Data.List                    (elemIndices)
 import qualified Numeric.LinearAlgebra.Data   as NLA
@@ -39,22 +39,20 @@ labels
     , "tvmonitor"
     ]
 
--- | (x, y, w, h, confidence, label)
-type DetectedObject
-  = ( Int -- x
-    , Int -- y
-    , Int -- w
-    , Int -- h
-    , RealNum -- confidence
-    , String -- label
-    )
+-- | Type alias for output from Yolo neural network.
+--
+--   Stores (x position, y position, width height, confidence score, object label).
+type DetectedObject = (Int, Int, Int, Int, RealNum, String)
 
--- Given the output of TinyYoloV2, finds all bounding boxes
--- with confidence higher than a threshold, and their labels
-processOutput :: S ('D3 13 13 125) -> RealNum -> [DetectedObject]
-processOutput (S3D mat) threshold = map toDetectedObject filtered
+-- | Given the output of TinyYoloV2, finds all bounding boxes
+--   with confidence higher than a threshold, and their labels
+processOutput :: S ('D3 13 13 125) -- ^ Output tensor from TinyYoloV2
+              -> RealNum           -- ^ Minimum confidence for bounding boxes, between 0 and 1. A good default is 0.3.
+              -> RealNum           -- ^ Maximum IoU ratio to consider boxes not overlapping, between 0 and 1. A good default is 0.5.
+              -> [DetectedObject]
+processOutput (S3D mat) confThreshold iouThreshold = collapseBoxes iouThreshold $ map toDetectedObject filtered
   where
-    filtered = filter (\(_, _, _, _, c, probs) -> snd (argMax probs) * c > threshold ) boxDescs
+    filtered = filter (\(_, _, _, _, c, probs) -> snd (argMax probs) * c > confThreshold ) boxDescs
     out      = H.extract mat
     boxDescs = [ getBoundingBoxDesc out i j box | i <- [0..12], j <- [0..12], box <- [0..4]]
 
@@ -65,36 +63,41 @@ processOutput (S3D mat) threshold = map toDetectedObject filtered
         t = floor $ y - h / 2
         b = floor $ y + h / 2
 
-    -- tuple of (idx, max elem)
+    -- Returns (index of maximum element, maximum element)
     argMax probs = (i, m)
       where
         m = maximum probs
         i = head $ elemIndices m probs
-
--- | TODO
-getDetails :: NLA.Matrix RealNum -> Int -> Int -> Int -> (RealNum, RealNum, RealNum, RealNum, RealNum)
-getDetails out cy cx b = (tx, ty, tw, th, tc)
+    
+-- | Given an IoU threshold and a list of boxes, find overlapping boxes and collapse them into one.
+--
+--   Boxes are determined to be overlapping if their intersection over union value passes the threshold.
+--   When boxes are merged we pick the box with higher confidence score.
+--
+--   IoU threshold should be between 0 and 1, we've found 0.5 to work quite well.
+collapseBoxes :: RealNum -> [DetectedObject] -> [DetectedObject]
+collapseBoxes threshold xs = filter (\y -> all (doesNotOverlapWith y) xs) xs
   where
-    channel = b * 25
-    tx = NLA.atIndex out (channel       * 13 + cy, cx)   -- out NLA.! offset 0 NLA.! j
-    ty = NLA.atIndex out ((channel + 1) * 13 + cy, cx)  --out NLA.! offset 1 NLA.! j
-    tw = NLA.atIndex out ((channel + 2) * 13 + cy, cx)  --out NLA.! offset 2 NLA.! j
-    th = NLA.atIndex out ((channel + 3) * 13 + cy, cx)  --out NLA.! offset 3 NLA.! j
+    -- Consider objects as overlapping if they have same label and their intersection over union area is too big.
+    -- Only consider overlapping the object which has lower confidence.
+    doesNotOverlapWith :: DetectedObject -> DetectedObject -> Bool
+    doesNotOverlapWith y@(left, right, top, bottom, conf, label) x@(left', right', top', bottom', conf', label')
+      = label /= label' || y == x || iou < threshold || conf > conf'
+        where
+          ix1   = max left left'
+          ix2   = min right right'
+          iy1   = max top top'
+          iy2   = min bottom bottom'
+          area  = (right  - left)  * (bottom  - top)
+          area' = (right' - left') * (bottom' - top')
+          inter = if ix1 < ix2 && iy1 < iy2 then (ix2 - ix1) * (iy2 - iy1) else 0
+          iou   = fromIntegral inter / fromIntegral (area + area' - inter)
 
-    tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)  --out NLA.! offset 4 NLA.! j
-
--- | TODO
-getProbs :: NLA.Matrix RealNum -> Int -> Int -> Int -> [RealNum]
-getProbs out cy cx b = probs
-  where
-    channel = b * 25
-    probs = [NLA.atIndex out ((channel + c) * 13 + cy, cx) | c <- [5..24] ]
-
-
-
--- Given a cell, 0 <= i, j <= 12, and a bounding box 0 <= box <= 4, gives
--- the x, y, width, height for the bounding box, the confidence score,
--- and the probability distribution over the 20 available classes
+-- | Given the output matrix from YOLO, a cell position cy, cx and a bounding box b,
+--   outputs (x, y, width, height, confidence score, probability distribution over 20 classes)
+--   for said box.
+--
+--   Must have that 0 <= cy, cx <= 12 and 0 <= b <= 4.
 getBoundingBoxDesc :: NLA.Matrix RealNum -> Int -> Int -> Int -> (RealNum, RealNum, RealNum, RealNum, RealNum, [RealNum])
 getBoundingBoxDesc out cy cx b = (x, y, w, h, confidence * (maximum classes), classes)
   where
@@ -102,11 +105,11 @@ getBoundingBoxDesc out cy cx b = (x, y, w, h, confidence * (maximum classes), cl
     numClasses = 20
     channel    = b * 25
 
-    tx = NLA.atIndex out ((channel + 0) * 13 + cy, cx)  -- out NLA.! offset 0 NLA.! j
-    ty = NLA.atIndex out ((channel + 1) * 13 + cy, cx)  --out NLA.! offset 1 NLA.! j
-    tw = NLA.atIndex out ((channel + 2) * 13 + cy, cx)  --out NLA.! offset 2 NLA.! j
-    th = NLA.atIndex out ((channel + 3) * 13 + cy, cx)  --out NLA.! offset 3 NLA.! j
-    tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)  --out NLA.! offset 4 NLA.! j
+    tx = NLA.atIndex out ((channel + 0) * 13 + cy, cx)
+    ty = NLA.atIndex out ((channel + 1) * 13 + cy, cx)
+    tw = NLA.atIndex out ((channel + 2) * 13 + cy, cx)
+    th = NLA.atIndex out ((channel + 3) * 13 + cy, cx)
+    tc = NLA.atIndex out ((channel + 4) * 13 + cy, cx)
 
     x = (fromIntegral cx + sigmoid tx) * 32
     y = (fromIntegral cy + sigmoid ty) * 32

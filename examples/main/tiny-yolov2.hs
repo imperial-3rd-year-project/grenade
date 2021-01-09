@@ -41,7 +41,7 @@ main = do
     case (res, imgM) of
       (Right net, Just img) -> do
         putStrLn "Succesfully loaded image and network"
-        print $ processOutput (runNet net img) 0.3
+        print $ processOutput (runNet net img) 0.3 0.5
 
       (Left err, _) -> print err
       _             -> print "Error loading image"
