@@ -35,7 +35,7 @@ getPathForNetwork model = do
   unless exists $ do
     putStrLn "Model has not been downloaded yet, downloading..."
     cloned <- doesDirectoryExist $ configDir </> ".git"
-    let cmd   = "git clone git@gitlab.doc.ic.ac.uk:g206002126/grenade-assets.git " ++ configDir
+    let cmd   = "git clone https://gitlab.doc.ic.ac.uk/g206002126/grenade-assets-public " ++ configDir
         cmd'  = "git pull origin master"
         cmd'' = if cloned then cmd' else cmd
     putStrLn cmd''
