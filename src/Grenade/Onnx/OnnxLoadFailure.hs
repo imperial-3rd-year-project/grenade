@@ -2,10 +2,13 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DeriveAnyClass       #-}
 {-|
 Module      : Grenade.Onnx.OnnxLoadFailure
 Description : Declares datatype storing useful load failure information
 -}
+
 module Grenade.Onnx.OnnxLoadFailure
   ( OnnxLoadFailure (..)
   , reason
@@ -19,6 +22,9 @@ import           Data.Maybe          (fromMaybe)
 import           Lens.Micro          ((^.))
 import           Lens.Micro.TH
 
+import           Control.DeepSeq
+import           GHC.Generics
+
 import           Data.ProtoLens.Labels        ()
 import qualified Proto.Onnx          as P
 
@@ -27,6 +33,8 @@ data OnnxLoadFailure = OnnxLoadFailure { _reason             :: String
                                        , _currentNode        :: Maybe P.NodeProto
                                        , _expectingNodeTypes :: [String]
                                        }
+  deriving (Generic, NFData)
+
 makeLenses ''OnnxLoadFailure
 
 instance Show OnnxLoadFailure where

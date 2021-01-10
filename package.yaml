@@ -192,6 +192,9 @@ tests:
             - hmatrix                         >= 0.18        && < 0.21
           cpp-options: -DUSE_DOUBLE
           cc-options: -DUSE_DOUBLE
+    generated-other-modules:
+      - Proto.Onnx
+      - Proto.Onnx_Fields
     dependencies:
     - grenade
     - ad

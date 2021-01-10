@@ -1,10 +1,10 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1b42421c9f7b9eb9caf9e864765db73ac706b7f99b1683bdadb13f879bb72fef
+-- hash: c7a3b47aab62767fc2ea6d57a3d2ae8aa9235de1e35551d16803b5cff91743fe
 
 name:           grenade
 version:        0.1.1
@@ -297,6 +297,10 @@ test-suite test
       Test.Grenade.Layers.Trivial
       Test.Grenade.Loss
       Test.Grenade.Network
+      Test.Grenade.Onnx.FakeLayers
+      Test.Grenade.Onnx.Graph
+      Test.Grenade.Onnx.Network
+      Test.Grenade.Onnx.Utils
       Test.Grenade.Recurrent.Layers.LSTM
       Test.Grenade.Recurrent.Layers.LSTM.Reference
       Test.Grenade.Sys.Networks
@@ -307,6 +311,11 @@ test-suite test
       Test.Hedgehog.TypeLits
       Test.Utils.Rnf
       Paths_grenade
+      Proto.Onnx
+      Proto.Onnx_Fields
+  autogen-modules:
+      Proto.Onnx
+      Proto.Onnx_Fields
   hs-source-dirs:
       test
   ghc-options: -Wall -threaded -O2

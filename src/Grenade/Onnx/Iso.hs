@@ -4,8 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-|
-Module      : Grenade.Onnx.BypassLayer
-Description : TODO Jason
+Module      : Grenade.Onnx.Iso
+Description : Types that help define generic ONNX loading behavior
 -}
 
 module Grenade.Onnx.Iso (Lift, Iso (..)) where
@@ -20,12 +20,16 @@ import Control.DeepSeq
 
 import Lens.Micro (over, _1)
 
--- | TODO Jason
+-- | Iso works as an attribute on a Layer, specifying the ONNX loading strategy
 class Iso f where
   to   :: a -> f a
   from :: f a -> a
 
--- | TODO Jason
+-- | Lift provides the Grenade.Core instances for Layers tagged by an Iso.
+--   
+--   Lift is necessary to avoid overlapping instances, as only RHS
+--   is considered when finding instances and ghc would match f against
+--   any type constructor and not just Iso
 newtype Lift a = Lift { unlift :: a }
 
 instance (UpdateLayer x, Iso f) => UpdateLayer (Lift (f x)) where

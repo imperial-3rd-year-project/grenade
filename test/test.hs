@@ -28,6 +28,11 @@ import qualified Test.Grenade.Recurrent.Layers.LSTM
 import qualified Test.Grenade.Sys.Networks
 import qualified Test.Grenade.Sys.Training
 
+import qualified Test.Grenade.Onnx.Graph
+import qualified Test.Grenade.Onnx.Network
+
+import           Grenade.Types
+
 import           System.Exit
 import           System.IO
 
@@ -67,6 +72,10 @@ main = do
     
     , Test.Grenade.Sys.Networks.tests
     , Test.Grenade.Sys.Training.tests
+
+    , Test.Grenade.Onnx.Network.tests
+    , Test.Grenade.Onnx.Graph.tests
+
     ]
 
 disorderMain :: [IO Bool] -> IO ()

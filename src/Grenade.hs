@@ -26,6 +26,10 @@ module Grenade (
 
   , module Grenade.Dynamic
 
+    -- * Load ONNX models
+
+  , module Grenade.Onnx
+
     -- * Load networks bundled with the library.
 
   , module Grenade.Assets
@@ -37,6 +41,7 @@ import           Grenade.Dynamic
 import           Grenade.Layers
 import           Grenade.Networks
 import           Grenade.Types
+import           Grenade.Onnx
 
 {- $library
 Grenade is a purely functional deep learning library.

@@ -10,6 +10,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE DeriveGeneric       #-}
 {-|
 Module      : Grenade.Onnx.Graph
 Description : Data type representing Onnx graphs along with functions to construct these.
@@ -26,10 +27,12 @@ module Grenade.Onnx.Graph
 import           Control.Applicative          ((<|>))
 import           Data.Bifunctor               (bimap)
 import           Data.Either                  (partitionEithers)
-import           Data.List                    (foldl')
+import           Data.List                    (foldl', transpose)
 import qualified Data.Map.Strict              as Map
 import           Data.ProtoLens.Labels        ()
 import qualified Data.Text                    as T
+
+import           Control.DeepSeq
 
 import           Grenade.Onnx.OnnxLoadFailure
 import           Grenade.Onnx.Utils
@@ -52,6 +55,14 @@ data SPG (s :: Composition) a where
 
 deriving instance Functor (SPG s)
 
+instance Foldable (SPG s) where
+  foldMap f = foldMap f . toList
+
+instance NFData a => NFData (SPG s a) where
+  rnf (Node a) = rnf a
+  rnf (Series xs) = rnf xs
+  rnf (Parallel xs) = rnf xs
+
 graphCons :: a -> SPG s a -> SPG 'S a
 graphCons x (Node x') = Series [Node x, Node x']
 graphCons x (Series xs) = Series (Node x : xs)
@@ -68,12 +79,10 @@ graphAppend (Series xs) (Series xs') = Series (xs ++ xs')
 graphAppend (Series xs) (Node x) = Series (xs ++ [Node x])
 graphAppend xs ys = wrapSeries xs `graphAppend` wrapSeries ys
 
-graphHead :: SPG s a -> SPG s a
-graphHead (Node x) = Node x
-graphHead (Series xs) = case xs of
-                          (x : _) -> Series [graphHead x]
-                          _       -> error "Graph is empty"
-graphHead (Parallel xs) = Parallel (graphHead <$> xs)
+toList :: SPG s a -> [a]
+toList (Node     x)  = [x]
+toList (Series   xs) = concatMap toList xs
+toList (Parallel xs) = concat (transpose (map toList xs))
 
 generateInitializerMap :: P.GraphProto -> Map.Map T.Text P.TensorProto
 generateInitializerMap graph = foldl' (\map node -> Map.insert (node ^. #name) node map) Map.empty
