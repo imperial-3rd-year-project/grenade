@@ -228,8 +228,39 @@ elu, tanh, and fully connected.
 
 Build Instructions
 ------------------
-This version of Grenade is most easily built with the. You will also need the `lapack` and
-`blas` libraries and development tools. Once you have all that, Grenade can be
+
+### Installing Dependencies on Linux ###
+
+This version of Grenade is most easily built with stack. You will also need the `lapack` and
+`blas` libraries and development tools. To install these on Linux, run:
+
+```
+sudo apt-get install libgsl0-dev liblapack-dev libatlas-base-dev
+```
+
+You will also need to install protoc - this is used to read the protobuf ONNX files, to install
+this, run the following (taken from the [official instructions](http://google.github.io/proto-lens/installing-protoc.html), but with the typo in the URL fixed).
+
+```
+PROTOC_ZIP=protoc-3.14.0-linux-x86_64.zip && curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/$PROTOC_ZIP && sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc && sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*' && rm -f $PROTOC_ZIP
+```
+### Installing Dependencies on macOS ###
+
+You need `protobuf` to build Grenade on macOS. To install `protobuf` with Homebrew, run
+
+```
+brew install protobuf
+```
+
+To install from source, check out the [official instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md).
+
+If you're using macOS 11 Big Sur, you might need to build with `cabal` and the latest version of ghc instead of `stack`.
+
+Depending on your macOS version, you might also need to install `openblas` and add it to your path.
+
+### Building Grenade for the First Time ###
+
+Once you have all that, Grenade can be
 build using:
 
 ```
