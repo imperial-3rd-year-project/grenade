@@ -1,8 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Test.Grenade.Onnx.Utils where
 
 import qualified Data.Text            as T
 
 import Grenade
+
+import           Data.Either.Combinators
 
 import           Hedgehog
 import           Hedgehog.Gen           as Gen
@@ -40,3 +44,6 @@ randomMerge xss = merge' (Prelude.filter (not . null) xss)
 
 loadModel :: OnnxLoadable a => P.ModelProto -> Either OnnxLoadFailure a
 loadModel = loadOnnxModel' . encodeMessage
+
+evalMaybe' :: (MonadTest m, Show a) => Maybe a -> m a
+evalMaybe' = evalEither . maybeToRight "Nothing"

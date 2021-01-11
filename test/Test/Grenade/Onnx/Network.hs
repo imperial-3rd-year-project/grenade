@@ -120,7 +120,7 @@ loadFailsFromAt _ proxy opType = do
       loaded = loadModel model
   failureInfo <- evalEither (swapEither loaded) >>= evalNF
 
-  failedAt <- evalMaybe (failureInfo ^. currentNode)
+  failedAt <- evalMaybe' (failureInfo ^. currentNode)
   failedAt' :: P.NodeProto <- evalEither (castMessage failedAt)
 
   failedAt' ^. #opType === opType
